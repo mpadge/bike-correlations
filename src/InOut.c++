@@ -1,10 +1,3 @@
-#ifndef UTILS_H
-#define UTILS_H
-
-#include "Utils.h"
-
-#endif
-
 #include "InOut.h"
 
 /************************************************************************
@@ -28,6 +21,7 @@ void getDir (std::vector <std::string>* filelist)
         std::cout << "***ERROR: Write data directory in junk.cfg first!" << 
             std::endl;
     } else {
+        getline (in_file, dirtxt, '\n');
         getline (in_file, dirtxt, '\n');
         if ((dir = opendir (dirtxt.c_str())) != NULL) {
             while ((ent = readdir (dir)) != NULL) {
@@ -189,7 +183,7 @@ void getStationNames (std::vector <std::string>* names)
  ************************************************************************
  ************************************************************************/
 
-int readData (dmat* ntrips, std::string fname)
+int readData (imat* ntrips, std::string fname)
 {
     /*
      * Reads the tab-delimited .txt format data provided by the London hire bike
@@ -239,7 +233,7 @@ int readData (dmat* ntrips, std::string fname)
         tempi [1] = atoi (linetxt.substr (0, ipos).c_str()); // Start Station ID
         if (tempi [0] > 0 && tempi [0] <= nstations && tempi [1] > 0 && 
                 tempi [1] <= nstations) {
-            (*ntrips) (tempi [0] - 1, tempi [1] - 1)++;
+            (*ntrips) (tempi [1] - 1, tempi [0] - 1)++;
         } // end if 
     } // end for k
     in_file.close();
@@ -257,7 +251,7 @@ int readData (dmat* ntrips, std::string fname)
  ************************************************************************
  ************************************************************************/
 
-ivec tripNumRange (dmat* ntrips)
+ivec tripNumRange (imat* ntrips)
 {
     int tempi, n = (*ntrips).size1 ();
     ivec counts;
@@ -276,3 +270,37 @@ ivec tripNumRange (dmat* ntrips)
 
     return counts;
 }
+
+
+/************************************************************************
+ ************************************************************************
+ **                                                                    **
+ **                            WRITEDATA                               **
+ **                                                                    **
+ ************************************************************************
+ ************************************************************************/
+
+void writeR2mat (dmat *r2mat, bool from)
+{
+    // NOTE that this presumes the directory ./results exists, and will crash if
+    // not. Directory checks are system dependent, so this way at least remains
+    // system independent.
+    const std::string resultsDir = "./results/";
+    std::string fname;
+    std::ofstream out_file;
+    if (from) fname = "r2from.csv";
+    else fname = "r2to.csv";
+    fname = resultsDir + fname;
+
+    int nstations = (*r2mat).size1 ();
+
+    out_file.open (fname.c_str (), std::ofstream::out);
+    for (int i=0; i<nstations; i++) {
+        for (int j=0; j<nstations; j++) {
+            out_file << (*r2mat) (i, j);
+            if (j < (nstations - 1)) { out_file << ",\t";	}
+            else { out_file << std::endl;	}
+        }
+    }
+    out_file.close ();
+} // end writeVectorData

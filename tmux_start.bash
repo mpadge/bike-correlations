@@ -28,6 +28,7 @@ cd ..
 tmux new-window -t $SESSION:3 -n makefile
 tmux select-window -t $SESSION:3
 tmux send-keys -t $SESSION:3 'vim makefile' C-m
+tmux send-keys -t $SESSION:3 ':' 'tabe .travis.yml' C-m
 
 tmux split-window -h
 

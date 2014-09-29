@@ -1,6 +1,6 @@
 CC=g++
 CFLAGS=-c
-LIBS=-lboost_system 
+LIBS=
 VPATH=./src
 OBJECTS = getR2.o InOut.o Calculations.o Utils.o
 

@@ -37,6 +37,8 @@ def matchNodes (lon0, lat0):
         count = count + 1
     return nodes [ni]
 
+# This routine produces "quickest.html" describing the route. This file is then
+# analysed with getDist.py
 def doRoute (lat1, lon1, lat2, lon2):
     node1 = matchNodes (lon1, lat1)
     node2 = matchNodes (lon2, lat2)
@@ -48,21 +50,6 @@ def doRoute (lat1, lon1, lat2, lon2):
             "--lon1="+str (node1[2]), "--lat1="+str (node1[1]),\
             "--lon2="+str (node2[2]), "--lat2="+str (node2[1])]
     subprocess.Popen (args)
-
-def getDist ():
-    f = open ("quickest.html")
-    page = f.read ()
-    f.close ()
-    from bs4 import BeautifulSoup
-    soup = BeautifulSoup (page)
-    table = soup.findAll ("table")[0]
-    dists = soup.findAll (attrs={"class", "d"})
-    dtot = 0
-    for d in dists:
-        di = d.find(text=True).encode('utf-8').strip()
-        dtot = dtot + float (di.split ("km") [0])
-    return dtot
-
 
 nodes = getAllNodes ()
 # Then match lat and lon to particular node:

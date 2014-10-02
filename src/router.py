@@ -33,6 +33,14 @@ def getAllNodes ():
     with open ('/data/data/bikes_london/planet-london.osm') as f:
         for line in f:
             if line.find ('node') > -1 and line.find ('lat=') > 1:
+                # Using Soup is easier but is orders of magnitude slower!
+                #soup = BeautifulSoup (line)
+                #node = soup.find ("node")
+                #ids.append (int (node.attrs ["id"]))
+                #lats.append (float (node.attrs ["lat"]))
+                #lons.append (float (node.attrs ["lon"]))
+                # So values are directly stripped instead. Note that this
+                # requires lines to be ordered (id,lat,lon,version).
                 id = line.split ("id=")[1].split ("lat=")[0]
                 ids.append (int (id.strip("' ").strip('" ')))
                 lat = line.split ("lat=")[1].split ("lon=")[0]

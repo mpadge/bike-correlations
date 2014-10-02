@@ -24,12 +24,20 @@ tmux send-keys -t $SESSION:2 'vim Calculations.h' C-m
 tmux send-keys -t $SESSION:2 ':' 'tabe Calculations.c++' C-m
 tmux select-pane -t 0
 
-cd ..
-tmux new-window -t $SESSION:3 -n makefile
+tmux new-window -t $SESSION:3 -n python
 tmux select-window -t $SESSION:3
-tmux send-keys -t $SESSION:3 'vim makefile' C-m
-tmux send-keys -t $SESSION:3 ':' 'tabe .travis.yml' C-m
-
+tmux send-keys -t $SESSION:3 'vim router.py' C-m
 tmux split-window -h
+tmux select-pane -t 0
+
+cd ..
+tmux new-window -t $SESSION:4 -n makefile
+tmux select-window -t $SESSION:4
+tmux send-keys -t $SESSION:4 'vim makefile' C-m
+tmux send-keys -t $SESSION:4 ':' 'tabe .travis.yml' C-m
+tmux split-window -h
+tmux select-pane -t 0
+
+tmux select-window -t $SESSION:3
 
 tmux attach -t $SESSION

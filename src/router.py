@@ -6,7 +6,7 @@
 # At the moment, it's just a proof of principle using a pair of dummy
 # coordinates. Now it just needs to be extended to calculate all distances
 # between all pairs in station_latlons ...
-import time, subprocess, os.path, glob
+import time, subprocess
 from bs4 import BeautifulSoup
 
 def getBounds ():
@@ -51,7 +51,7 @@ def getAllNodes ():
     print len (ids), " nodes extracted in ", end - start, "s."
     return zip (ids, lats, lons)
 
-def matchNodes (lon0, lat0):
+def matchNodes (lon0, lat0, nodes):
     ni = -1
     mindiff = float("inf")
     count = 0
@@ -65,9 +65,9 @@ def matchNodes (lon0, lat0):
 
 # This routine produces "quickest.html" describing the route. This file is then
 # analysed with getDist.py
-def doRoute (lat1, lon1, lat2, lon2):
-    node1 = matchNodes (lon1, lat1)
-    node2 = matchNodes (lon2, lat2)
+def doRoute (lat1, lon1, lat2, lon2, nodes):
+    node1 = matchNodes (lon1, lat1, nodes)
+    node2 = matchNodes (lon2, lat2, nodes)
     # profiles copied from  ../xml/routino-profiles.xml, same for translations.
     # Directory in first arg has to be changed to appropriate routine dir
     #args = ["./../src/router", "--prefix=lo", "--transport=bicycle",\
@@ -79,55 +79,6 @@ def doRoute (lat1, lon1, lat2, lon2):
             "--lon2="+str (node2[2]), "--lat2="+str (node2[1])]
     subprocess.Popen (args)
 
-def getDist ():
-    f = open ("quickest.html")
-    page = f.read ()
-    f.close ()
-    from bs4 import BeautifulSoup
-    soup = BeautifulSoup (page)
-    table = soup.findAll ("table")[0]
-    dists = soup.findAll (attrs={"class", "d"})
-    dtot = 0
-    for d in dists:
-        di = d.find(text=True).encode('utf-8').strip()
-        dtot = dtot + float (di.split ("km") [0])
-    return dtot
 
-
-nodes = getAllNodes ()
-# Then match lat and lon to particular node:
-lon1 = -0.20503
-lat1 = 51.51057
-lon2 = -0.10818
-lat2 = 51.50475
-bbox = getBounds ()
-if lat1 < float (bbox[0][0]) or lat1 > float (bbox[1][0]) or\
-        lon1 < float (bbox[0][1]) or lon1 > float (bbox[1][1]) or\
-        lat2 < float (bbox[0][0]) or lat2 > float (bbox[1][0]) or\
-        lon2 < float (bbox[0][1]) or lon2 > float (bbox[1][1]):
-        print "ERROR: lat-lons are outside bbox of OSM file"
-else:
-    start = time.time ()
-    doRoute (lat1, lon1, lat2, lon2)
-    end = time.time ()
-    print "routed in ", end - start, "s"
-    
-count = 0
-fname = "quickest.html"
-while not os.path.exists (fname):
-    time.sleep (1)
-    count = count + 1
-    if count > 20:
-        break
-
-if os.path.isfile (fname):
-    d = getDist ()
-    print "total distance = ", d, "km"
-    # clean up to ensure getDist uses righ quickest, because these files are
-    # created for each doRoute, 
-    for filename in glob.glob ("quickest*.*"):
-        os.remove (filename)
-else:
-    raise valueError("%s isn't a file" %fname)
 
 

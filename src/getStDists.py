@@ -48,7 +48,7 @@ def getDMat (latlons, nodes):
                 count = count + 1
                 if count > 20:
                     break
-            if os.file.isfile (fname):
+            if os.path.isfile (fname):
                 # Note that station IDs for London are 1-indexed.
                 ii = latlons [i][0] - 1
                 ij = latlons [j+1][0] - 1

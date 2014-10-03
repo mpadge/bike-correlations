@@ -57,7 +57,7 @@ def getDMat (latlons, nodes):
             for filename in glob.glob ("quickest*.*"):
                 os.remove (filename)
             # routino dumps waypoints to scrn, so progress is text-based
-            progress = (i * (n - 1) + j)
+            progress = (i * (nll - 1) + j)
             print "-------- Calculated ", progress, " / ", np, " = ",\
                 100 * progress / np, "% --------"
     end = time.time ()

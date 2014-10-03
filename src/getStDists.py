@@ -1,6 +1,6 @@
 import time, os.path, glob, sys
 import numpy
-import router;
+import router
 
 def getDist ():
     f = open ("quickest.html")
@@ -48,11 +48,11 @@ def getDMat (latlons, nodes):
                 count = count + 1
                 if count > 20:
                     break
-            # No control for non-existent "quickest.html"! Note that station IDs
-            # for London are 1-indexed.
-            ii = latlons [i][0] - 1
-            ij = latlons [j+1][0] - 1
-            dmat [ii][ij] = dmat [ij][ii] = getDist ()
+            if os.file.isfile (fname):
+                # Note that station IDs for London are 1-indexed.
+                ii = latlons [i][0] - 1
+                ij = latlons [j+1][0] - 1
+                dmat [ii][ij] = dmat [ij][ii] = getDist ()
             # Then delete "quickest*.*:
             for filename in glob.glob ("quickest*.*"):
                 os.remove (filename)

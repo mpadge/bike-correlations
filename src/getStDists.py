@@ -1,3 +1,8 @@
+# Primary routine is writeDMat, which calculates routino distances and writes
+# them successively to an indexed file. Each routing takes maybe 3s, and with
+# 750 stations in London, this means 234 hours of calculation. For this reason,
+# the routine can be interrupted at any time, and will simply start again where
+# it left off.
 import time, os.path, glob, sys
 import numpy
 import router
@@ -29,57 +34,56 @@ def getLatLons ():
                 lons.append (float (ls [2]))
     return zip (ids, lats, lons)
 
-def getDMat (latlons, nodes):
-    n = max (latlons) [0] # size of array
-    nll = len (latlons) # number of calcultions < n
-    np = nll * (nll - 1) / 2 # number of comparisons
-    dmat = numpy.zeros ((n, n))
+def writeDMat (latlons, nodes):
+    n = len (latlons) # number of calcultions < n
+    ntot = n * (n - 1) / 2 # number of comparisons
+    # create index into upper triangle excluding diagonal
+    indx = numpy.triu_indices (n, 1) 
+    indx = zip (indx [0], indx [1])
     start = time.time ()
     t1 = 0
-    # Direct indexing is easier here than dmat.flat
-    for i in range (nll-1):
-        for j in range (nll-1):
-            router.doRoute (latlons [i][1], latlons [i][2],\
-                    latlons [j+1][1], latlons [j+1][2], nodes)
-            # Wait for routino to write "quickest.html":
-            count = 0
-            fname = "quickest.html"
-            while not os.path.exists (fname):
-                time.sleep (1)
-                count = count + 1
-                if count > 20:
-                    break
-            if os.path.isfile (fname):
-                # Note that station IDs for London are 1-indexed.
-                ii = latlons [i][0] - 1
-                ij = latlons [j+1][0] - 1
-                dmat [ii][ij] = dmat [ij][ii] = getDist ()
-            # Then delete "quickest*.*:
-            for filename in glob.glob ("quickest*.*"):
-                os.remove (filename)
-            # routino dumps waypoints to scrn, so progress is text-based
-            progress = (i * (nll - 1) + j)
-            telapsed = time.time () - start
-            if progress > 0:
-                t1 = telapsed / progress
-            tremaining = t1 * (np - progress)
-            ls = ["-------- Calculated ", str (progress), "/", str (np), " = ",\
-                str (100 * progress / np), "%; time [elapsed, remaining] = [",\
-                tout (telapsed), ", ", tout (tremaining), "] --------\n"]
-            print "".join (ls)
+    count = 0
+    f = open ('../results/station_dists.txt', 'a+')
+    for line in f:
+        count += 1
+    indx = indx [count:]
+    startcount = count
+    for i in indx:
+        idi = latlons [i[0]] [0]
+        lati = latlons [i[0]] [1]
+        loni = latlons [i[0]] [2]
+        idj = latlons [i[1]] [0]
+        latj = latlons [i[1]] [1]
+        lonj = latlons [i[1]] [2]
+        router.doRoute (lati, loni, latj, lonj, nodes)
+        # Wait for routino to write "quickest.html":
+        check = 0
+        fname = "quickest.html"
+        while not os.path.exists (fname):
+            time.sleep (1)
+            check += 1
+            if check > 20:
+                break
+        if os.path.isfile (fname):
+            d = getDist ()
+            f.write (str (idi) + ", " + str (idj) + ", " + str (d) + '\n')
+            f.flush ()
+        # Then delete "quickest*.*:
+        for filename in glob.glob ("quickest*.*"):
+            os.remove (filename)
+        # routino dumps waypoints to scrn, so progress is text-based
+        telapsed = time.time () - start
+        if (count - startcount) > 0:
+            t1 = telapsed / (count - startcount)
+        tremaining = t1 * (ntot - count)
+        ls = ["-------- Calculated ", str (count), "/", str (ntot), " = ",\
+            str (100 * count / ntot), "%; time [elapsed, remaining] = [",\
+            tout (telapsed), ", ", tout (tremaining), "] --------\n"]
+        print "".join (ls)
+        count += 1
     end = time.time ()
     print "Inter-station routing finished in ", end - start, "s"
-    return dmat
-
-def writeDMat (dmat):
-    n = dmat.shape [0]
-    f = open ("../results/station_dists.txt", 'w')
-    for i in range (n):
-        for j in range (n-1):
-            f.write (str (dmat [i][j]) + ',')
-        f.write (str (dmat [i][n-1]) + '\n')
     f.close ()
-    print "distmat written to station_dists.txt"
 
 def tout (t):
     # Overdone time formatter to put all appropriate zeros in place
@@ -126,5 +130,4 @@ if __name__ == "__main__":
             print "ERROR: lat-lons are outside bbox of OSM file"
             sys.exit (0)
     else:
-        dmat = getDMat (latlons, nodes)
-        writeDMat (dmat)
+        writeDMat (latlons, nodes)

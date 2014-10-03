@@ -35,6 +35,7 @@ def getDMat (latlons, nodes):
     np = nll * (nll - 1) / 2 # number of comparisons
     dmat = numpy.zeros ((n, n))
     start = time.time ()
+    t1 = 0
     # Direct indexing is easier here than dmat.flat
     for i in range (nll-1):
         for j in range (nll-1):
@@ -58,8 +59,14 @@ def getDMat (latlons, nodes):
                 os.remove (filename)
             # routino dumps waypoints to scrn, so progress is text-based
             progress = (i * (nll - 1) + j)
-            print "-------- Calculated ", progress, " / ", np, " = ",\
-                100 * progress / np, "% --------"
+            telapsed = time.time () - start
+            if progress > 0:
+                t1 = telapsed / progress
+            tremaining = t1 * (np - progress)
+            ls = ["-------- Calculated ", str (progress), "/", str (np), " = ",\
+                str (100 * progress / np), "%; time [elapsed, remaining] = [",\
+                tout (telapsed), ", ", tout (tremaining), "] --------\n"]
+            print "".join (ls)
     end = time.time ()
     print "Inter-station routing finished in ", end - start, "s"
     return dmat
@@ -73,6 +80,36 @@ def writeDMat (dmat):
         f.write (str (dmat [i][n-1]) + '\n')
     f.close ()
     print "distmat written to station_dists.txt"
+
+def tout (t):
+    # Overdone time formatter to put all appropriate zeros in place
+    t = int (round (t))
+    hh, rem = divmod (t, 3600)
+    mm, ss = divmod (rem, 60)
+    lst = []
+    if t < 10:
+        ls = ["0:00:0", str (t)]
+    elif t < 60:
+        ls = ["0:00:", str (t)]
+    elif t<3600:
+        if mm < 10 and ss < 10:
+            ls = ["0:0", str (mm), ":0", str (ss)]
+        elif mm < 10:
+            ls = ["0:0", str (mm), ":", str (ss)]
+        elif ss < 10:
+            ls = ["0:", str (mm), ":0", str (ss)]
+        else:
+            ls = ["0:", str (mm), ":", str (ss)]
+    else:
+        if mm < 10 and ss < 10:
+            ls = [str (hh), ":0", str (mm), ":0", str (ss)]
+        elif mm < 10:
+            ls = [str (hh), ":0", str (mm), ":", str (ss)]
+        elif ss < 10:
+            ls = [str (hh), ":", str (mm), ":0", str (ss)]
+        else:
+            ls = [str (hh), ":", str (mm), ":", str (ss)]
+    return "".join (ls)
 
 if __name__ == "__main__":
     print "Extracting OSM nodes ... "

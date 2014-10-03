@@ -27,6 +27,7 @@ tmux select-pane -t 0
 tmux new-window -t $SESSION:3 -n python
 tmux select-window -t $SESSION:3
 tmux send-keys -t $SESSION:3 'vim router.py' C-m
+tmux send-keys -t $SESSION:3 ':' 'tabe getStDists.py' C-m
 tmux split-window -h
 tmux select-pane -t 0
 

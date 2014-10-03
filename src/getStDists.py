@@ -66,7 +66,7 @@ def getDMat (latlons, nodes):
 
 def writeDMat (dmat):
     n = dmat.shape [0]
-    f = open ("../data/station_dists.txt", 'w')
+    f = open ("../results/station_dists.txt", 'w')
     for i in range (n):
         for j in range (n-1):
             f.write (str (dmat [i][j]) + ',')

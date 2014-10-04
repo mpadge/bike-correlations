@@ -7,8 +7,8 @@ import time, os, glob, sys
 import numpy
 import router
 
-def getDist ():
-    f = open ("quickest.html")
+def getDist (html):
+    f = open (html)
     page = f.read ()
     f.close ()
     from bs4 import BeautifulSoup
@@ -75,8 +75,8 @@ def writeDMat (latlons, nodes):
             check += 1
             if check > 20:
                 break
-        if os.path.isfile (fname):
-            d = getDist ()
+        if os.path.isfile (html):
+            d = getDist (html)
             f.write (str (idi) + ", " + str (idj) + ", " + str (d) + '\n')
             f.flush ()
         # Then delete "quickest*.*:

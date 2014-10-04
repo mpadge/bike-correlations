@@ -1,8 +1,8 @@
 # Primary routine is writeDMat, which calculates routino distances and writes
-# them successively to an indexed file. Each routing takes maybe 3s, and with
-# 750 stations in London, this means 234 hours of calculation. For this reason,
-# the routine can be interrupted at any time, and will simply start again where
-# it left off.
+# them successively to an indexed file. Each routing takes maybe 2s, and with
+# 750 stations in London, this means 156 hours of calculation, or about 1 week.
+# For this reason, the routine can be interrupted at any time, and will simply
+# start again where it left off.
 import time, os, glob, sys
 import numpy
 import router
@@ -43,8 +43,8 @@ def writeDMat (latlons, nodes):
     start = time.time ()
     t1 = 0
     count = 0
-    fname = '/data/Dropbox/mark/analyses/bike-correlations/results/station_dists.txt'
-    f = open ('../results/station_dists.txt', 'a+')
+    fname = '../results/station_dists.txt'
+    f = open (fname, 'a+')
     for line in f:
         count += 1
     indx = indx [count:]
@@ -57,12 +57,20 @@ def writeDMat (latlons, nodes):
         latj = latlons [i[1]] [1]
         lonj = latlons [i[1]] [2]
         router.doRoute (lati, loni, latj, lonj, nodes)
-        # Wait for routino to write "quickest.html":
+        # router writes "quickest.html" which is then analysed with getDist.
+        # This writing necessitates first checking that the file has been
+        # written:
         check = 0
-        fname = "quickest.html"
-        # This while loop is not safe, because it can pass while fname is still
-        # being written. The checkFileClosed should fix it.
-        while not os.path.exists (fname):
+        html = os.path.abspath ("quickest.html")
+        while not os.path.exists (html):
+            time.sleep (0.1)
+            check += 1
+            if check > 20:
+                break
+        # ... and then making sure that writing has finished and the file
+        # connection has been closed:
+        check = 0
+        while html in openFiles ():
             time.sleep (0.1)
             check += 1
             if check > 20:
@@ -78,7 +86,6 @@ def writeDMat (latlons, nodes):
         telapsed = time.time () - start
         if (count - startcount) > 0:
             t1 = telapsed / (count - startcount)
-        print "****", t1, ":", check, "****"
         tremaining = t1 * (ntot - count)
         ls = ["-------- Calculated ", str (count), "/", str (ntot), " = ",\
             str (100 * count / ntot), "%; time [elapsed, remaining] = [",\
@@ -89,8 +96,8 @@ def writeDMat (latlons, nodes):
     print "Inter-station routing finished in ", end - start, "s"
     f.close ()
 
-# This checkFileClosed routine should work but doesn't. TODO: Fix it!
-def checkFileClosed (f):
+def openFiles ():
+    # Usage: if f in openFiles():, where f must be abspath
     ref={}
     for p in os.listdir("/proc/"):
         if not p.isdigit(): continue
@@ -102,13 +109,7 @@ def checkFileClosed (f):
                 ref[f].append(p)
         except OSError:
             pass
-    check = True
-    # The actual check is linux-specific, because /dev/pts/ is a psuedo-terminal
-    # associated with the file process
-    for (k,v) in ref.iteritems():
-        if k.find(f) > -1 and not k.find ('/dev/pts/') > -1:
-            check = False
-    return check
+    return ref
 
 def tout (t):
     # Overdone time formatter to put all appropriate zeros in place

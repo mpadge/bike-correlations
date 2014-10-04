@@ -3,7 +3,7 @@
 # 750 stations in London, this means 234 hours of calculation. For this reason,
 # the routine can be interrupted at any time, and will simply start again where
 # it left off.
-import time, os.path, glob, sys
+import time, os, glob, sys
 import numpy
 import router
 
@@ -43,6 +43,7 @@ def writeDMat (latlons, nodes):
     start = time.time ()
     t1 = 0
     count = 0
+    fname = '/data/Dropbox/mark/analyses/bike-correlations/results/station_dists.txt'
     f = open ('../results/station_dists.txt', 'a+')
     for line in f:
         count += 1
@@ -59,8 +60,10 @@ def writeDMat (latlons, nodes):
         # Wait for routino to write "quickest.html":
         check = 0
         fname = "quickest.html"
+        # This while loop is not safe, because it can pass while fname is still
+        # being written. The checkFileClosed should fix it.
         while not os.path.exists (fname):
-            time.sleep (1)
+            time.sleep (0.1)
             check += 1
             if check > 20:
                 break
@@ -75,6 +78,7 @@ def writeDMat (latlons, nodes):
         telapsed = time.time () - start
         if (count - startcount) > 0:
             t1 = telapsed / (count - startcount)
+        print "****", t1, ":", check, "****"
         tremaining = t1 * (ntot - count)
         ls = ["-------- Calculated ", str (count), "/", str (ntot), " = ",\
             str (100 * count / ntot), "%; time [elapsed, remaining] = [",\
@@ -84,6 +88,27 @@ def writeDMat (latlons, nodes):
     end = time.time ()
     print "Inter-station routing finished in ", end - start, "s"
     f.close ()
+
+# This checkFileClosed routine should work but doesn't. TODO: Fix it!
+def checkFileClosed (f):
+    ref={}
+    for p in os.listdir("/proc/"):
+        if not p.isdigit(): continue
+        d = "/proc/%s/fd/" % p
+        try:
+            for fd in os.listdir(d):
+                f = os.readlink(d+fd)
+                if f not in ref: ref[f] = []
+                ref[f].append(p)
+        except OSError:
+            pass
+    check = True
+    # The actual check is linux-specific, because /dev/pts/ is a psuedo-terminal
+    # associated with the file process
+    for (k,v) in ref.iteritems():
+        if k.find(f) > -1 and not k.find ('/dev/pts/') > -1:
+            check = False
+    return check
 
 def tout (t):
     # Overdone time formatter to put all appropriate zeros in place

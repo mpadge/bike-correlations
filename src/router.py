@@ -9,8 +9,11 @@
 import time, subprocess
 from bs4 import BeautifulSoup
 
-def getBounds ():
-    with open ('/data/data/bikes_london/planet-london.osm') as f:
+def getBounds (city="london"):
+    wd = '/data/data/bikes/'
+    if city == "london": fname = wd + 'planet-london.osm'
+    else: fname = wd + 'planet-nyc.osm'
+    with open (fname) as f:
         for line in f:
             if line.find ("bounds") > -1:
                 lineout = line
@@ -21,7 +24,7 @@ def getBounds ():
     lons = [bounds.attrs['minlon'], bounds.attrs['maxlon']]
     return zip (lats, lons)
 
-def getAllNodes ():
+def getAllNodes (city="london"):
     # OSM files are potentially huge, so the short and easy way of parsing
     # either crashes or takes an enormously long time. This much faster way
     # directly scans the osm file and extracts only the nodes.
@@ -30,7 +33,10 @@ def getAllNodes ():
     lats = []
     lons = []
     count = 0
-    with open ('/data/data/bikes_london/planet-london.osm') as f:
+    wd = '/data/data/bikes/'
+    if city == "london": fname = wd + 'planet-london.osm'
+    else: fname = wd + 'planet-nyc.osm'
+    with open (fname) as f:
         for line in f:
             if line.find ('node') > -1 and line.find ('lat=') > 1:
                 # Using Soup is easier but is orders of magnitude slower!
@@ -65,20 +71,15 @@ def matchNodes (lon0, lat0, nodes):
 
 # This routine produces "quickest.html" describing the route. This file is then
 # analysed with getDist.py
-def doRoute (lat1, lon1, lat2, lon2, nodes):
+def doRoute (lat1, lon1, lat2, lon2, nodes, city="london"):
     node1 = matchNodes (lon1, lat1, nodes)
     node2 = matchNodes (lon2, lat2, nodes)
     # profiles copied from  ../xml/routino-profiles.xml, same for translations.
     # Directory in first arg has to be changed to appropriate routine dir
-    #args = ["./../src/router", "--prefix=lo", "--transport=bicycle",\
-    args = ["./../../routino-2.7.2/src/router", "--prefix=lo",\
+    args = ["./../../routino-2.7.2/src/router", "--prefix="+city[:2],\
             "--transport=bicycle", "--quickest",\
             "--profiles=../data/routino-profiles.xml",\
             "--translations=../data/routino-translations.xml",\
             "--lon1="+str (node1[2]), "--lat1="+str (node1[1]),\
             "--lon2="+str (node2[2]), "--lat2="+str (node2[1])]
     subprocess.Popen (args)
-
-
-
-

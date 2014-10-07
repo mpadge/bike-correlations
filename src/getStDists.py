@@ -21,11 +21,15 @@ def getDist (html):
         dtot = dtot + float (di.split ("km") [0])
     return dtot
 
-def getLatLons ():
+def getLatLons (city="london"):
     ids = []
     lats = []
     lons = []
-    with open("../data/station_latlons.txt",'r') as f:
+    if city.lower () [0] == "l":
+        fname = "../data/station_latlons_london.txt"
+    else:
+        fname = "../data/station_latlons_nyc.txt"
+    with open(fname,'r') as f:
         for line in f:
             ls=line.split (",")
             if ls[0].isdigit ():
@@ -34,7 +38,7 @@ def getLatLons ():
                 lons.append (float (ls [2]))
     return zip (ids, lats, lons)
 
-def writeDMat (latlons, nodes):
+def writeDMat (latlons, nodes, city="london"):
     n = len (latlons) # number of calcultions < n
     ntot = n * (n - 1) / 2 # number of comparisons
     # create index into upper triangle excluding diagonal
@@ -43,7 +47,10 @@ def writeDMat (latlons, nodes):
     start = time.time ()
     t1 = 0
     count = 0
-    fname = '../results/station_dists.txt'
+    if city.lower ()[0] == "l":
+        fname = '../results/station_dists_london.txt'
+    else:
+        fname = '../results/station_dists_nyc.txt'
     f = open (fname, 'a+')
     for line in f:
         count += 1
@@ -142,10 +149,20 @@ def tout (t):
     return "".join (ls)
 
 if __name__ == "__main__":
+    opts, args = getopt.getopt (sys.argv[1:],[])
+    if len (args) < 1:
+        print "usage: getStDists <city=london/nyc>"
+        city = "london"
+    else:
+        if args [1].lower ()[0] == "l":
+            city = "london"
+        else:
+            city = "nyc"
+
     print "Extracting OSM nodes ... "
-    nodes = router.getAllNodes ()
-    bbox = router.getBounds ()
-    latlons = getLatLons ()
+    nodes = router.getAllNodes (city)
+    bbox = router.getBounds (city)
+    latlons = getLatLons (city)
     # Check that latlons are within OSM bbox:
     latmin = min (latlons) [1]
     latmax = max (latlons) [1]
@@ -156,4 +173,4 @@ if __name__ == "__main__":
             print "ERROR: lat-lons are outside bbox of OSM file"
             sys.exit (0)
     else:
-        writeDMat (latlons, nodes)
+        writeDMat (latlons, nodes, city)

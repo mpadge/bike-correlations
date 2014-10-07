@@ -6,8 +6,26 @@
 # At the moment, it's just a proof of principle using a pair of dummy
 # coordinates. Now it just needs to be extended to calculate all distances
 # between all pairs in station_latlons ...
-import time, subprocess
+import os, time, subprocess
 from bs4 import BeautifulSoup
+
+def checkPlanetSplitter (city="london"):
+    # Run planetsplitter if .mem files don't exist for city:
+    files = os.listdir (".") # from /src
+    if city.lower ()[0] == "l":
+        city = "london"
+        prfx = "lo"
+    else:
+        city = "nyc"
+        prfx = "ny"
+    if not any (f.startswith(prfx) and f.endswith(".mem") for f in files):
+        datadir = "/data/data/bikes/"
+        planetfile = datadir + "planet-" + city + ".osm"
+        args = ["./../../routino-2.7.2/src/planetsplitter", "--prefix=" + prfx,\
+                "--tagging=../../routino-2.7.2/xml/routino-tagging.xml",\
+                planetfile]
+        print "planet-", city, ".osm not yet split. Running planetsplitter..."
+        subprocess.Popen (args)
 
 def getBounds (city="london"):
     wd = '/data/data/bikes/'

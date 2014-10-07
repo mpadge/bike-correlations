@@ -161,6 +161,7 @@ if __name__ == "__main__":
         else:
             city = "nyc"
 
+    router.checkPlanetSplitter (city)
     print "Extracting OSM nodes ... "
     nodes = router.getAllNodes (city)
     bbox = router.getBounds (city)

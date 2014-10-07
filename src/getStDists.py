@@ -3,7 +3,7 @@
 # 750 stations in London, this means 156 hours of calculation, or about 1 week.
 # For this reason, the routine can be interrupted at any time, and will simply
 # start again where it left off.
-import time, os, glob, sys
+import time, os, glob, sys, getopt
 import numpy
 import router
 
@@ -154,7 +154,7 @@ if __name__ == "__main__":
         print "usage: getStDists <city=london/nyc>"
         city = "london"
     else:
-        if args [1].lower ()[0] == "l":
+        if args [0].lower ()[0] == "l":
             city = "london"
         else:
             city = "nyc"

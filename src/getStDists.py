@@ -49,8 +49,10 @@ def writeDMat (latlons, nodes, city="london"):
     count = 0
     if city.lower ()[0] == "l":
         fname = '../results/station_dists_london.txt'
+        city = "london"
     else:
         fname = '../results/station_dists_nyc.txt'
+        city = "nyc"
     f = open (fname, 'a+')
     for line in f:
         count += 1
@@ -63,7 +65,7 @@ def writeDMat (latlons, nodes, city="london"):
         idj = latlons [i[1]] [0]
         latj = latlons [i[1]] [1]
         lonj = latlons [i[1]] [2]
-        router.doRoute (lati, loni, latj, lonj, nodes)
+        router.doRoute (lati, loni, latj, lonj, nodes, city)
         # router writes "quickest.html" which is then analysed with getDist.
         # This writing necessitates first checking that the file has been
         # written:
@@ -151,7 +153,7 @@ def tout (t):
 if __name__ == "__main__":
     opts, args = getopt.getopt (sys.argv[1:],[])
     if len (args) < 1:
-        print "usage: getStDists <city=london/nyc>"
+        print "usage: getStDists <city=london/nyc>, defaulting to London"
         city = "london"
     else:
         if args [0].lower ()[0] == "l":

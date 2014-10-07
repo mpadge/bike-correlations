@@ -26,7 +26,7 @@ def getLondon ():
     # list is a single bs4 object, which is then converted to a string
     list = list.find (text=True).encode ('utf-8') 
     list = list.split ('station=')
-    fname = '../data/station_latlons.txt'
+    fname = '../data/station_latlons_london.txt'
     f = open (fname, 'w')
     outs = ('id', 'lat', 'long', 'name')
     f.write ('id, lat, long, name\n')

@@ -10,7 +10,8 @@ import os, time, subprocess
 from bs4 import BeautifulSoup
 
 def checkPlanetSplitter (city="london"):
-    # Run planetsplitter if .mem files don't exist for city:
+    # Run planetsplitter if .mem files don't exist for city. Also unzips OSM
+    # file if still in .bz2 format
     files = os.listdir (".") # from /src
     if city.lower ()[0] == "l":
         city = "london"
@@ -18,13 +19,26 @@ def checkPlanetSplitter (city="london"):
     else:
         city = "nyc"
         prfx = "ny"
+    # First unzip
+    datadir = "/data/data/bikes/"
+    dfiles = os.listdir (datadir)
+    fcheck = any (f.find (city) > -1 and f.endswith(".osm") for f in dfiles)
+    if not any (f.find(city) > -1 and f.endswith (".osm") for f in dfiles):
+        bf = [f for f in dfiles if f.find (city) > -1 and f.endswith (".bz2")]
+        if not bf:
+            print "ERROR: %s.bz2 file does not exist to unzip"
+            # TODO: exception handler
+        else:
+            bf = datadir + bf [0]
+            args = ["bunzip2", bf]
+            print "Unzipping planet-%s-.osm ... " % city
+            subprocess.Popen (args)
     if not any (f.startswith(prfx) and f.endswith(".mem") for f in files):
-        datadir = "/data/data/bikes/"
         planetfile = datadir + "planet-" + city + ".osm"
         args = ["./../../routino-2.7.2/src/planetsplitter", "--prefix=" + prfx,\
                 "--tagging=../../routino-2.7.2/xml/routino-tagging.xml",\
                 planetfile]
-        print "planet-", city, ".osm not yet split. Running planetsplitter..."
+        print "planet-%s.osm not yet split. Running planetsplitter..." % city
         subprocess.Popen (args)
 
 def getBounds (city="london"):

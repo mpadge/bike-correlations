@@ -162,7 +162,7 @@ if __name__ == "__main__":
             city = "nyc"
 
     router.checkPlanetSplitter (city)
-    print "Extracting OSM nodes ... "
+    print "Extracting OSM nodes for %s ... " % city
     nodes = router.getAllNodes (city)
     bbox = router.getBounds (city)
     latlons = getLatLons (city)

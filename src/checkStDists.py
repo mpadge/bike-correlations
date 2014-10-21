@@ -24,7 +24,7 @@ def removeDuplicates (fname):
     dat2.to_csv(fname,index=False, header=False)
 
 def rootDir ():
-    return os.getcwd ().split ('src/')[0]
+    return os.getcwd ().split ('/src')[0]
     
     
 def findMissingDists (city):
@@ -62,7 +62,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     if not args.city: args.city = "london"
 
-    fname = 'results/station_dists_' + args.city + '.txt'
+    fname = rootDir () + '/results/station_dists_' + args.city + '.txt'
     removeDuplicates (fname)
     print "finding missing trips (may take a short while) ..."
     findMissingDists (args.city)

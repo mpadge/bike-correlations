@@ -219,18 +219,3 @@ unstack_counts_f.to_csv("total_from.csv")
 unstack_counts_t.to_csv("total_to.csv")
 
 # Move to next step to calculate the linear regressions between all rows and all columns in file reg1.py.
-"""
-get_trip_counts.py --c 'nyc' -f '/Users/colinbroderick/repos/bike-correlations/data/nyc/citi_bike_usage_stats' -s '/Users/colinbroderick/repos/temp/bike-correlations/data/station_latlons_nyc.txt' 
-
-    def get_stations(self, data_path):
-        parsed = pd.read_csv(data_path,
-            usecols=[ "id", "stationName",
-                "latitude", "longitude" ])
-        self.stations = pd.DataFrame({
-            "id": parsed["id"],
-            "name": parsed["stationName"],
-            "lat": parsed["latitude"],
-            "lng": parsed["longitude"]
-        }).groupby("id").first().reset_index()
-        return self
-"""

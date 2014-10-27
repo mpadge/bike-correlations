@@ -13,6 +13,7 @@ import scipy as sp
 import scipy.stats
 import argparse
 import glob
+import os
 
 # allow input to be specified for the input files
 parser = argparse.ArgumentParser(description='This is a script to count number of trips between stations in bikeshare system of New York or London')
@@ -142,7 +143,7 @@ elif city == "boris":
     
 
 # get the directory path of the trips files
-path = trips_file
+path = os.path.abspath(trips_file)
 # get all the filenames ending in .csv
 filenames = glob.glob(path + "/*.csv")
 

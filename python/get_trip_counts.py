@@ -1,7 +1,7 @@
 """
 Author: Colin Broderick
 
-Usage: time python yes2.py --c 'nyc' -f 'path/to/tripdata/csv-files' -s 'path/to/station_latlons.txt' 
+Usage: time python get_trip_counts.py --c 'nyc' -f 'path/to/tripdata/csv-files' -s 'path/to/station_latlons.txt' 
 Output: The script will out put two count csv files, one from and one to.
         /total_from.csv
         /total_to.csv
@@ -89,17 +89,6 @@ class NYCstations(Lonstations):
         self.stations = 0
         self.trips = 0
         self.trip_counts = 0
-    def get_stations(self, data_path):
-        parsed = pd.read_csv(data_path,
-            usecols=[ "id", "stationName",
-                "latitude", "longitude" ])
-        self.stations = pd.DataFrame({
-            "id": parsed["id"],
-            "name": parsed["stationName"],
-            "lat": parsed["latitude"],
-            "lng": parsed["longitude"]
-        }).groupby("id").first().reset_index()
-        return self
     def get_trips(self, data_path):
         parsed = pd.read_csv(data_path,
             usecols=[  "tripduration","starttime","stoptime",
@@ -230,3 +219,18 @@ unstack_counts_f.to_csv("total_from.csv")
 unstack_counts_t.to_csv("total_to.csv")
 
 # Move to next step to calculate the linear regressions between all rows and all columns in file reg1.py.
+"""
+get_trip_counts.py --c 'nyc' -f '/Users/colinbroderick/repos/bike-correlations/data/nyc/citi_bike_usage_stats' -s '/Users/colinbroderick/repos/temp/bike-correlations/data/station_latlons_nyc.txt' 
+
+    def get_stations(self, data_path):
+        parsed = pd.read_csv(data_path,
+            usecols=[ "id", "stationName",
+                "latitude", "longitude" ])
+        self.stations = pd.DataFrame({
+            "id": parsed["id"],
+            "name": parsed["stationName"],
+            "lat": parsed["latitude"],
+            "lng": parsed["longitude"]
+        }).groupby("id").first().reset_index()
+        return self
+"""

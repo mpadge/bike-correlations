@@ -18,7 +18,7 @@ import os
 # allow input to be specified for the input files
 parser = argparse.ArgumentParser(description='This is a script to count number of trips between stations in bikeshare system of New York or London')
 parser.add_argument('-c','--city', help='Specify the city to perform analysis: nyc or london (or boris)',required=True)
-parser.add_argument('-f','--file', help='Input file where trip data is',required=True)
+parser.add_argument('-f','--folder', help='Input folder where trip data is',required=True)
 parser.add_argument('-s','--stations',help='Stations csv file location', required=True)
 args = parser.parse_args()
  

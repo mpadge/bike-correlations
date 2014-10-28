@@ -11,7 +11,7 @@ import argparse
  
 # Open the trips from file
 print "Loading Trips."
-boom1 = pd.read_csv('total_from.csv', header=1, skiprows=[2])
+boom1 = pd.read_csv('total_to.csv', header=1, skiprows=[2])
 boom1 = boom1.set_index('end_id')
 # want to get linear regression between first and second row.
 """xi = boom1.irow(1)

@@ -18,18 +18,18 @@ import os
 # allow input to be specified for the input files
 parser = argparse.ArgumentParser(description='This is a script to count number of trips between stations in bikeshare system of New York or London')
 parser.add_argument('-c','--city', help='Specify the city to perform analysis: nyc or london (or boris)',required=True)
-parser.add_argument('-f','--folder', help='Input folder where trip data is',required=True)
+parser.add_argument('-f','--folder', help='Input folder where trip data is. Must include trailing /.',required=True)
 parser.add_argument('-s','--stations',help='Stations csv file location', required=True)
 args = parser.parse_args()
  
 ## show values ##
 print ("City: %s" % args.city )
-print ("Trips file is at: %s" % args.file )
+print ("Trips file is at: %s" % args.folder )
 print ("Stations csv file at: %s" % args.stations )
 
 #set up variables to handle files
 city = args.city
-trips_file = args.file
+trips_file = args.folder
 stations_file = args.stations
 
 # trips and stations

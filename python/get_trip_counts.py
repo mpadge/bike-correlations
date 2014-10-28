@@ -143,7 +143,7 @@ elif city == "boris":
     
 
 # get the directory path of the trips files
-path = os.path.abspath(trips_file)
+path = os.path.abspath(os.path.dirname(trips_file))
 # get all the filenames ending in .csv
 filenames = glob.glob(path + "/*.csv")
 

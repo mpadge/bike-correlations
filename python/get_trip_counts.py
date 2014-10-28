@@ -18,18 +18,19 @@ import os
 # allow input to be specified for the input files
 parser = argparse.ArgumentParser(description='This is a script to count number of trips between stations in bikeshare system of New York or London')
 parser.add_argument('-c','--city', help='Specify the city to perform analysis: nyc or london (or boris)',required=True)
-parser.add_argument('-f','--file', help='Input file where trip data is',required=True)
+parser.add_argument('-d','--directory', help='Input folder where trip data is. Must include trailing /.',required=True)
 parser.add_argument('-s','--stations',help='Stations csv file location', required=True)
+
 args = parser.parse_args()
  
 ## show values ##
 print ("City: %s" % args.city )
-print ("Trips file is at: %s" % args.file )
+print ("Trips file is at: %s" % args.directory )
 print ("Stations csv file at: %s" % args.stations )
 
 #set up variables to handle files
 city = args.city
-trips_file = args.file
+trips_folder = args.directory
 stations_file = args.stations
 
 # trips and stations
@@ -143,17 +144,27 @@ elif city == "boris":
     
 
 # get the directory path of the trips files
-path = os.path.abspath(os.path.dirname(trips_file))
+path = os.path.abspath(os.path.dirname(trips_folder))
 # get all the filenames ending in .csv
 filenames = glob.glob(path + "/*.csv")
 
 all_trips = []
 print "%s trips files \n" % len(filenames)
-for file in filenames:
-    print "Reading File %s...." % file
+# if only one file in folder possibly a string.
+# check to make sure that the filenames is either a list or a string.
+if isinstance(filenames, list):
+    for file in filenames:
+        print "Reading File %s...." % file
+        london.get_trips(file)
+        all_trips.append(london.trips)
+elif isinstance(filenames, basestring):
+    print "Reading File %s...." % filenames
     london.get_trips(file)
     all_trips.append(london.trips)
-
+else:
+    print "There is a problem with your directory or file."
+    sys.exit(1)
+    
 # combine all the trips into one file
 df = pd.concat(all_trips)
 

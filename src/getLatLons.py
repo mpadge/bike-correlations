@@ -1,18 +1,26 @@
 #!/usr/bin/python
 
-# Extracts lat-lons for all london hire bicycle stations.  Importing https in
-# python requires ssl and is thus fraught with OS system differences and
-# unreliable routines in urllib. To circumvent problems, this routine can be run
-# by simply downloading the source of the webpage at
-# https://web.barclayscyclehire.tfl.gov.uk/maps/
-# which should be titled "maps.htm". The python script then extracts the lats
-# and lons of all stations from this html source.
-#
-# The coordinates for citibikenyc are at
+# Extracts lat-lons for all hire bicycle stations.  The coordinates for
+# citibikenyc are automatically downloaded from
 # http://www.citibikenyc.com/stations/json/
+#
+# London is more complicated for 2 reasons. First, the webpage is https, and
+# importing in python requires ssl and is thus fraught with OS system
+# differences and unreliable routines in urllib. To circumvent problems, this
+# script has to be run on the html source downloaded from
+# https://web.barclayscyclehire.tfl.gov.uk/maps/
+# which should be titled "maps.htm". 
+#
+# A second problem is that the tfl page only lists currently operating stations,
+# and so changes regularly, and will generally not included all historical
+# stations. (Currently closed stations are listed at
+# http://www.tfl.gov.uk/modes/cycling/barclays-cycle-hire/find-a-docking-station)
+# This script can thus be run multiple times, with each newly appearing station
+# appended to any pre-existing ones.
 
-import sys, getopt, re, urllib2, json
+import sys, getopt, re, urllib2, json, os
 from bs4 import BeautifulSoup
+import pandas as pd
 
 def getLondon ():
     f = open ('../data/maps.htm', 'r')
@@ -27,12 +35,15 @@ def getLondon ():
     list = list.find (text=True).encode ('utf-8') 
     list = list.split ('station=')
     fname = '../data/station_latlons_london.txt'
-    f = open (fname, 'w')
     outs = ('id', 'lat', 'long', 'name')
-    f.write ('id, lat, long, name\n')
+    # Values from maps.htm are appended to any existing values, and stripped
+    # back to unique values with .drop_duplicates() afterwards
+    if os.path.lexists (fname): 
+        df = pd.read_csv (fname)
+        df.columns = outs # necessary because to_csv inserts spaces
+    else:
+        df = pd.DataFrame(columns=outs)
     count = 0
-    minstn = 9999
-    maxstn = 0
     for li in list:
         if li.find ("name") > 0:
             # This regex extracts all text NOT contained within double quotes, which
@@ -46,23 +57,15 @@ def getLondon ():
             lidat = [i.replace (',', ' ') for i in lidat]
             indx = [linames.index (i) for i in outs]
             if len (indx) == len (outs):
-                for i in indx:
-                    f.write (lidat [i])
-                    if i != indx [-1]:
-                        f.write (',')
-
+                lidat = [num (lidat [i]) for i in indx]
+                df = pd.concat ([df, pd.DataFrame (lidat, index=outs).transpose()])
                 count = count + 1
-                f.write ('\n')
-                # Update max & min station numbers
-                stnum = int (lidat [linames.index ('id')])
-                if stnum < minstn:
-                    minstn = stnum
-                elif stnum > maxstn:
-                    maxstn = stnum
 
-    f.close ()
-    print count, 'London stations in [', minstn, ',', maxstn,
-    print '] written to ', fname
+    df = df.drop_duplicates ()
+    df.to_csv (fname, index=False)
+    ids = df["id"].convert_objects(convert_numeric=True)
+    print "%s London stations in [%s - %s] written to %s" % (count, ids.min (),
+        ids.max (), fname)
 
 def getNYC ():
     url = 'http://www.citibikenyc.com/stations/json/'
@@ -86,11 +89,21 @@ def getNYC ():
     print '] written to ', fname
     f.close ()
 
+def num (s):
+    try:
+        return int (s)
+    except ValueError:
+        try:
+            return float (s)
+        except ValueError:
+            return s
+    except ValueError:
+        return s
 
 if __name__ == "__main__":
     opts, args = getopt.getopt (sys.argv[1:],[])
     if len (args) == 0:
-        print "usage: getLatLons <city>=<london,nyc>; defaulting to NYC"
+        print "usage: getLatLons <city>=<london,nyc>; defaulting to London"
         city = 'london'
     else:
         if args [0].find ('l') > -1 or args [0].find('L') > -1:

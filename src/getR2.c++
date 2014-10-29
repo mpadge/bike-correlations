@@ -39,7 +39,7 @@ int main(int argc, char *argv[]) {
     std::cout << "Loading data from " << filelist.size () << " files..." <<
         std::endl;
     imat ntrips = zmat_i (nstations, nstations);
-    filelist.resize (4);
+    //filelist.resize (4); // for testing only
     for (int i=0; i<filelist.size (); i++) {
         std::cout << "[" << i << "]: ";
         tempi = readData (&ntrips, filelist [i]);

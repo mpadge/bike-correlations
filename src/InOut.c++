@@ -59,10 +59,10 @@ int getNumStations ()
     std::ifstream in_file;
     std::string linetxt;
 
-    fname = dir + "station_latlons.txt";
+    fname = dir + "station_latlons_london.txt";
     in_file.open (fname.c_str (), std::ifstream::in);
     if (in_file.fail ()) {
-        std::cout << "***ERROR: Failed to read `station_latlons.txt'***" << 
+        std::cout << "***ERROR: Failed to read `station_latlons_london.txt'***" << 
             std::endl;
     } else {
         getline (in_file, linetxt, '\n');
@@ -104,7 +104,7 @@ void readLatLons (dvec* lons, dvec* lats)
         (*lons) (i) = NAN;
         (*lats) (i) = NAN;	}
 
-    fname = dir + "station_latlons.txt";
+    fname = dir + "station_latlons_london.txt";
     in_file.open (fname.c_str (), std::ifstream::in);
     getline (in_file, linetxt, '\n');
     count = 0;
@@ -149,7 +149,7 @@ void getStationNames (std::vector <std::string>* names)
 
     for (int i=0; i<(*names).size (); i++) (*names) [i].clear ();
 
-    fname = dir + "station_latlons.txt";
+    fname = dir + "station_latlons_london.txt";
     in_file.open (fname.c_str (), std::ifstream::in);
     getline (in_file, linetxt, '\n');
     count = 0;

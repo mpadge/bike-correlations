@@ -1,17 +1,5 @@
-#ifndef UTILS_H
-#define UTILS_H
-
 #include "Utils.h"
-
-#endif
-
-#ifndef STRUCTS_H
-#define STRUCTS_H
-
 #include "Structures.h"
-
-#endif
-
 
 #include <dirent.h>
 #include <stdlib.h> // for EXIT_FAILURE
@@ -26,10 +14,15 @@
 #include <iomanip> // for setfill
 #include <sys/ioctl.h> // for console width: Linux only!
 
+#ifndef INOUT_H
+#define INOUT_H
+
 void getDir (std::vector <std::string>* filelist);
-int getNumStations ();
+int getStationIndex (std::string city, std::vector< std::pair <int, int> >* index);
 void readLatLons (dvec* lons, dvec* lats);
 void getStationNames (std::vector <std::string>* names);
 int readData (imat* ntrips, std::string fname);
 ivec tripNumRange (imat* ntrips);
 void writeR2mat (dmat *r2mat, bool from);
+
+#endif

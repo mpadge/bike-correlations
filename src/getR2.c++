@@ -5,29 +5,47 @@ int main(int argc, char *argv[]) {
     bool from;
     ivec ntripRanges;
     std::vector <std::string> filelist, names;
-    std::string fname;
+    std::string city, fname;
     clock_t timer[2];
 
     timer[0] = clock();
 
-    std::cout << "./getr2 1 0 for dir=FROM (default) " <<
-        "./getr2 1 1 for dir=TO" << std::endl;
-    tempi = atoi (argv [2]);
-    if (tempi <= 0) {
+    std::cout << "./getr2 2 <city> 0 for dir=FROM (default) " <<
+        "./getr2 2 <city> 1 for dir=TO" << 
+        " for <city>=<london/nyc>" << std::endl;
+    if (argc > 1) {
+        city = argv [2];
+        std::transform (city.begin(), city.end(), city.begin(), ::tolower);
+        if (city.substr (0, 2) == "lo") {
+            city = "london";
+        } else {
+            city = "nyc";
+        }
+        if (atoi (argv [3]) <= 0) {
+            from = true;
+            std::cout << city << ": Direction = FROM" << std::endl;
+        }
+        else {
+            from = false;
+            std::cout << city << ": Direction = TO" << std::endl;
+        }
+    } else {
         from = true;
-        std::cout << "Direction = FROM" << std::endl;
-    }
-    else {
-        from = false;
-        std::cout << "Direction = TO" << std::endl;
+        city = "london";
+        std::cout << city << ": Direction = FROM" << std::endl;
     }
 
     filelist.resize (0);
     names.resize (0);
     getDir (&filelist);
 
-    int nstations = getNumStations ();
-    std::cout << "There are " << nstations << " stations." << std::endl;
+    std::vector <std::pair <int, int> > stationIndex;
+    tempi = getStationIndex (city, &stationIndex);
+    int nstations = stationIndex.size ();
+    nstations = stationIndex.back().second;
+    std::cout << "There are " << nstations << " stations from " <<
+        stationIndex.front().second << " to " << stationIndex.back().second <<
+        std::endl;
 
     dvec lons, lats;
     lons.resize (nstations);

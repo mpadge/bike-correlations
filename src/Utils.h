@@ -19,6 +19,9 @@
 #include <boost/random/normal_distribution.hpp>
 #include <boost/random/uniform_real.hpp>
 
+#ifndef UTILS_H
+#define UTILS_H
+
 #define PI 3.1415926535897932384626433832795
 
 typedef boost::numeric::ublas::vector <int> ivec;
@@ -54,3 +57,5 @@ DistStruct convert_distance (double dist, double midx, double midy);
 void timeout (double tseconds);
 RegrResults regression (std::vector <double> x, std::vector <double> y);
 void progLine (double progress);
+
+#endif

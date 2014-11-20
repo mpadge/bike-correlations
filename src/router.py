@@ -40,6 +40,8 @@ def checkPlanetSplitter (city="london"):
                 planetfile]
         print "planet-%s.osm not yet split. Running planetsplitter..." % city
         subprocess.Popen (args)
+    else:
+        print "%s already split" % city
 
 def getBounds (city="london"):
     wd = '/data/data/bikes/'

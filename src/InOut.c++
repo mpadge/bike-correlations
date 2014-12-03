@@ -52,15 +52,14 @@ void getDir (std::vector <std::string>* filelist)
  ************************************************************************
  ************************************************************************/
 
-int getStationIndex (std::string city, std::vector< std::pair <int, int> >* index)
+int getStationIndex (std::string city, intPair* stationIndex)
 {
     const std::string dir = "./data/";
     int tempi, ipos, count = 0, nstations = 0;
     std::string fname;
     std::ifstream in_file;
     std::string linetxt;
-    (*index).resize (0);
-    std::pair <int, int> aPair;
+    (*stationIndex).resize (0);
 
     fname = dir + "station_latlons_" + city + ".txt";
     in_file.open (fname.c_str (), std::ifstream::in);
@@ -77,7 +76,7 @@ int getStationIndex (std::string city, std::vector< std::pair <int, int> >* inde
             getline (in_file, linetxt,'\n');
             ipos = linetxt.find(',',0);
             tempi = atoi (linetxt.substr (0, ipos).c_str());
-            (*index).push_back (std::make_pair (i, tempi));
+            (*stationIndex).push_back (std::make_pair (i, tempi));
             //(*index).emplace_back (count, tempi);
             if (tempi > nstations) nstations = tempi;
         }
@@ -96,7 +95,7 @@ int getStationIndex (std::string city, std::vector< std::pair <int, int> >* inde
  ************************************************************************
  ************************************************************************/
 
-void readLatLons (dvec* lons, dvec* lats)
+void readLatLons (dvec* lons, dvec* lats, intPair* stationIndex)
 {
     // Presumes file existence confirmed with getNumStations
     const std::string dir = "./data/";

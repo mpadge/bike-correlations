@@ -116,4 +116,5 @@ def doRoute (lat1, lon1, lat2, lon2, nodes, city="london"):
             "--translations=../data/routino-translations.xml",\
             "--lon1="+str (node1[2]), "--lat1="+str (node1[1]),\
             "--lon2="+str (node2[2]), "--lat2="+str (node2[1])]
-    subprocess.Popen (args)
+    # Popen.wait comes with a warning that should *not* affect router output.
+    subprocess.Popen (args).wait()

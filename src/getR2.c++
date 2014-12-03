@@ -39,10 +39,9 @@ int main(int argc, char *argv[]) {
     names.resize (0);
     getDir (&filelist);
 
-    std::vector <std::pair <int, int> > stationIndex;
+    intPair stationIndex;
     tempi = getStationIndex (city, &stationIndex);
     int nstations = stationIndex.size ();
-    nstations = stationIndex.back().second;
     std::cout << "There are " << nstations << " stations from " <<
         stationIndex.front().second << " to " << stationIndex.back().second <<
         std::endl;
@@ -51,7 +50,7 @@ int main(int argc, char *argv[]) {
     lons.resize (nstations);
     lats.resize (nstations);
     names.resize (nstations);
-    readLatLons (&lons, &lats);
+    readLatLons (&lons, &lats, &stationIndex);
     getStationNames (&names);
 
     std::cout << "Loading data from " << filelist.size () << " files..." <<

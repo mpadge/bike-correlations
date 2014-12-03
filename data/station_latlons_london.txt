@@ -376,7 +376,6 @@ id,lat,long,name
 387,51.49369988,-0.121394101,Fire Brigade Pier  Vauxhall
 388,51.51070161,-0.121723604,Southampton Street  Strand
 389,51.51013066,-0.155757901,Upper Grosvenor Street  Mayfair
-390,51.521776,-0.068856,Buxton Street 1  Bangla Town
 390,51.521776,-0.068856,Buxton Street 1  Shoreditch
 391,51.51066202,-0.142345694,Clifford Street  Mayfair
 392,51.49942855,-0.17970247600000006,Imperial College  Knightsbridge

@@ -66,28 +66,14 @@ def writeDMat (latlons, nodes, city="london"):
         latj = latlons [i[1]] [1]
         lonj = latlons [i[1]] [2]
         router.doRoute (lati, loni, latj, lonj, nodes, city)
-        # router writes "quickest.html" which is then analysed with getDist.
-        # This writing necessitates first checking that the file has been
-        # written:
-        check = 0
+        # router writes "quickest.html" which is then analysed to extract dist
         html = os.path.abspath ("quickest.html")
-        while not os.path.exists (html):
-            time.sleep (0.1)
-            check += 1
-            if check > 20:
-                break
-        # ... and then making sure that writing has finished and the file
-        # connection has been closed:
-        check = 0
-        while html in openFiles ():
-            time.sleep (0.1)
-            check += 1
-            if check > 20:
-                break
         if os.path.isfile (html):
             d = getDist (html)
             f.write (str (idi) + ", " + str (idj) + ", " + str (d) + '\n')
             f.flush ()
+        else: # TODO: Error handler
+            print "ERROR: quickest.html does not exist!"
         # Then delete "quickest*.*:
         for filename in glob.glob ("quickest*.*"):
             os.remove (filename)

@@ -1,8 +1,8 @@
 CC=g++
 CFLAGS=-c
-LIBS=
+LIBS=-lzip
 VPATH=./src
-OBJECTS = getR2.o InOut.o Calculations.o Utils.o
+OBJECTS = main.o StationData.o RideData.o Utils.o
 
 all: main
 

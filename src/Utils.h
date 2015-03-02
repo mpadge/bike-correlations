@@ -7,6 +7,7 @@
 #include <iostream>
 #include <stdio.h>
 #include <time.h>
+#include <limits.h>
 #include <vector>
 #include <iomanip> // for setfill
 #include <sys/ioctl.h> // for console width: Linux only!
@@ -49,7 +50,7 @@ struct DistStruct{
 
 
 struct RegrResults {
-    double r2, slope, intercept, SS, tval;      };
+    double r2, cov, slope, intercept, SS, tval;      };
 
 double calc_angle (double x, double y);
 DistStruct getdists (double xa, double ya, double xb, double yb);

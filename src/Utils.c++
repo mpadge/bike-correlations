@@ -206,10 +206,11 @@ RegrResults regression(std::vector <double> x, std::vector <double> y)
     if (count > 0) {
         t1 = (sxy - sx * sy / (double) count);
         t2 = (sx2 - sx * sx / (double) count) * (sy2 - sy * sy / (double) count);
-        regr_results.r2 = t1 / sqrt(t2); // the R-value
-        regr_results.slope = t1 / (sx2 - sx * sx / (double) count); // Slope
+        regr_results.cov = t1 / (double) count;
+        regr_results.r2 = t1 / sqrt(t2); 
+        regr_results.slope = t1 / (sx2 - sx * sx / (double) count); 
         regr_results.intercept = sy / (double) count -
-            regr_results.slope * sx / (double) count; // Intercept
+            regr_results.slope * sx / (double) count; 
 
         regr_results.r2 = regr_results.r2 * regr_results.r2;
         if (regr_results.slope < 0.0) { regr_results.r2 = -regr_results.r2;     }

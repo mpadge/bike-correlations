@@ -1,7 +1,7 @@
 #include "main.h"
 
 int main(int argc, char *argv[]) {
-    int count, tempi;
+    int nfiles, count = 0, tempi;
     bool from;
     ivec ntripRanges;
     std::vector <std::string> filelist, names;
@@ -32,7 +32,23 @@ int main(int argc, char *argv[]) {
 
     if (city == "london") {
         for (int i=0; i<rideData.getNumFiles(); i++)
-                rideData.readOneFileLondon (i);
+        {
+            nfiles = rideData.countFilesLondon (i);
+            for (int j=0; j<nfiles; j++) {
+                tempi = rideData.unzipOneFileLondon (i, j);
+                std::cout << "Reading file[";
+                if (j < 10)
+                    std::cout << " ";
+                std::cout << j << "/" << nfiles << "]:" << rideData.fileName;
+                std::cout.flush ();
+                tempi = rideData.readOneFileLondon ();
+                std::cout << " = " << tempi << " trips." << std::endl;
+                count += tempi;
+                tempi = rideData.removeFile ();
+            }
+            rideData.dumpMissingStations ();
+            std::cout << "Total Number of Trips = " << count << std::endl;
+        }
     } else {
         count = 0;
         for (int i=0; i<rideData.getNumFiles(); i++)
@@ -41,7 +57,7 @@ int main(int argc, char *argv[]) {
             tempi = rideData.getZipFileNameNYC (i);
             if (rideData.fileName != "") {
                 count += rideData.readOneFileNYC (i);
-                tempi = rideData.removeFileNYC ();
+                tempi = rideData.removeFile ();
             }
         } // end for i
         std::cout << "Total number of trips = " << count << std::endl;

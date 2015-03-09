@@ -16,7 +16,7 @@
 # unreliable routines in urllib. To circumvent problems, this script has to be
 # run on the html source downloaded from
 # https://web.barclayscyclehire.tfl.gov.uk/maps/ which should be titled
-# "maps.htm". 
+# "maps.html". 
 
 import sys, getopt, re, urllib2, json, os
 from bs4 import BeautifulSoup
@@ -26,7 +26,7 @@ def rootDir ():
         return os.getcwd ().split ('/src')[0]
 
 def getLondon ():
-    f = open (rootDir() + '/data/maps.htm')
+    f = open (rootDir() + '/data/maps.html')
     page = f.read ()
     f.close ()
     soup = BeautifulSoup (page)

@@ -7,7 +7,7 @@ OBJECTS = main.o StationData.o RideData.o Utils.o
 all: main
 
 main: $(OBJECTS)
-	$(CC) $(OBJECTS) $(LIBS) -o getr2
+	$(CC) $(OBJECTS) -o getr2 $(LIBS) 
 
 %.o: %.c++
 	$(CC) $(CFLAGS) $<

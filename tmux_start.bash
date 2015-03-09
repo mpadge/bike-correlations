@@ -20,6 +20,7 @@ tmux send-keys -t $SESSION:2 'vim Structures.h' C-m
 tmux send-keys -t $SESSION:2 ':' 'tabe Utils.h' C-m
 tmux send-keys -t $SESSION:2 ':' 'tabe Utils.c++' C-m
 tmux split-window -h
+tmux send-keys -t $SESSION:2 'cd ..' C-m
 tmux select-pane -t 0
 
 tmux new-window -t $SESSION:3 -n python
@@ -40,6 +41,11 @@ tmux split-window -h
 # Environmental variable only held in local tmux environment = that pane.
 tmux send-keys -t $SESSION:4 "GD='https://github.com/mpadge/bike-correlations'" C-m
 tmux select-pane -t 0
+
+cd ./R/
+tmux new-window -t $SESSION:5 -n analyses
+tmux select-window -t $SESSION:5
+tmux send-keys -t $SESSION:5 'vim analyses.R' C-m
 
 tmux select-window -t $SESSION:1
 

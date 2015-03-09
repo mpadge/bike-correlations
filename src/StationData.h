@@ -49,8 +49,8 @@ class StationData
         int GetStations ();
 
         int getNumStations () { return _numStations;  }
+        int getMaxStation () { return _maxStations;  }
         std::string getCity () { return _city;    }
-        int getCity2 () { return 10;    }
         std::vector <int> getStationIndex() { return _StationIndex; }
 };
 

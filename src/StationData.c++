@@ -68,8 +68,17 @@ void StationData::GetDirList ()
 
 int StationData::GetStations ()
 {
-    // reads from station_latlons which is constructed with getLatLons.py
-    const std::string dir = "../data/"; // Change to "./data..."!
+    /*
+     * Reads from station_latlons which is constructed with getLatLons.py and
+     * *MUST* be ordered numerically. Returns _numStations
+     *
+     * TODO: Write handlers for cases where there are trips to/from stations not
+     * in StationList.
+     * TODO: Update StationList for nyc, because there seem to be trips to/from
+     * one station that is not in list.
+     * 
+     */
+    const std::string dir = "data/"; 
     int ipos, tempi;
     OneStation oneStation;
     std::string fname;
@@ -111,6 +120,9 @@ int StationData::GetStations ()
 
 void StationData::MakeStationIndex ()
 {
+    // First station is #1 and last is _maxStations, so _StationIndex has 
+    // len (_maxStns + 1), with _StationIndex [sti.ID=1] = 0 and
+    // _StationIndex [sti.ID=_maxStations] = _numStations.
     OneStation sti;
 
     _StationIndex.resize (_maxStations + 1);
@@ -123,5 +135,3 @@ void StationData::MakeStationIndex ()
         _StationIndex [sti.ID] = i;
     }
 } // end StationData::MakeStationIndex
-
-

@@ -3,40 +3,128 @@
 /************************************************************************
  ************************************************************************
  **                                                                    **
+ **                          COUNTFILESLONDON                          **
+ **                                                                    **
+ ************************************************************************
+ ************************************************************************/
+
+int RideData::countFilesLondon (int filei)
+{
+    const char *archive;
+    struct zip *za;
+    struct zip_file *zf;
+    struct zip_stat sb;
+    char buf[100]; 
+    int err;
+
+    std::string fname_base = StationData::GetDirName() + '/' + filelist [filei];
+    archive = fname_base.c_str ();
+    if ((za = zip_open(archive, 0, &err)) == NULL) {
+        zip_error_to_str(buf, sizeof(buf), err, errno);
+        std::cout << stderr << archive << "can't open size archive : " <<
+            buf << std::endl;
+        return -1;
+    } 
+    int nfiles = zip_get_num_entries (za, 0);
+    for (int i=0; i<nfiles; i++)
+    {
+        if (zip_stat_index (za, i, 0, &sb) == 0) {
+            zf = zip_fopen_index(za, 0, 0);
+            if (!zf) {
+                std::cout << stderr << "ERROR: cannot open file#" <<
+                    i << " in archive " << archive << std::endl;
+                return 1;
+            }
+            zip_fclose(zf); 
+        }
+    }
+    zip_close (za);
+
+    return zip_get_num_entries (za, 0);
+}
+
+
+/************************************************************************
+ ************************************************************************
+ **                                                                    **
+ **                         GETFILENAMESLONDON                         **
+ **                                                                    **
+ ************************************************************************
+ ************************************************************************/
+
+int RideData::unzipOneFileLondon (int filei, int filej)
+{
+    // Unzips file#j from the zip archive file#i in the directory
+    const char *archive;
+    struct zip *za;
+    struct zip_file *zf;
+    struct zip_stat sb;
+    char buf[100]; 
+    int err, sum, len;
+
+    std::ofstream out_file;
+    std::string fname_csv, fname_base = StationData::GetDirName() + '/' + filelist [filei];
+
+    archive = fname_base.c_str ();
+    // Error checks already done with countFilesLondon
+    za = zip_open(archive, 0, &err);
+    if (zip_stat_index (za, filej, 0, &sb) == 0) {
+        fileName = sb.name;
+        zf = zip_fopen_index(za, filej, 0);
+
+        fname_csv = StationData::GetDirName() + '/' + fileName;
+        out_file.open (fname_csv.c_str(), std::ios::out);
+        sum = 0;
+        while (sum != sb.size) {
+            len = zip_fread(zf, buf, 100);
+            if (len < 0) {
+                // INSERT ERROR HANDLER
+            }
+            out_file.write (buf, len);
+            sum += len;
+            //std::cout << sum << std::endl;
+        }
+        out_file.close ();
+
+        zip_fclose(zf); 
+    }
+    zip_close(za);
+
+    return 0;
+}
+
+/************************************************************************
+ ************************************************************************
+ **                                                                    **
  **                         READONEFILELONDON                          **
  **                                                                    **
  ************************************************************************
  ************************************************************************/
 
-void RideData::readOneFileLondon (int filei)
+int RideData::readOneFileLondon ()
 {
-    int count, ipos, tempi [2];
-    int nstations = getNumStations ();
-    std::string fname = StationData::GetDirName() + '/' + filelist [filei];
+    bool alreadyMissing;
+    int ID, count = 0, ipos, tempi [2];
+    int nstations = RideData::getNumStations (), 
+        maxStation = RideData::getMaxStation ();
+    std::string fname = StationData::GetDirName() + '/' + fileName;
     std::ifstream in_file;
     std::string linetxt;
 
     in_file.open (fname.c_str (), std::ifstream::in);
     if (in_file.fail ()) {
         // INSERT ERROR HANDLER
-    } 
-    std::cout << "Reading file [";
-    if (filei < 10)
-        std::cout << " ";
-    std::cout << filei << "/" << filelist.size() <<
-        "]: " << filelist [filei];
-    std::cout.flush ();
-
-    getline (in_file, linetxt, '\n');
-    count = 0;
-    while (getline (in_file, linetxt, '\n')) { count++;	}
+        return -1;
+    }
     in_file.clear ();
     in_file.seekg (0); // Both lines needed to rewind file.
     getline (in_file, linetxt, '\n');
 
-    for (int k=0; k<=count; k++) {
-        getline (in_file, linetxt,'\n');
-        for (int j=0; j<4; j++) {
+    while (getline (in_file, linetxt, '\n')) { 
+        ipos = linetxt.find(',',0);
+        ID = atoi (linetxt.substr (0, ipos).c_str()); // Trip ID number
+        linetxt = linetxt.substr (ipos + 1, linetxt.length () - ipos - 1);
+        for (int j=0; j<3; j++) {
             ipos = linetxt.find(',',0);
             linetxt = linetxt.substr (ipos + 1, linetxt.length () - ipos - 1);
         }
@@ -54,20 +142,78 @@ void RideData::readOneFileLondon (int filei)
         ipos = linetxt.find(',',0);
         tempi [1] = atoi (linetxt.substr (0, ipos).c_str()); // Start Station ID
 
-        if (k < 10) 
-            std::cout << "[" << tempi[0] << "," << tempi[1] << "] -> [";
-        tempi [0] = _StationIndex [tempi[0]];
-        tempi [1] = _StationIndex [tempi[1]];
-        if (k < 10)
-            std::cout << "[" << tempi[0] << "," << tempi[1] << "]" << std::endl;
-        if (tempi [0] > 0 && tempi [0] <= nstations && tempi [1] > 0 && 
-                tempi [1] <= nstations) {
-            ntrips (tempi [1] - 1, tempi [0] - 1)++;
-        } // end if 
-    } // end for k
+        if (tempi [1] > 0 && tempi [0] <= maxStation && tempi [1] > 0 &&
+                tempi [1] <= maxStation)
+        {
+            ipos = -1;
+            if (_StationIndex [tempi [0]] == INT_MIN)
+                ipos = tempi [0];
+            else if (_StationIndex [tempi [1]] == INT_MIN)
+                ipos = tempi [1];
+            if (ipos > -1)
+            {
+                alreadyMissing = false;
+                for (std::vector <int>::iterator pos=missingStations.begin();
+                        pos != missingStations.end(); pos++)
+                    if (*pos == ipos)
+                        alreadyMissing = true;
+                if (!alreadyMissing)
+                    missingStations.push_back (ipos);
+            } else {
+                tempi [0] = _StationIndex [tempi[0]];
+                tempi [1] = _StationIndex [tempi[1]];
+                ntrips (tempi [1], tempi [0])++;
+                count++;
+            }
+        }
+    } // end while getline
     in_file.close();
-    std::cout << " done." << std::endl;
+
+    return count;
 }
+
+
+/************************************************************************
+ ************************************************************************
+ **                                                                    **
+ **                        DUMPMISSINGSTATIONS                         **
+ **                                                                    **
+ ************************************************************************
+ ************************************************************************/
+
+void RideData::dumpMissingStations ()
+{
+    if (missingStations.size () > 0)
+    {
+        std::sort (missingStations.begin(), missingStations.end());
+        std::cout << "The following stations are in trip files " <<
+            "yet missing from station_latlons:" << std::endl << "(";
+        for (std::vector <int>::iterator pos=missingStations.begin();
+                pos != missingStations.end(); pos++)
+            std::cout << *pos << ", ";
+        std::cout << ")" << std::endl;
+    }
+}
+
+
+/************************************************************************
+ ************************************************************************
+ **                                                                    **
+ **                         READONEFILELONDON                          **
+ **                                                                    **
+ ************************************************************************
+ ************************************************************************/
+
+int RideData::removeFile ()
+{
+    std::string fname_csv = StationData::GetDirName() + '/' + fileName;
+
+    if (remove(fname_csv.c_str()) != 0)
+        return 1;
+    else
+        return 0;
+}
+
 
 /************************************************************************
  ************************************************************************
@@ -224,23 +370,6 @@ int RideData::readOneFileNYC (int filei)
     return count;
 }
 
-/************************************************************************
- ************************************************************************
- **                                                                    **
- **                           REMOVEFILENYC                            **
- **                                                                    **
- ************************************************************************
- ************************************************************************/
-
-int RideData::removeFileNYC ()
-{
-    std::string fname_csv = StationData::GetDirName() + '/' + fileName;
-
-    if (remove(fname_csv.c_str()) != 0)
-        return 1;
-    else
-        return 0;
-}
 
 /************************************************************************
  ************************************************************************
@@ -253,7 +382,11 @@ int RideData::removeFileNYC ()
 int RideData::writeNumTrips ()
 {
     int numStations = RideData::getNumStations ();
-    std::string fname = "NumTrips.csv";
+    std::string fname;
+    if (RideData::getCity() == "london")
+        fname = "NumTrips_london.csv";
+    else
+        fname = "NumTrips_nyc.csv";
 
     std::ofstream out_file;
     out_file.open (fname.c_str (), std::ofstream::out);
@@ -267,6 +400,7 @@ int RideData::writeNumTrips ()
         }
     }
     out_file.close ();
+    std::cout << "Numbers of trips written to " << fname.c_str () << std::endl;
 
     return 0;
 }
@@ -336,10 +470,16 @@ int RideData::writeR2Mat (bool from)
 {
     int numStations = RideData::getNumStations ();
     std::string r2File;
-    if (from)
-        r2File = "R2_from.csv";
+    if (RideData::getCity() == "london")
+        if (from) 
+            r2File = "R2_from_london.csv";
+        else
+            r2File = "R2_to_london.csv";
     else
-        r2File = "R2_to.csv";
+        if (from)
+            r2File = "R2_from_nyc.csv";
+        else
+            r2File = "R2_to_nyc.csv";
 
     std::ofstream out_file;
     out_file.open (r2File.c_str (), std::ofstream::out);
@@ -353,6 +493,7 @@ int RideData::writeR2Mat (bool from)
         }
     }
     out_file.close ();
+    std::cout << "Correlations written to " << r2File.c_str () << std::endl;
 
     return 0;
 }
@@ -369,10 +510,16 @@ int RideData::writeCovMat (bool from)
 {
     int numStations = RideData::getNumStations ();
     std::string covFile;
-    if (from)
-        covFile = "Cov_from.csv";
+    if (RideData::getCity() == "london")
+        if (from)
+            covFile = "Cov_from_london.csv";
+        else
+            covFile = "Cov_to_london.csv";
     else
-        covFile = "Cov_to.csv";
+        if (from)
+            covFile = "Cov_from_nyc.csv";
+        else
+            covFile = "Cov_to_nyc.csv";
 
     std::ofstream out_file;
     out_file.open (covFile.c_str (), std::ofstream::out);
@@ -386,6 +533,7 @@ int RideData::writeCovMat (bool from)
         }
     }
     out_file.close ();
+    std::cout << "Covariances written to " << covFile.c_str () << std::endl;
 
     return 0;
 }
@@ -444,14 +592,11 @@ int RideData::writeDMat ()
 {
     std::string city = RideData::getCity(), distFile;
     if (city == "london")
-        distFile = "../results/station_dists_london.txt";
+        distFile = "results/station_dists_london.txt";
     else if (city == "nyc")
-        distFile = "../results/station_dists_nyc.txt";
+        distFile = "results/station_dists_nyc.txt";
 
-    int nstations = getNumStations ();
     int numStations = RideData::getNumStations ();
-    for (int i=0; i<numStations; i++)
-        dists (i, i) = 0.0;
 
     int count, ipos, tempi [2];
     double d;
@@ -483,7 +628,10 @@ int RideData::writeDMat ()
     }
     in_file.close ();
 
-    distFile = "stationDists.csv";
+    if (city == "london")
+        distFile = "stationDistsMat_london.csv";
+    else if (city == "nyc")
+        distFile = "stationDistsMat_nyc.csv";
     std::ofstream out_file;
     out_file.open (distFile.c_str (), std::ofstream::out);
     for (int i=0; i<numStations; i++) {
@@ -497,6 +645,8 @@ int RideData::writeDMat ()
     }
     out_file.close ();
     dists.resize (0,0);
+    std::cout << "Inter-station distances written to " << 
+        distFile.c_str () << std::endl;
 
     return 0;
 }

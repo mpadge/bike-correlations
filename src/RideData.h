@@ -16,12 +16,15 @@ class RideData: public StationData
         imat ntrips;
         dmat r2, cov, dists;
         std::string fileName;
+        std::vector <int> missingStations;
+
         RideData (std::string str)
             : StationData (str)
         {
             _numStations = getNumStations();
             _numTripFiles = filelist.size ();
             _stnIndxLen = _StationIndex.size ();
+            missingStations.resize (0);
             ntrips.resize (_numStations, _numStations);
             r2.resize (_numStations, _numStations);
             cov.resize (_numStations, _numStations);
@@ -37,14 +40,28 @@ class RideData: public StationData
                 }
             }
         }
+
+        ~RideData ()
+        {
+            missingStations.resize (0);
+            ntrips.resize (0, 0);
+            r2.resize (0, 0);
+            cov.resize (0, 0);
+            dists.resize (0, 0);
+        }
         
         int getNumFiles () { return _numTripFiles;  }
         int getStnIndxLen () { return _stnIndxLen;  }
 
-        void readOneFileLondon (int filei);
+        int countFilesLondon (int file);
+        int unzipOneFileLondon (int filei, int filej);
+        int readOneFileLondon ();
+        void dumpMissingStations ();
+        int removeFile ();
+
         int getZipFileNameNYC (int filei);
         int readOneFileNYC (int filei);
-        int removeFileNYC ();
+
         int writeNumTrips ();
         int calcR2 (bool from);
         int writeR2Mat (bool from);

@@ -61,14 +61,16 @@ int main(int argc, char *argv[]) {
         } // end for i
         std::cout << "Total number of trips = " << count << std::endl;
     }
+
+    bool standardise = rideData.getStandardise ();
+
     rideData.writeNumTrips ();
-    rideData.calcR2 (true);
+    rideData.calcR2 (true, standardise);
     rideData.writeR2Mat (true);
     rideData.writeCovMat (true);
-    rideData.calcR2 (false);
+    rideData.calcR2 (false, standardise);
     rideData.writeR2Mat (false);
     rideData.writeCovMat (false);
     //rideData.readR2Mat (false);
-    rideData.r2.resize (0,0);
     rideData.writeDMat ();
 }

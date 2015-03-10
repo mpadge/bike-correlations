@@ -57,6 +57,7 @@ void StationData::GetDirList ()
             }
         }
         closedir (dir);
+        std::sort (filelist.begin(), filelist.end());
     } else {
         std::string outstr = "ERROR: Directory for city = " +\
                               _city + " at " + _dirName + " does not exist";

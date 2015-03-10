@@ -6,7 +6,7 @@
 # ************************************************************ 
 # ************************************************************ 
 
-get.data <- function (city="nyc", from=TRUE, covar=FALSE, msg=FALSE)
+get.data <- function (city="nyc", from=TRUE, covar=TRUE, std=TRUE, msg=FALSE)
 {
     txt.dir <- "../results/"
     fname <- paste (txt.dir, "stationDistsMat_", city, ".csv", sep="")
@@ -17,7 +17,10 @@ get.data <- function (city="nyc", from=TRUE, covar=FALSE, msg=FALSE)
     else txt.ft <- "to"
     if (covar)
     {
-        fname <- paste (txt.dir, "Cov_", txt.ft, "_", city, ".csv", sep="")
+        if (std) txt.sd <- "standardised"
+        else txt.sd <- "unstandardised"
+        fname <- paste (txt.dir, "Cov_", txt.ft, "_", city, 
+                        "_", txt.sd, ".csv", sep="")
         y <- as.matrix (read.csv (fname, header=FALSE))
         indx <- which (dists < 0)
     } else {
@@ -29,8 +32,8 @@ get.data <- function (city="nyc", from=TRUE, covar=FALSE, msg=FALSE)
 
     dists [indx] <- NA
     y [indx] <- NA
-    # London has some extreme outliers in covariances, so
-    if (city == "london")
+    # London has some extreme outliers in unstandarsied covariances, so
+    if (!std & city == "london")
     {
         indx <- which (y > -min (y, na.rm=TRUE))
         if (msg)
@@ -38,8 +41,8 @@ get.data <- function (city="nyc", from=TRUE, covar=FALSE, msg=FALSE)
                     length (dists), " = ", 
                     formatC (100 * length (indx) / length (dists), 
                     format="f", digits=1), "% extreme covariances.\n", sep="")
-        #dists [indx] <- NA
-        #y [indx] <- NA
+        dists [indx] <- NA
+        y [indx] <- NA
     }
 
     return (list (d=dists, y=y))
@@ -54,7 +57,7 @@ get.data <- function (city="nyc", from=TRUE, covar=FALSE, msg=FALSE)
 # ************************************************************ 
 
 fit.decay <- function (city="nyc", from=TRUE, mod.type="power", covar=TRUE, 
-                       threshold=0, ylims=NULL, plot=TRUE)
+                       std=TRUE, threshold=0, ylims=NULL, plot=TRUE)
 {
     msg <- FALSE
     if (plot) msg <- TRUE
@@ -66,7 +69,7 @@ fit.decay <- function (city="nyc", from=TRUE, mod.type="power", covar=TRUE,
     # "compare.thresholds" function below demonstrates that this is clearly not
     # the case, and rejecting these values leads to increases in overall
     # aggregate errors.
-    dat <- get.data(city=city, from=from, covar=covar, msg=msg)
+    dat <- get.data(city=city, from=from, covar=covar, std=std, msg=msg)
 
     n <- dim (dat$d)[1]
     index <- kvec <- intercept <- ss <- NULL
@@ -169,7 +172,6 @@ fit.decay <- function (city="nyc", from=TRUE, mod.type="power", covar=TRUE,
     #cat ("count = ", count, "\n", sep="")
     # Any cases that generate k-values that are greater than max (d) are very
     # likely spurious, so are removed here
-    len.full <- length (ss)
     maxd <- max (dat$d, na.rm=TRUE)
     indx <- which (kvec > maxd)
     if (msg & length (indx) > 0)
@@ -197,7 +199,15 @@ fit.decay <- function (city="nyc", from=TRUE, mod.type="power", covar=TRUE,
         intercept <- intercept [indx] 
     }
 
-    if (covar)
+    # Standardised SS values are means for each model, which have already been
+    # standardised to have means of ~O(1/nstations). Actual SS values are
+    # calculated above as means, so effectively divided again by nstations, and
+    # finally divided again below by nstations below to give final single SS
+    # values. With nstations=332 (nyc) or 752 (london), respective values are
+    # ultimately divided by 36,594,368 = 3.6e7 and 425,259,008 = 4.2e8.
+    if (std)
+        ss <- ss * 1e12
+    else if (covar)
         ss <- ss / 1e7
     dat <- data.frame (cbind (index, kvec, intercept, ss)) 
     colnames (dat) <- c("i", "k", "y", "ss")
@@ -238,13 +248,13 @@ fit.decay <- function (city="nyc", from=TRUE, mod.type="power", covar=TRUE,
 # ************************************************************ 
 # ************************************************************ 
 
-fit.gaussian <- function (city="nyc", from=TRUE, covar=TRUE)
+fit.gaussian <- function (city="nyc", from=TRUE, covar=TRUE, std=TRUE)
 {
     # Produces a data frame with [i, k, y, ss, ntrips]
     # If !covar, then models are fitted to R2 values, otherwise they are fitted
     # to covariances.
     msg <- TRUE
-    dat <- get.data (city=city, from=from, covar=covar, msg=msg)
+    dat <- get.data (city=city, from=from, covar=covar, std=std, msg=msg)
     fname <- paste ("../results/NumTrips_", city, ".csv", sep="")
     ntrips.mat <- read.csv (fname, header=FALSE)
 
@@ -297,7 +307,6 @@ fit.gaussian <- function (city="nyc", from=TRUE, covar=TRUE)
     } # end for i
     # Any cases that generate k-values that are greater than max (d) are very
     # likely spurious, so are removed here
-    len.full <- length (ss)
     maxd <- max (dat$d, na.rm=TRUE)
     indx <- which (kvec > maxd)
     if (msg & length (indx) > 0)
@@ -310,7 +319,10 @@ fit.gaussian <- function (city="nyc", from=TRUE, covar=TRUE)
     intercept <- intercept [indx] 
     ntrips <- ntrips [indx]
 
-    if (covar)
+    # See note in fit.decay for these values
+    if (std)
+        ss <- ss * 1e12
+    else if (covar)
         ss <- ss / 1e7
     dat <- data.frame (cbind (index, kvec, intercept, ntrips, ss)) 
     colnames (dat) <- c("i", "k", "y", "ntrips", "ss")
@@ -325,39 +337,75 @@ fit.gaussian <- function (city="nyc", from=TRUE, covar=TRUE)
 # ************************************************************ 
 # ************************************************************ 
 
-compare.ntrips <- function (covar=TRUE)
+compare.ntrips <- function (covar=TRUE, std=TRUE)
 {
+    # These results with std=TRUE are statistical artefacts, because
+    # correlations involving stations with high numbers of trips will
+    # correspondingly adjust all others to extremely low values, giving
+    # correspondingly low covariances and *average* squared errors.
+    #
+    # There will thus arise a negative relationship between numbers of trips at
+    # each station and the covariance intercept of the fitted decay model.
+    #
+    # Numbers of trips may nevertheless theoretically be related to
+    # correlations, even though a presumption that correlations should follow
+    # defined distance decay functions is highly questionable. Nevertheless,
+    # setting covar=FALSE demonstrates that this is not in fact the case.
+    # Although London does yield significant slopes for R2~ntrips, their
+    # magnitudes reflect the cluster of low-ntrips, low-R2 values, which are
+    # obviously statistical noise. A proportion of these values can be removed
+    # with the code below, to yield slopes that are far less significant.
+    #
+    # Relationships between numbers of trips and either covariances or
+    # correlations are thus inevitably confounded and may not be given any
+    # objective consideration. This function thus serves only to produce the
+    # other half of the resultant relationships, which are relationships between
+    # numbers of trips and k-values, which are also not significant. This is the
+    # major and interesting finding here.
     cities <- c ("london", "nyc")
-    x11 ()
-    par (mfrow=c(2,2), mar=c(2.5,2.5,0.5,0.5), mgp=c(1.3,0.7,0), ps=10)
+    x11 (width=14)
+    par (mfrow=c(2,4), mar=c(2.5,2.5,0.5,0.5), mgp=c(1.3,0.7,0), ps=10)
     ft <- c (TRUE, FALSE)
     ftxt <- c ("from", "to")
+    if (covar) ytxt <- c ("k-value", "Covariance")
+    else ytxt <- c ("k-value", "R2")
     for (city in cities)
     {
         for (i in 1:2) {
-            dat <- fit.gaussian (city=city, from=ft[i], covar=covar)
+            dat <- fit.gaussian (city=city, from=ft[i], covar=covar, std=std)
             n <- dat$ntrips
-            k <- dat$k
-            plot (n, k, pch=1, col="orange", bty="l",
-                  xlab="ntrips", ylab="k-value")
-            mod <- lm (k ~ n)
-            x <- seq (min (n), max (n), length.out=100)
-            y <- predict (mod, new=data.frame(n=x))
-            lines (x, y, col="blue")
+            yvals <- list (k=dat$k, covar=dat$y)
+            if (!covar)
+            {
+                # Remove stations with the lowest 10% of ntrips
+                indx <- sort (n, index.return=TRUE)$ix
+                indx <- indx [1:floor (0.2 * length (indx))]
+                #yvals$covar [indx] <- NA
+            }
+            for (j in 1:2) {
+                yj <- yvals [[j]]
+                plot (n, yj, pch=1, col="orange", bty="l",
+                      xlab="ntrips", ylab=ytxt [j])
+                mod <- lm (yj ~ n)
+                x <- seq (min (n), max (n), length.out=100)
+                y <- predict (mod, new=data.frame(n=x))
+                lines (x, y, col="blue")
 
-            r2 <- summary (mod)$r.squared
-            pval <- summary (mod)$coefficients [8]
-            xpos <- min (n) + 0.5 * diff (range (n))
-            ypos <- min (k) + c(0.8, 0.6, 0.4) * diff (range (k))
-            par (ps=18)
-            text (xpos, ypos[1], labels=paste (toupper (city), ftxt [i]))
-            par (ps=12)
-            text (xpos, ypos[2], labels= paste ("r2 = ",
-                formatC (r2, format="f", digits=4), " (p=",
-                formatC (pval, format="f", digits=4), ")", sep=""))
-            par (ps=10)
-        }
-    }
+                r2 <- summary (mod)$r.squared
+                pval <- summary (mod)$coefficients [8]
+                xpos <- min (n) + 0.5 * diff (range (n))
+                ylims <- range (yj, na.rm=TRUE)
+                ypos <- ylims[1] + c(0.8, 0.6, 0.4) * diff (ylims)
+                par (ps=18)
+                text (xpos, ypos[1], labels=paste (toupper (city), ftxt [i]))
+                par (ps=12)
+                text (xpos, ypos[2], labels= paste ("r2 = ",
+                    formatC (r2, format="f", digits=4), " (p=",
+                    formatC (pval, format="f", digits=4), ")", sep=""))
+                par (ps=10)
+            } # end for j
+        } # end for i
+    } # end for city
 }
 
 # ************************************************************ 
@@ -368,7 +416,8 @@ compare.ntrips <- function (covar=TRUE)
 # ************************************************************ 
 # ************************************************************ 
 
-compare.models <- function (city="nyc", from=TRUE, covar=TRUE, threshold=0)
+compare.models <- function (city="nyc", from=TRUE, covar=TRUE, std=TRUE, 
+                            threshold=0)
 {
     mod.types <- c ("power", "Gaussian", "logGauss")
     x11 ()
@@ -376,7 +425,8 @@ compare.models <- function (city="nyc", from=TRUE, covar=TRUE, threshold=0)
     fulldat <- list()
     for (i in 1:3)
         fulldat [[i]] <- fit.decay(city=city, from=from, mod.type=mod.types[i],
-                                   covar=covar, threshold=threshold, plot=TRUE)
+                                   covar=covar, std=std, threshold=threshold, 
+                                   plot=TRUE)
     # matrices of correlations and t-tests between k-values
     imax <- max (sapply (fulldat, function (x) max (x$i)))
     kvals <- array (NA, dim=c(imax, 3))
@@ -496,7 +546,7 @@ compare.thresholds <- function (city="nyc", from=TRUE, covar=TRUE)
 # ************************************************************ 
 # ************************************************************ 
 
-compare.tofrom <- function (covar=TRUE, threshold=0)
+compare.tofrom <- function (covar=TRUE, std=TRUE, threshold=0)
 {
     x11 (width=13.5)
     par (mfrow=c(2,3), mar=c(2.5,2.5,0.5,0.5), mgp=c(1.3,0.7,0), ps=10)
@@ -505,9 +555,9 @@ compare.tofrom <- function (covar=TRUE, threshold=0)
     for (city in cities)
     {
         to <- fit.decay(city=city, from=FALSE, "Gaussian", covar=covar, 
-                            ylims=c(0, 10), threshold=threshold)
+                            std=std, ylims=c(0, 10), threshold=threshold)
         from <- fit.decay(city=city, from=TRUE, "Gaussian", covar=covar, 
-                            ylims=c(0, 10), threshold=threshold)
+                            std=std, ylims=c(0, 10), threshold=threshold)
         # matrices of correlations and t-tests between k-values
         imax <- max (c (max (to$i), max (from$i)))
         x <- y <- rep (NA, imax)

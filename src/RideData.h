@@ -12,8 +12,11 @@ class RideData: public StationData
 {
     private:
         int _numTripFiles, _stnIndxLen;
+        bool _standardise;
+        // Standardises ntrips to unit sum, so covariances do not depend on
+        // scales of actual numbers of trips. Set to true in initialisation.
     public:
-        imat ntrips;
+        dmat ntrips; // dmat to allow standardisation to unit sum
         dmat r2, cov, dists;
         std::string fileName;
         std::vector <int> missingStations;
@@ -39,6 +42,7 @@ class RideData: public StationData
                     dists (i, j) = -9999.9;
                 }
             }
+            _standardise = true;
         }
 
         ~RideData ()
@@ -52,6 +56,7 @@ class RideData: public StationData
         
         int getNumFiles () { return _numTripFiles;  }
         int getStnIndxLen () { return _stnIndxLen;  }
+        int getStandardise () { return _standardise;    }
 
         int countFilesLondon (int file);
         int unzipOneFileLondon (int filei, int filej);
@@ -63,7 +68,7 @@ class RideData: public StationData
         int readOneFileNYC (int filei);
 
         int writeNumTrips ();
-        int calcR2 (bool from);
+        int calcR2 (bool from, bool standardise);
         int writeR2Mat (bool from);
         int writeCovMat (bool from);
         int readR2Mat (bool from);

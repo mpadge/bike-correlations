@@ -162,7 +162,7 @@ int RideData::readOneFileLondon ()
             } else {
                 tempi [0] = _StationIndex [tempi[0]];
                 tempi [1] = _StationIndex [tempi[1]];
-                ntrips (tempi [1], tempi [0])++;
+                ntrips (tempi [1], tempi [0]) += 1.0;
                 count++;
             }
         }
@@ -359,7 +359,7 @@ int RideData::readOneFileNYC (int filei)
             tempi [1] = _StationIndex [tempi[1]];
             if (tempi [0] >= 0 && tempi [0] < nstations && tempi [1] >= 0 && 
                     tempi [1] < nstations) {
-                ntrips (tempi [0], tempi [1])++;
+                ntrips (tempi [0], tempi [1]) += 1.0;
                 count++; 
             } // end if 
         }
@@ -415,10 +415,10 @@ int RideData::writeNumTrips ()
 
 // Also calculates covariance
 
-int RideData::calcR2 (bool from)
+int RideData::calcR2 (bool from, bool standardise)
 {
     int numStations = RideData::getNumStations ();
-    double tempd [3];
+    double tempd [2];
     std::vector <double> x, y;
     RegrResults regrResults;
 
@@ -446,6 +446,21 @@ int RideData::calcR2 (bool from)
                 else
                     y.push_back(ntrips (k, j));
 
+            if (standardise)
+            {
+                tempd [0] = tempd [1] = 0.0;
+                // Avoid using boost for double iterator here for clarity
+                for (int k=0; k<x.size(); k++)
+                {
+                    tempd [0] += x[k];
+                    tempd [1] += y[k];
+                }
+                for (int k=0; k<x.size(); k++)
+                {
+                    x[k] = x[k] / tempd [0];
+                    y[k] = y[k] / tempd [1];
+                }
+            }
             regrResults = regression (x, y);
             r2 (i, j) = r2 (j, i) = regrResults.r2;
             cov (i, j) = cov (j, i) = regrResults.cov;
@@ -469,7 +484,7 @@ int RideData::calcR2 (bool from)
 int RideData::writeR2Mat (bool from)
 {
     int numStations = RideData::getNumStations ();
-    std::string r2File;
+    std::string r2File, stdext;
     if (RideData::getCity() == "london")
         if (from) 
             r2File = "R2_from_london.csv";
@@ -509,17 +524,23 @@ int RideData::writeR2Mat (bool from)
 int RideData::writeCovMat (bool from)
 {
     int numStations = RideData::getNumStations ();
-    std::string covFile;
+    std::string covFile, stdext;
+    bool standardise = RideData::getStandardise ();
+    if (standardise)
+        stdext = "_standardised";
+    else
+        stdext = "_unstandardised";
+
     if (RideData::getCity() == "london")
         if (from)
-            covFile = "Cov_from_london.csv";
+            covFile = "Cov_from_london" + stdext + ".csv";
         else
-            covFile = "Cov_to_london.csv";
+            covFile = "Cov_to_london" + stdext + ".csv";
     else
         if (from)
-            covFile = "Cov_from_nyc.csv";
+            covFile = "Cov_from_nyc" + stdext + ".csv";
         else
-            covFile = "Cov_to_nyc.csv";
+            covFile = "Cov_to_nyc" + stdext + ".csv";
 
     std::ofstream out_file;
     out_file.open (covFile.c_str (), std::ofstream::out);

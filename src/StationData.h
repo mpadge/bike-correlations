@@ -36,6 +36,11 @@ class StationData
             _numStations = GetStations ();
             MakeStationIndex ();
         }
+        ~StationData ()
+        {
+            filelist.resize (0);
+            FileList.resize (0);
+        }
         struct OneStation {
             int ID, indx;
             float lon, lat;

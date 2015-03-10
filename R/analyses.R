@@ -57,18 +57,12 @@ get.data <- function (city="nyc", from=TRUE, covar=TRUE, std=TRUE, msg=FALSE)
 # ************************************************************ 
 
 fit.decay <- function (city="nyc", from=TRUE, mod.type="power", covar=TRUE, 
-                       std=TRUE, threshold=0, ylims=NULL, plot=TRUE)
+                       std=TRUE, ylims=NULL, plot=TRUE)
 {
     msg <- FALSE
     if (plot) msg <- TRUE
     # If !covar, then models are fitted to R2 values, otherwise they are fitted
     # to covariances.
-    # "threshold" presumes that decays with intercepts lower than this value
-    # (expressed as a fraction 0->1 of the maximal intercept) will not generate
-    # informative k-values, and are therefore rejected. However, the
-    # "compare.thresholds" function below demonstrates that this is clearly not
-    # the case, and rejecting these values leads to increases in overall
-    # aggregate errors.
     dat <- get.data(city=city, from=from, covar=covar, std=std, msg=msg)
 
     n <- dim (dat$d)[1]
@@ -182,22 +176,6 @@ fit.decay <- function (city="nyc", from=TRUE, mod.type="power", covar=TRUE,
     index <- index [indx]
     kvec <- kvec [indx]
     intercept <- intercept [indx] 
-    # And then reject all intercepts < threshold
-    if (threshold > 0)
-    {
-        nout <- length (which (intercept < (threshold * max (intercept))))
-        if (msg)
-            cat (city, "-", mod.type, "-", ftxt, ": Removed ", 
-                nout, " / ", length (intercept), " = ", 
-                formatC (100 * nout / length (intercept), format="f", digits=2),
-                "% of values with intercepts < ", threshold, " = ", 
-                round (threshold * max (intercept)), "\n", sep="")
-        indx <- which (intercept > (threshold * max (intercept)))
-        ss <- ss [indx]
-        index <- index [indx]
-        kvec <- kvec [indx]
-        intercept <- intercept [indx] 
-    }
 
     # Standardised SS values are means for each model, which have already been
     # standardised to have means of ~O(1/nstations). Actual SS values are
@@ -205,10 +183,14 @@ fit.decay <- function (city="nyc", from=TRUE, mod.type="power", covar=TRUE,
     # finally divided again below by nstations below to give final single SS
     # values. With nstations=332 (nyc) or 752 (london), respective values are
     # ultimately divided by 36,594,368 = 3.6e7 and 425,259,008 = 4.2e8.
-    if (std)
-        ss <- ss * 1e12
-    else if (covar)
-        ss <- ss / 1e7
+    if (covar)
+        if (std)
+            ss <- ss * 1e12
+        else
+            ss <- ss / 1e7
+    else
+        ss <- ss * 100
+
     dat <- data.frame (cbind (index, kvec, intercept, ss)) 
     colnames (dat) <- c("i", "k", "y", "ss")
 
@@ -352,7 +334,7 @@ compare.ntrips <- function (covar=TRUE, std=TRUE)
     # defined distance decay functions is highly questionable. Nevertheless,
     # setting covar=FALSE demonstrates that this is not in fact the case.
     # Although London does yield significant slopes for R2~ntrips, their
-    # magnitudes reflect the cluster of low-ntrips, low-R2 values, which are
+    # magnitudes reflect the cluster of low-ntrips--low-R2 values, which are
     # obviously statistical noise. A proportion of these values can be removed
     # with the code below, to yield slopes that are far less significant.
     #
@@ -416,8 +398,7 @@ compare.ntrips <- function (covar=TRUE, std=TRUE)
 # ************************************************************ 
 # ************************************************************ 
 
-compare.models <- function (city="nyc", from=TRUE, covar=TRUE, std=TRUE, 
-                            threshold=0)
+compare.models <- function (city="nyc", from=TRUE, covar=TRUE, std=TRUE)
 {
     mod.types <- c ("power", "Gaussian", "logGauss")
     x11 ()
@@ -425,8 +406,7 @@ compare.models <- function (city="nyc", from=TRUE, covar=TRUE, std=TRUE,
     fulldat <- list()
     for (i in 1:3)
         fulldat [[i]] <- fit.decay(city=city, from=from, mod.type=mod.types[i],
-                                   covar=covar, std=std, threshold=threshold, 
-                                   plot=TRUE)
+                                   covar=covar, std=std, plot=TRUE)
     # matrices of correlations and t-tests between k-values
     imax <- max (sapply (fulldat, function (x) max (x$i)))
     kvals <- array (NA, dim=c(imax, 3))
@@ -478,65 +458,6 @@ compare.models <- function (city="nyc", from=TRUE, covar=TRUE, std=TRUE,
     return (dat)
 }
 
-# ************************************************************ 
-# ************************************************************ 
-# *****                                                  *****
-# *****                COMPARE.THRESHOLDS                *****
-# *****                                                  *****
-# ************************************************************ 
-# ************************************************************ 
-
-compare.thresholds <- function (city="nyc", from=TRUE, covar=TRUE)
-{
-    # This takes quite some time to execute, and just serves to demonstrate that
-    # model fits are better in all cases with thresholds of zero. The whole
-    # threshold concept could thus be ditched, but this has been retained just
-    # to demonstrate a quantitative reason why.
-    mod.types <- c ("power", "Gaussian", "logGauss")
-    thresholds <- 0:10 / 100
-    arr <- array (NA, dim=c(length (thresholds), length (mod.types)))
-    dat <- list (kmn=arr, ss=arr)
-
-    for (i in 1:length (thresholds))
-    {
-        cat (i, ".", sep="")
-        fulldat <- list()
-        for (j in 1:3)
-            fulldat [[j]] <- fit.decay(city=city, from=from, mod.type=mod.types[j],
-                                       covar=covar, threshold=thresholds[i],
-                                       plot=FALSE)
-        
-        dat$ss [i, ] <- sapply (fulldat, function (x) mean (x$ss))
-        dat$kmn [i, ]<- sapply (fulldat, function (x) mean (x$k))
-    }
-    cat ("\n")
-
-    x11 ()
-    par (mfrow=c(1,2), mar=c(2.5,2.5,2,2), mgp=c(1.3,0.7,0), ps=10)
-    
-    cols <- c ("red", "blue", "lawngreen")
-    ylabs <- c ("k-mean", "SS")
-    if (from) mt <- paste (toupper (city), "from")
-    else mt <- paste (toupper (city), "to")
-    # plots not looped, because SS has to have separate axes for the mod.types
-    ylims <- range (dat$kmn)
-    plot (thresholds, dat$kmn [,1], "l", col=cols[1], ylim=ylims, bty="l",
-          xlab="Threshold", ylab="k-mean", main=mt)
-    for (j in 1:3)
-        lines (thresholds, dat$kmn [,j], col=cols[j])
-    ypos <- ylims [1] + 0.5 * diff (ylims)
-    legend (0, ypos, legend=mod.types, col=cols, lwd=1, bty="n")
-
-    ylims <- range (dat$ss [,2:3])
-    plot (thresholds, dat$ss [,2], "l", col=cols[2], ylim=ylims, bty="l",
-          xlab="Threshold", ylab="SS")
-    for (j in 2:3)
-        lines (thresholds, dat$ss [,j], col=cols[j])
-    par (new=TRUE)
-    plot (thresholds, dat$ss [,1], "l", col=cols[1], 
-          xaxt="n", yaxt="n", xlab="", ylab="", frame=FALSE)
-    Axis (range (dat$ss [,1]), side=4, col=cols[1])
-}
 
 # ************************************************************ 
 # ************************************************************ 
@@ -546,7 +467,7 @@ compare.thresholds <- function (city="nyc", from=TRUE, covar=TRUE)
 # ************************************************************ 
 # ************************************************************ 
 
-compare.tofrom <- function (covar=TRUE, std=TRUE, threshold=0)
+compare.tofrom <- function (covar=TRUE, std=TRUE)
 {
     x11 (width=13.5)
     par (mfrow=c(2,3), mar=c(2.5,2.5,0.5,0.5), mgp=c(1.3,0.7,0), ps=10)
@@ -555,9 +476,9 @@ compare.tofrom <- function (covar=TRUE, std=TRUE, threshold=0)
     for (city in cities)
     {
         to <- fit.decay(city=city, from=FALSE, "Gaussian", covar=covar, 
-                            std=std, ylims=c(0, 10), threshold=threshold)
+                            std=std, ylims=c(0, 10))
         from <- fit.decay(city=city, from=TRUE, "Gaussian", covar=covar, 
-                            std=std, ylims=c(0, 10), threshold=threshold)
+                            std=std, ylims=c(0, 10))
         # matrices of correlations and t-tests between k-values
         imax <- max (c (max (to$i), max (from$i)))
         x <- y <- rep (NA, imax)

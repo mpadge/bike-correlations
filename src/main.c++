@@ -53,7 +53,6 @@ int main(int argc, char *argv[]) {
         count = 0;
         for (int i=0; i<rideData.getNumFiles(); i++)
         {
-            // TODO: Clause to process .csv files directly without unzipping
             tempi = rideData.getZipFileNameNYC (i);
             if (rideData.fileName != "") {
                 count += rideData.readOneFileNYC (i);

@@ -80,7 +80,7 @@ int main(int argc, char *argv[]) {
     std::cout << "_____________________________________________" << 
         "____________________________________________" << std::endl << std::endl;
 
-    RideData rideData (city, ignoreZeros, tempi [0], tempi [1], tempi [2]);
+    RideData rideData (city, ignoreZeros, tempi [1], tempi [2], tempi [3]);
     rideData.nfext = nfext;
 
     int numStations = rideData.getNumStations();

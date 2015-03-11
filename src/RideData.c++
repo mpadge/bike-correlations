@@ -478,9 +478,7 @@ int RideData::writeNumTrips ()
     int numStations = RideData::getNumStations ();
     std::string fname;
     if (RideData::getCity() == "london")
-        fname = "NumTrips_london_" + 
-            std::to_string (RideData::getSubscriber ()) + 
-            std::to_string (RideData::getGender ()) + ".csv";
+        fname = "NumTrips_london.csv";
     else
         fname = "NumTrips_nyc_" +
             std::to_string (RideData::getSubscriber ()) + 
@@ -663,23 +661,19 @@ int RideData::writeR2Mat (bool from)
         gender = RideData::getGender ();
     std::string r2File, zeros = "zeros_";
     if (RideData::getIgnoreZeros ())
-        zeros = "_nozeros";
+        zeros = "nozeros_";
     if (RideData::getCity() == "london")
         if (from) 
-            r2File = "R2_from_london" + RideData::nfext + "_" + zeros + 
-                std::to_string (RideData::getSubscriber ()) + 
-                std::to_string (RideData::getGender ()) + ".csv";
+            r2File = "R2_london_from" + RideData::nfext + "_" + zeros + ".csv";
         else
-            r2File = "R2_to_london" + RideData::nfext + "_" + zeros + 
-                std::to_string (RideData::getSubscriber ()) + 
-                std::to_string (RideData::getGender ()) + ".csv";
+            r2File = "R2_london_to" + RideData::nfext + "_" + zeros + ".csv";
     else
         if (from)
-            r2File = "R2_from_nyc" + RideData::nfext + "_" + zeros + 
+            r2File = "R2_nyc_from" + RideData::nfext + "_" + zeros + 
                 std::to_string (RideData::getSubscriber ()) + 
                 std::to_string (RideData::getGender ()) + ".csv";
         else
-            r2File = "R2_to_nyc" + RideData::nfext + "_" + zeros + 
+            r2File = "R2_nyc_to" + RideData::nfext + "_" + zeros + 
                 std::to_string (RideData::getSubscriber ()) + 
                 std::to_string (RideData::getGender ()) + ".csv";
 
@@ -713,7 +707,7 @@ int RideData::writeCovMat (bool from)
     int numStations = RideData::getNumStations ();
     std::string covFile, stdext, zeros = "zeros_";
     if (RideData::getIgnoreZeros ())
-        zeros = "_nozeros";
+        zeros = "nozeros_";
     bool standardise = RideData::getStandardise ();
     if (standardise)
         stdext = "_std";
@@ -722,20 +716,16 @@ int RideData::writeCovMat (bool from)
 
     if (RideData::getCity() == "london")
         if (from)
-            covFile = "Cov_from_london" + stdext + RideData::nfext + "_" +
-                zeros + std::to_string (RideData::getSubscriber ()) + 
-                std::to_string (RideData::getGender ()) + ".csv";
+            covFile = "Cov_london_from" + stdext + RideData::nfext + ".csv";
         else
-            covFile = "Cov_to_london" + stdext + RideData::nfext + "_" +
-                zeros + std::to_string (RideData::getSubscriber ()) + 
-                std::to_string (RideData::getGender ()) + ".csv";
+            covFile = "Cov_london_to" + stdext + RideData::nfext + ".csv";
     else
         if (from)
-            covFile = "Cov_from_nyc" + stdext + RideData::nfext + "_" +
+            covFile = "Cov_nyc_from" + stdext + RideData::nfext + "_" +
                 zeros + std::to_string (RideData::getSubscriber ()) + 
                 std::to_string (RideData::getGender ()) + ".csv";
         else
-            covFile = "Cov_to_nyc" + stdext + RideData::nfext + "_" +
+            covFile = "Cov_nyc_to" + stdext + RideData::nfext + "_" +
                 zeros + std::to_string (RideData::getSubscriber ()) + 
                 std::to_string (RideData::getGender ()) + ".csv";
 

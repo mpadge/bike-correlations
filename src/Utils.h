@@ -9,6 +9,7 @@
 #include <time.h>
 #include <limits.h>
 #include <vector>
+#include <string>
 #include <iomanip> // for setfill
 #include <sys/ioctl.h> // for console width: Linux only!
 

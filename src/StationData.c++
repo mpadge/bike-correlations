@@ -12,7 +12,7 @@ std::string StationData::GetDirName ()
 {
     std::ifstream in_file;
     std::string dirtxt, fname;
-    std::string configfile = "getr2.cfg"; // Contains name of data directory
+    std::string configfile = "bikes.cfg"; // Contains name of data directory
     DIR *dir;
     struct dirent *ent;
 

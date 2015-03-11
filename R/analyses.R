@@ -6,7 +6,8 @@
 # ************************************************************ 
 # ************************************************************ 
 
-get.data <- function (city="nyc", from=TRUE, covar=TRUE, std=TRUE, msg=FALSE)
+get.data <- function (city="nyc", from=TRUE, covar=TRUE, std=TRUE, 
+                      nearfar=0, msg=FALSE)
 {
     txt.dir <- "../results/"
     fname <- paste (txt.dir, "stationDistsMat_", city, ".csv", sep="")
@@ -15,16 +16,20 @@ get.data <- function (city="nyc", from=TRUE, covar=TRUE, std=TRUE, msg=FALSE)
     dists <- array (dists, dim=dims)
     if (from) txt.ft <- "from"
     else txt.ft <- "to"
+    if (nearfar == 0) txt.nf <- "all"
+    else if (nearfar == 1) txt.nf <- "near"
+    else txt.nf <- "far"
     if (covar)
     {
         if (std) txt.sd <- "standardised"
         else txt.sd <- "unstandardised"
         fname <- paste (txt.dir, "Cov_", txt.ft, "_", city, 
-                        "_", txt.sd, ".csv", sep="")
+                        "_", txt.sd, "_", txt.nf, ".csv", sep="")
         y <- as.matrix (read.csv (fname, header=FALSE))
         indx <- which (dists < 0)
     } else {
-        fname <- paste (txt.dir, "R2_", txt.ft, "_", city, ".csv", sep="")
+        fname <- paste (txt.dir, "R2_", txt.ft, "_", city, 
+                        "_", txt.nf, ".csv", sep="")
         y <- as.matrix (read.csv (fname, header=FALSE))
         indx <- which (dists < 0 | abs (y) > 1)
     }
@@ -46,7 +51,7 @@ get.data <- function (city="nyc", from=TRUE, covar=TRUE, std=TRUE, msg=FALSE)
     }
 
     return (list (d=dists, y=y))
-}
+} # end get.data()
 
 # ************************************************************ 
 # ************************************************************ 
@@ -63,7 +68,8 @@ fit.decay <- function (city="nyc", from=TRUE, mod.type="power", covar=TRUE,
     if (plot) msg <- TRUE
     # If !covar, then models are fitted to R2 values, otherwise they are fitted
     # to covariances.
-    dat <- get.data(city=city, from=from, covar=covar, std=std, msg=msg)
+    dat <- get.data(city=city, from=from, covar=covar, std=std, 
+                    nearfar=0, msg=msg)
 
     n <- dim (dat$d)[1]
     index <- kvec <- intercept <- ss <- NULL
@@ -163,7 +169,6 @@ fit.decay <- function (city="nyc", from=TRUE, mod.type="power", covar=TRUE,
             }
         } # end if len (indx) > 10
     } # end for i
-    #cat ("count = ", count, "\n", sep="")
     # Any cases that generate k-values that are greater than max (d) are very
     # likely spurious, so are removed here
     maxd <- max (dat$d, na.rm=TRUE)
@@ -220,7 +225,7 @@ fit.decay <- function (city="nyc", from=TRUE, mod.type="power", covar=TRUE,
         par (ps=10)
     }
     return (dat)
-}
+} # end fit.decay()
 
 # ************************************************************ 
 # ************************************************************ 
@@ -230,13 +235,14 @@ fit.decay <- function (city="nyc", from=TRUE, mod.type="power", covar=TRUE,
 # ************************************************************ 
 # ************************************************************ 
 
-fit.gaussian <- function (city="nyc", from=TRUE, covar=TRUE, std=TRUE)
+fit.gaussian <- function (city="nyc", from=TRUE, covar=TRUE, std=TRUE, nearfar=0)
 {
     # Produces a data frame with [i, k, y, ss, ntrips]
     # If !covar, then models are fitted to R2 values, otherwise they are fitted
     # to covariances.
     msg <- TRUE
-    dat <- get.data (city=city, from=from, covar=covar, std=std, msg=msg)
+    dat <- get.data (city=city, from=from, covar=covar, std=std, 
+                     nearfar=nearfar, msg=msg)
     fname <- paste ("../results/NumTrips_", city, ".csv", sep="")
     ntrips.mat <- read.csv (fname, header=FALSE)
 
@@ -253,8 +259,9 @@ fit.gaussian <- function (city="nyc", from=TRUE, covar=TRUE, std=TRUE)
         y <- dat$y [i, ]
         indx <- which (!is.na (d) & !is.na (y) & y > 0)
         # There are some cases for which trip data exist yet station distances
-        # haven't yet been added to list. These produce NAs in the dists table.
-        if (length (indx) > 10)
+        # haven't yet been added to list (because the stations do not appear in
+        # the website!) These produce NAs in the dists table.
+        if (length (indx) > 2)
         {
             d <- d[indx]
             y <- y[indx]
@@ -288,18 +295,21 @@ fit.gaussian <- function (city="nyc", from=TRUE, covar=TRUE, std=TRUE)
         } # end if len (indx) > 10
     } # end for i
     # Any cases that generate k-values that are greater than max (d) are very
-    # likely spurious, so are removed here
-    maxd <- max (dat$d, na.rm=TRUE)
-    indx <- which (kvec > maxd)
-    if (msg & length (indx) > 0)
-        cat (city, "-", ftxt, ": Removed ", length (indx), 
-             " k-values > d = ", maxd, "km\n", sep="")
-    indx <- kvec < maxd
-    ss <- ss [indx]
-    index <- index [indx]
-    kvec <- kvec [indx]
-    intercept <- intercept [indx] 
-    ntrips <- ntrips [indx]
+    # likely spurious, so are removed here (but only for nearfar == 0)
+    if (nearfar == 0)
+    {
+        maxd <- max (dat$d, na.rm=TRUE)
+        indx <- which (kvec > maxd)
+        if (msg & length (indx) > 0)
+            cat (city, "-", ftxt, ": Removed ", length (indx), 
+                 " k-values > d = ", maxd, "km\n", sep="")
+        indx <- kvec < maxd
+        ss <- ss [indx]
+        index <- index [indx]
+        kvec <- kvec [indx]
+        intercept <- intercept [indx] 
+        ntrips <- ntrips [indx]
+    }
 
     # See note in fit.decay for these values
     if (std)
@@ -309,7 +319,7 @@ fit.gaussian <- function (city="nyc", from=TRUE, covar=TRUE, std=TRUE)
     dat <- data.frame (cbind (index, kvec, intercept, ntrips, ss)) 
     colnames (dat) <- c("i", "k", "y", "ntrips", "ss")
     return (dat)
-}
+} # end fit.gaussian()
 
 # ************************************************************ 
 # ************************************************************ 
@@ -388,7 +398,7 @@ compare.ntrips <- function (covar=TRUE, std=TRUE)
             } # end for j
         } # end for i
     } # end for city
-}
+} # end compare.ntrips()
 
 # ************************************************************ 
 # ************************************************************ 
@@ -456,7 +466,7 @@ compare.models <- function (city="nyc", from=TRUE, covar=TRUE, std=TRUE)
     ksd <- sapply (fulldat, function (x) sd (x$k))
     dat <- data.frame (cbind (mod.types, kmn, ksd, ss))
     return (dat)
-}
+} # end compare.models()
 
 
 # ************************************************************ 
@@ -467,8 +477,13 @@ compare.models <- function (city="nyc", from=TRUE, covar=TRUE, std=TRUE)
 # ************************************************************ 
 # ************************************************************ 
 
-compare.tofrom <- function (covar=TRUE, std=TRUE)
+compare.tofrom <- function (covar=TRUE, std=TRUE, paired=FALSE)
 {
+    # "paired" is fed to the t.test for differences in estimated k-values
+    # between to- and from- values. If the two data sets are truly presumed to
+    # be independent, then there ought also be *no* corresponding dependence
+    # between values measured at individual stations, and thus paired should
+    # arguably be FALSE.
     x11 (width=13.5)
     par (mfrow=c(2,3), mar=c(2.5,2.5,0.5,0.5), mgp=c(1.3,0.7,0), ps=10)
 
@@ -487,7 +502,7 @@ compare.tofrom <- function (covar=TRUE, std=TRUE)
 
         xylims <- c (0, min (c (max (x, na.rm=TRUE), max (y, na.rm=TRUE))))
         plot (x, y, pch=1, col="lawngreen", bty="l", xlim=xylims, ylim=xylims,
-              xlab="k Gaussian", ylab="k log-Gaussian")
+              xlab="TO k-values", ylab="FROM k-values")
         mod <- lm (y ~ x)
         xrange <- range (x, na.rm=TRUE)
         xfit <- seq (xrange [1], xrange [2], length.out=100)
@@ -500,9 +515,40 @@ compare.tofrom <- function (covar=TRUE, std=TRUE)
         text (xpos, ypos[1], labels="To ~ From")
         par (ps=12)
         r12 <- cor (x, y, use="pairwise.complete") ^ 2
-        p12 <- t.test (x, y, paired=TRUE)$p.value
+        p12 <- t.test (x, y, paired=paired)$p.value
         text (xpos, ypos[2], labels= paste ("r2 = ",
             formatC (r12, format="f", digits=4), " (T-test p=",
             formatC (p12, format="f", digits=4), ")", sep=""))
     }
-}
+} # end compare.tofrom()
+
+
+# ************************************************************ 
+# ************************************************************ 
+# *****                                                  *****
+# *****                  COMPARE.NEARFAR                 *****
+# *****                                                  *****
+# ************************************************************ 
+# ************************************************************ 
+
+compare.nearfar <- function (covar=TRUE, std=TRUE)
+{
+    # nearfar == (1, 2) is (near, far)
+    cities <- c ("london", "nyc")
+    for (city in cities)
+    {
+        dat1 <- fit.gaussian (city=city, covar=covar, std=std, nearfar=1)
+        dat2 <- fit.gaussian (city=city, covar=covar, std=std, nearfar=2)
+        tt <- t.test (dat1$k, dat2$k)
+        cat (toupper (city), ": T = ",
+             formatC (tt$statistic, format="f", digits=2), "; df = ",
+             formatC (tt$parameter, format="f", digits=1), "; p = ",
+             formatC (tt$p.value, format="f", digits=4), "\n", sep="")
+        cat ("Mean +/- SD k-values for (near, far) are (",
+             formatC (mean (dat1$k), format="f", digits=2), "+/-",
+             formatC (sd (dat1$k), format="f", digits=2), ", ",
+             formatC (mean (dat2$k), format="f", digits=2), "+/-",
+             formatC (sd (dat2$k), format="f", digits=2), ")\n", sep="")
+
+    }
+} # end compare.nearfar()

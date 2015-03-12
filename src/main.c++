@@ -1,28 +1,33 @@
 #include "main.h"
 
 int main(int argc, char *argv[]) {
-    int nfiles, count, tempi [4];
+    int nfiles, count, tempi [2];
     std::vector <std::string> tempstr;
     std::string city, nfext;
 
     std::cout << std::endl << "_____________________________________________" << 
         "____________________________________________" << std::endl;
     std::cout << "|\t\t\t\t\t\t\t\t\t\t\t|" << std::endl;
-    std::cout << "|\t./bikes with the following 4 parameters " <<
+    std::cout << "|\t./bikes with the following 3 parameters " <<
         "(defaulting to first values):\t\t|" << std::endl;
     std::cout << "|\t1. <city> for <city>=<london/nyc>\t\t\t\t\t\t|" << std::endl;
-    std::cout << "|\t2. (0,1) for (include, ignore) stations " <<
-        "with zero trips\t\t\t\t|" << std::endl;
-    std::cout << "|\t3. (0,1,2) for analyses of (all, near, far) data\t\t\t\t|" << 
-        std::endl;
-    std::cout << "|\t4. (0,1,2) for analyses of (all, subscriber, customer)" <<
+    std::cout << "|\t2. (0,1,2) for analyses of (all, subscriber, customer)" <<
         " data (NYC only)\t\t|" << std::endl;
-    std::cout << "|\t5. (0,1,2) for analyses of (all, male, female) " <<
-        "data (NYC only)\t\t\t|" << std::endl << 
-        "|\t\t\t\t\t\t\t\t\t\t\t|" << std::endl;
+    std::cout << "|\t3. (0,1,2) for analyses of (all, male, female) " <<
+        "data (NYC only)\t\t\t|" << std::endl;
+    std::cout << "|\t(NOTE that (male,female) can only be analysed for " <<
+        "subscribers.)\t\t\t|" << std::endl;
+    std::cout << "|\t\t\t\t\t\t\t\t\t\t\t|" << std::endl;
+    std::cout << "|\tCalculations loop over the two conditions of:\t\t\t\t\t|" <<
+        std::endl;
+    std::cout << "|\t1.(include, ignore) stations with zero trips\t\t\t\t\t|" << 
+        std::endl;
+    std::cout << "|\t2. analyses of (all, near, far) data\t\t\t\t\t\t|" << 
+        std::endl;
+    std::cout << "|\t\t\t\t\t\t\t\t\t\t\t|" << std::endl;
 
     city = "nyc";
-    tempi [0] = tempi [1] = tempi [2] = tempi [3] = 0;
+    tempi [0] = tempi [1] = 0;
     count = -1;
     while (*++argv != NULL)
     {
@@ -42,46 +47,31 @@ int main(int argc, char *argv[]) {
         }
         count++;
     }
-    std::cout << "|\tcity = " << city << " ---\t";
-    bool ignoreZeros = false;
-    if (tempi [0] > 0)
-    {
-        ignoreZeros = true;
-        std::cout << "ignoring zeros ---\t";
-    } else {
-        std::cout << "not ignoring zeros ---\t";
-    }
-    tempstr.resize (0);
-    tempstr.push_back ("all");
-    tempstr.push_back ("near");
-    tempstr.push_back ("far");
-    std::cout << "data = (";
-    std::cout << tempstr [tempi [1]];
-    nfext = "_" + tempstr [tempi [1]];
-    tempstr.resize (0);
-    if (city == "nyc")
-    {
+    RideData rideData (city, tempi [0], tempi [1]);
+
+    std::cout << "|\t\tcity = " << city;
+    if (city == "london")
+        std::cout << "\t\t\t\t\t\t|" << std::endl;
+    else {
+        std::cout << " --- data = (";
+        tempstr.resize (0);
         tempstr.push_back ("all");
         tempstr.push_back ("subscriber");
         tempstr.push_back ("customer");
-        std::cout << ", " << tempstr [tempi [2]] << ", ";
+        std::cout << tempstr [tempi [0]] << ", ";
         tempstr.resize (0);
         tempstr.push_back ("all");
         tempstr.push_back ("male");
         tempstr.push_back ("female");
-        std::cout << tempstr [tempi [3]] << ")";
-        if (tempi [2] == 0)
+        std::cout << tempstr [tempi [1]] << ")";
+        if (tempi [0] == 0 || (tempi [0] == 1 && tempi [1] == 0) ||
+                (tempi [0] == 2 && tempi [1] < 2))
             std::cout << "\t";
-        std::cout << "\t\t|" << std::endl;
+        std::cout << "\t\t\t\t|" << std::endl;
         tempstr.resize (0);
-    } else {
-        std::cout << ")\t\t\t\t|" << std::endl;
     }
     std::cout << "_____________________________________________" << 
         "____________________________________________" << std::endl << std::endl;
-
-    RideData rideData (city, ignoreZeros, tempi [1], tempi [2], tempi [3]);
-    rideData.nfext = nfext;
 
     int numStations = rideData.getNumStations();
     std::cout << "There are " << numStations << 
@@ -108,7 +98,7 @@ int main(int argc, char *argv[]) {
             rideData.dumpMissingStations ();
             std::cout << "Total Number of Trips = " << count << std::endl;
         }
-    } else {
+    } else { // city = NYC
         count = 0;
         for (int i=0; i<rideData.getNumFiles(); i++)
         {
@@ -119,19 +109,31 @@ int main(int argc, char *argv[]) {
             }
         } // end for i
         std::cout << "Total number of trips = " << count << std::endl;
+        tempi [0] = rideData.aggregateTrips ();
     }
-    tempi [0] = rideData.aggregateTrips ();
-
-    bool standardise = rideData.getStandardise ();
 
     rideData.writeDMat (); // Also fills RideData.dists
     rideData.writeNumTrips ();
-    rideData.calcR2 (true);
-    rideData.writeR2Mat (true);
-    rideData.writeCovMat (true);
-    rideData.calcR2 (false);
-    rideData.writeR2Mat (false);
-    rideData.writeCovMat (false);
+
+    // Then loop over (include,ignore) zeros and (all, near, far) data
+    for (int i=0; i<2; i++)
+    {
+        if (i == 0) rideData.ignoreZeros = false;
+        else rideData.ignoreZeros = true;
+        rideData.txtzero = rideData.txtzerolist [i];
+        for (int j=0; j<3; j++)
+        {
+            rideData.nearfar = j;
+            rideData.txtnf = rideData.txtnflist [j];
+
+            rideData.calcR2 (true);
+            rideData.writeR2Mat (true);
+            rideData.writeCovMat (true);
+            rideData.calcR2 (false);
+            rideData.writeR2Mat (false);
+            rideData.writeCovMat (false);
+        }
+    }
     //rideData.readR2Mat (false);
     std::cout << "_____________________________________________" << 
         "____________________________________________" << std::endl << std::endl;

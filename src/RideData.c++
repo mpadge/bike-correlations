@@ -376,16 +376,15 @@ int RideData::readOneFileNYC (int filei)
             tempi [2] = atoi (linetxt.substr (0, ipos).c_str()); // Birthyear
             linetxt = linetxt.substr (ipos + 3, linetxt.length () - ipos - 1);
             tempi [3] = atoi (linetxt.substr (0, 1).c_str()); // Gender
-            if (usertype == "Subscriber")
+            if (usertype != "Subscriber")
+                ntrips_cust (tempi [0], tempi [1])++;
+            else
                 if (tempi [3] == 1)
                     ntrips_sub_m (tempi [0], tempi [1])++;
                 else if (tempi [3] == 2)
                     ntrips_sub_f (tempi [0], tempi [1])++;
-            else if (usertype == "Customer")
-                if (tempi [3] == 1)
-                    ntrips_cust_m (tempi [0], tempi [1])++;
-                else if (tempi [3] == 2)
-                    ntrips_cust_f (tempi [0], tempi [1])++;
+                else
+                    ntrips_sub_n (tempi [0], tempi [1])++;
             count++; 
         } // end if stations in StnIndxLen
     } // end while getline
@@ -405,63 +404,38 @@ int RideData::readOneFileNYC (int filei)
 
 int RideData::aggregateTrips ()
 {
-    bool ignoreZeros = RideData::getIgnoreZeros ();
     int numStations = RideData::getNumStations (),
         subscriber = RideData::getSubscriber (),
         gender = RideData::getGender ();
-    if (subscriber == 0 && gender == 0)
-    {
+    // subscriber = (0, 1, 2) for (all, subscriber, customer)
+    // gender = (0, 1, 2) for (all, male, female)
+    // (male, female) only make sense for subscriber = 1, and are ignored
+    // otherwise.
+    if (subscriber == 0)
         for (int i=0; i<numStations; i++)
             for (int j=0; j<numStations; j++)
                 ntrips (i, j) += (double) ntrips_sub_f (i, j) +
                     (double) ntrips_sub_m (i, j) +
-                    (double) ntrips_cust_f (i, j) +
-                    (double) ntrips_cust_m (i, j);
-    } else if (subscriber == 0 && gender == 1)
-    {
+                    (double) ntrips_sub_n (i, j) +
+                    (double) ntrips_cust (i, j);
+    else if (subscriber == 1)
+        if (gender == 0)
+            for (int i=0; i<numStations; i++)
+                for (int j=0; j<numStations; j++)
+                    ntrips (i, j) += (double) ntrips_sub_f (i, j) +
+                        (double) ntrips_sub_m (i, j);
+        else if (gender == 1)
+            for (int i=0; i<numStations; i++)
+                for (int j=0; j<numStations; j++)
+                    ntrips (i, j) += (double) ntrips_sub_m (i, j);
+        else if (gender == 2)
+            for (int i=0; i<numStations; i++)
+                for (int j=0; j<numStations; j++)
+                    ntrips (i, j) += (double) ntrips_sub_f (i, j);
+    else
         for (int i=0; i<numStations; i++)
             for (int j=0; j<numStations; j++)
-                ntrips (i, j) += (double) ntrips_sub_m (i, j) +
-                    (double) ntrips_cust_m (i, j);
-    } else if (subscriber == 0 && gender == 2)
-    {
-        for (int i=0; i<numStations; i++)
-            for (int j=0; j<numStations; j++)
-                ntrips (i, j) += (double) ntrips_sub_f (i, j) +
-                    (double) ntrips_cust_f (i, j);
-    } else if (subscriber == 1 && gender == 0)
-    {
-        for (int i=0; i<numStations; i++)
-            for (int j=0; j<numStations; j++)
-                ntrips (i, j) += (double) ntrips_sub_f (i, j) +
-                    (double) ntrips_sub_m (i, j);
-    } else if (subscriber == 1 && gender == 1)
-    {
-        for (int i=0; i<numStations; i++)
-            for (int j=0; j<numStations; j++)
-                ntrips (i, j) += (double) ntrips_sub_m (i, j);
-    } else if (subscriber == 1 && gender == 2)
-    {
-        for (int i=0; i<numStations; i++)
-            for (int j=0; j<numStations; j++)
-                ntrips (i, j) += (double) ntrips_sub_f (i, j);
-    } else if (subscriber == 2 && gender == 0)
-    {
-        for (int i=0; i<numStations; i++)
-            for (int j=0; j<numStations; j++)
-                ntrips (i, j) += (double) ntrips_cust_f (i, j) +
-                    (double) ntrips_cust_m (i, j);
-    } else if (subscriber == 2 && gender == 1)
-    {
-        for (int i=0; i<numStations; i++)
-            for (int j=0; j<numStations; j++)
-                ntrips (i, j) += (double) ntrips_cust_m (i, j);
-    } else if (subscriber == 2 && gender == 2)
-    {
-        for (int i=0; i<numStations; i++)
-            for (int j=0; j<numStations; j++)
-                ntrips (i, j) += (double) ntrips_cust_f (i, j);
-    }
+                ntrips (i, j) += (double) ntrips_cust (i, j);
 } // end aggregateTrips
 
 
@@ -486,8 +460,10 @@ int RideData::writeNumTrips ()
 
     std::ofstream out_file;
     out_file.open (fname.c_str (), std::ofstream::out);
-    for (int i=0; i<numStations; i++) {
-        for (int j=0; j<numStations; j++) {
+    for (int i=0; i<numStations; i++)
+    {
+        for (int j=0; j<numStations; j++)
+        {
             out_file << ntrips (i, j);
             if (j == (numStations - 1))
                 out_file << std::endl;
@@ -513,10 +489,8 @@ int RideData::writeNumTrips ()
 
 int RideData::calcR2 (bool from)
 {
-    bool standardise = RideData::getStandardise(),
-         ignoreZeros = RideData::getIgnoreZeros ();
-    int tempi, numStations = RideData::getNumStations (),
-        nearfar = RideData::getNearfar ();
+    bool standardise = RideData::getStandardise();
+    int tempi, numStations = RideData::getNumStations ();
     double tempd [2];
     std::vector <double> x0, y0, x1, x2, y2, d;
     RegrResults regrResults;
@@ -637,10 +611,10 @@ int RideData::calcR2 (bool from)
             r2 (i, j) = r2 (j, i) = regrResults.r2;
             cov (i, j) = cov (j, i) = regrResults.cov;
         } // end for j over (i+1):numStations
-        x1.resize (0);
-        y0.resize (0);
     } // end for i over (numStations - 1)
     x0.resize (0);
+    x1.resize (0);
+    y0.resize (0);
 
     return 0;
 }
@@ -659,21 +633,19 @@ int RideData::writeR2Mat (bool from)
     int numStations = RideData::getNumStations (),
         subscriber = RideData::getSubscriber (),
         gender = RideData::getGender ();
-    std::string r2File, zeros = "zeros_";
-    if (RideData::getIgnoreZeros ())
-        zeros = "nozeros_";
+    std::string r2File;
     if (RideData::getCity() == "london")
         if (from) 
-            r2File = "R2_london_from" + RideData::nfext + "_" + zeros + ".csv";
+            r2File = "R2_london_from_" + txtnf + "_" + txtzero + ".csv";
         else
-            r2File = "R2_london_to" + RideData::nfext + "_" + zeros + ".csv";
+            r2File = "R2_london_to_" + txtnf + "_" + txtzero + ".csv";
     else
         if (from)
-            r2File = "R2_nyc_from" + RideData::nfext + "_" + zeros + 
+            r2File = "R2_nyc_from_" + txtnf + "_" + txtzero + "_" + 
                 std::to_string (RideData::getSubscriber ()) + 
                 std::to_string (RideData::getGender ()) + ".csv";
         else
-            r2File = "R2_nyc_to" + RideData::nfext + "_" + zeros + 
+            r2File = "R2_nyc_to_" + txtnf + "_" + txtzero + "_" + 
                 std::to_string (RideData::getSubscriber ()) + 
                 std::to_string (RideData::getGender ()) + ".csv";
 
@@ -705,9 +677,7 @@ int RideData::writeR2Mat (bool from)
 int RideData::writeCovMat (bool from)
 {
     int numStations = RideData::getNumStations ();
-    std::string covFile, stdext, zeros = "zeros_";
-    if (RideData::getIgnoreZeros ())
-        zeros = "nozeros_";
+    std::string covFile, stdext;
     bool standardise = RideData::getStandardise ();
     if (standardise)
         stdext = "_std";
@@ -716,17 +686,19 @@ int RideData::writeCovMat (bool from)
 
     if (RideData::getCity() == "london")
         if (from)
-            covFile = "Cov_london_from" + stdext + RideData::nfext + ".csv";
+            covFile = "Cov_london_from" + stdext + "_" + txtnf + 
+                "_" + txtzero + ".csv";
         else
-            covFile = "Cov_london_to" + stdext + RideData::nfext + ".csv";
+            covFile = "Cov_london_to" + stdext + "_" + txtnf + 
+                "_" + txtzero + ".csv";
     else
         if (from)
-            covFile = "Cov_nyc_from" + stdext + RideData::nfext + "_" +
-                zeros + std::to_string (RideData::getSubscriber ()) + 
+            covFile = "Cov_nyc_from" + stdext + "_" + txtnf + "_" +
+                txtzero + "_" + std::to_string (RideData::getSubscriber ()) + 
                 std::to_string (RideData::getGender ()) + ".csv";
         else
-            covFile = "Cov_nyc_to" + stdext + RideData::nfext + "_" +
-                zeros + std::to_string (RideData::getSubscriber ()) + 
+            covFile = "Cov_nyc_to" + stdext + "_" + txtnf + "_" +
+                txtzero + "_" + std::to_string (RideData::getSubscriber ()) + 
                 std::to_string (RideData::getGender ()) + ".csv";
 
     std::ofstream out_file;

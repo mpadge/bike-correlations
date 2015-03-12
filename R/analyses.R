@@ -11,6 +11,8 @@ get.data <- function (city="nyc", from=TRUE, covar=TRUE, std=TRUE,
                       msg=FALSE)
 {
     txt.dir <- "../results/"
+    if (subscriber > 2)
+        txt.dir <- paste (txt.dir, "age/", sep="")
     fname <- paste (txt.dir, "stationDistsMat_", city, ".csv", sep="")
     dists <- as.matrix (read.csv (fname, header=FALSE))
     dims <- dim (dists)
@@ -35,7 +37,7 @@ get.data <- function (city="nyc", from=TRUE, covar=TRUE, std=TRUE,
                         "_", txt.nf, "_", txt.z, sep="")
         indx <- which (dists < 0 | abs (y) > 1)
     }
-    if (subscriber != 1)
+    if (subscriber == 0 | subscriber == 2)
         mf = 0
     if (city == "nyc")
         fname <- paste (fname, "_", subscriber, mf, sep="")
@@ -254,7 +256,10 @@ fit.gaussian <- function (city="nyc", from=TRUE, covar=TRUE, std=TRUE,
     dat <- get.data (city=city, from=from, covar=covar, std=std,
                      nearfar=nearfar, zeros=zeros, subscriber=subscriber,
                      mf=mf, msg=msg)
-    fname <- paste ("../results/NumTrips_", city, sep="")
+    rd <- "../results/";
+    if (subscriber > 2)
+        rd <- paste (rd, "age/", sep="")
+    fname <- paste (rd, "/NumTrips_", city, sep="")
     if (city == "nyc")
         fname <- paste (fname, "_", subscriber, mf, sep="")
     fname <- paste (fname, ".csv", sep="")
@@ -675,4 +680,52 @@ compare.subscribers <- function (covar=TRUE, std=TRUE, zeros=TRUE)
          formatC (sd (dat1$k), format="f", digits=2), ", ",
          formatC (mean (dat2$k), format="f", digits=2), "+/-",
          formatC (sd (dat2$k), format="f", digits=2), ")\n", sep="")
-} # end compare.nearfar()
+} # end compare.subscribers()
+
+
+# ************************************************************ 
+# ************************************************************ 
+# *****                                                  *****
+# *****                    COMPARE.AGE                   *****
+# *****                                                  *****
+# ************************************************************ 
+# ************************************************************ 
+
+compare.age <- function (covar=TRUE, std=TRUE, zeros=TRUE)
+{
+    years <- (192:199) * 10
+    kmn <- ksd <- rep (NA, length (years))
+    dat <- list ()
+    for (i in 1:length (years))
+    {
+        dat [[i]] <- fit.gaussian (city="nyc", covar=covar, std=std,
+                                   zeros=zeros, subscriber=3, mf=years [i])
+        kmn [i] <- mean (dat [[i]]$k)
+        ksd [i] <- sd (dat [[i]]$k)
+    }
+    age <- 2015 - years
+
+    ylims <- range (c (kmn - ksd, kmn + ksd))
+    plot (age, kmn, "l", col="red", lwd=2, ylim=ylims, bty="l")
+    lines (age, kmn - ksd, col="red", lwd=2, lty=2)
+    lines (age, kmn + ksd, col="red", lwd=2, lty=2)
+
+    # The regression is then calculated on the full data, not means
+    kvals <- unlist (sapply (dat, function (x) x$k))
+    ages <- NULL
+    for (i in 1:length (years))
+        ages <- c (ages, rep (age [i], dim (dat [[i]]) [1]))
+    maxage <- 80
+    indx <- which (ages < maxage)
+    ages <- ages [indx]
+    kvals <- kvals [indx]
+    mod <- lm (kvals ~ ages)
+    age <- age [which (age < maxage)]
+    fit <- predict (mod, new=data.frame (ages=age))
+
+    lines (age, fit, col="blue", lwd=2)
+    r2 <- formatC (summary (mod)$r.squared, format="f", digits=2)
+    p <- formatC (summary (mod)$coefficients [8], format="f", digits=4)
+    title (main=paste ("R2 = ", r2, " (p = ", p, ")", sep=""))
+    cat ("NOTE: Regression only calculated to age < 80\n")
+} # end compare.age()

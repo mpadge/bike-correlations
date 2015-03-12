@@ -29,6 +29,8 @@ class RideData: public StationData
         int nearfar;
         dmat ntrips; // dmat to allow standardisation to unit sum
         imat ntrips_cust, ntrips_sub_m, ntrips_sub_f, ntrips_sub_n;
+        imat ntrips1920, ntrips1930, ntrips1940, ntrips1950, ntrips1960,
+             ntrips1970, ntrips1980, ntrips1990, ntrips2000;
         // Customers by definition have no data, and the _n files are
         // subscribers whose gender is not given
         dmat r2, cov, dists;
@@ -45,10 +47,50 @@ class RideData: public StationData
             _stnIndxLen = _StationIndex.size ();
             missingStations.resize (0);
             ntrips.resize (_numStations, _numStations);
-            ntrips_cust.resize (_numStations, _numStations);
-            ntrips_sub_f.resize (_numStations, _numStations);
-            ntrips_sub_m.resize (_numStations, _numStations);
-            ntrips_sub_n.resize (_numStations, _numStations);
+            if (_subscriber < 3)
+            {
+                ntrips_cust.resize (_numStations, _numStations);
+                ntrips_sub_f.resize (_numStations, _numStations);
+                ntrips_sub_m.resize (_numStations, _numStations);
+                ntrips_sub_n.resize (_numStations, _numStations);
+                for (int i=0; i<_numStations; i++)
+                {
+                    for (int j=0; j<_numStations; j++)
+                    {
+                        ntrips_cust (i, j) = 0;
+                        ntrips_sub_f (i, j) = 0;
+                        ntrips_sub_m (i, j) = 0;
+                        ntrips_sub_n (i, j) = 0;
+                    }
+                }
+            }
+            else
+            {
+                ntrips1920.resize (_numStations, _numStations);
+                ntrips1930.resize (_numStations, _numStations);
+                ntrips1940.resize (_numStations, _numStations);
+                ntrips1950.resize (_numStations, _numStations);
+                ntrips1960.resize (_numStations, _numStations);
+                ntrips1970.resize (_numStations, _numStations);
+                ntrips1980.resize (_numStations, _numStations);
+                ntrips1990.resize (_numStations, _numStations);
+                ntrips2000.resize (_numStations, _numStations);
+                for (int i=0; i<_numStations; i++)
+                {
+                    for (int j=0; j<_numStations; j++)
+                    {
+                        ntrips1920 (i, j) = 0;
+                        ntrips1930 (i, j) = 0;
+                        ntrips1940 (i, j) = 0;
+                        ntrips1950 (i, j) = 0;
+                        ntrips1960 (i, j) = 0;
+                        ntrips1970 (i, j) = 0;
+                        ntrips1980 (i, j) = 0;
+                        ntrips1990 (i, j) = 0;
+                        ntrips2000 (i, j) = 0;
+                    }
+                }
+            } // else subscriber > 2
             r2.resize (_numStations, _numStations);
             cov.resize (_numStations, _numStations);
             dists.resize (_numStations, _numStations);
@@ -56,10 +98,6 @@ class RideData: public StationData
             {
                 for (int j=0; j<_numStations; j++)
                 {
-                    ntrips_cust (i, j) = 0;
-                    ntrips_sub_f (i, j) = 0;
-                    ntrips_sub_m (i, j) = 0;
-                    ntrips_sub_n (i, j) = 0;
                     ntrips (i, j) = 0.0;
                     r2 (i, j) = -9999.9;
                     cov (i, j) = -9999.9;
@@ -81,10 +119,25 @@ class RideData: public StationData
         {
             missingStations.resize (0);
             ntrips.resize (0, 0);
-            ntrips_cust.resize (0, 0);
-            ntrips_sub_f.resize (0, 0);
-            ntrips_sub_m.resize (0, 0);
-            ntrips_sub_n.resize (0, 0);
+            if (_subscriber < 3)
+            {
+                ntrips_cust.resize (0, 0);
+                ntrips_sub_f.resize (0, 0);
+                ntrips_sub_m.resize (0, 0);
+                ntrips_sub_n.resize (0, 0);
+            }
+            else
+            {
+                ntrips1920.resize (0, 0);
+                ntrips1930.resize (0, 0);
+                ntrips1940.resize (0, 0);
+                ntrips1950.resize (0, 0);
+                ntrips1960.resize (0, 0);
+                ntrips1970.resize (0, 0);
+                ntrips1980.resize (0, 0);
+                ntrips1990.resize (0, 0);
+                ntrips2000.resize (0, 0);
+            }
             r2.resize (0, 0);
             cov.resize (0, 0);
             dists.resize (0, 0);

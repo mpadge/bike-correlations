@@ -374,17 +374,43 @@ int RideData::readOneFileNYC (int filei)
             linetxt = linetxt.substr (ipos + 3, linetxt.length () - ipos - 1);
             ipos = linetxt.find ("\",\"", 0);
             tempi [2] = atoi (linetxt.substr (0, ipos).c_str()); // Birthyear
-            linetxt = linetxt.substr (ipos + 3, linetxt.length () - ipos - 1);
-            tempi [3] = atoi (linetxt.substr (0, 1).c_str()); // Gender
-            if (usertype != "Subscriber")
-                ntrips_cust (tempi [0], tempi [1])++;
+            tempi [2] = floor (tempi [2] / 10);
+            if (RideData::getSubscriber () > 2)
+            {
+                // TODO: Write this better!
+                if (tempi [2] == 192)
+                    ntrips1920 (tempi [0], tempi [1])++;
+                else if (tempi [2] == 193)
+                    ntrips1930 (tempi [0], tempi [1])++;
+                else if (tempi [2] == 194)
+                    ntrips1940 (tempi [0], tempi [1])++;
+                else if (tempi [2] == 195)
+                    ntrips1950 (tempi [0], tempi [1])++;
+                else if (tempi [2] == 196)
+                    ntrips1960 (tempi [0], tempi [1])++;
+                else if (tempi [2] == 197)
+                    ntrips1970 (tempi [0], tempi [1])++;
+                else if (tempi [2] == 198)
+                    ntrips1980 (tempi [0], tempi [1])++;
+                else if (tempi [2] == 199)
+                    ntrips1990 (tempi [0], tempi [1])++;
+                else if (tempi [2] == 200)
+                    ntrips2000 (tempi [0], tempi [1])++;
+            }
             else
-                if (tempi [3] == 1)
-                    ntrips_sub_m (tempi [0], tempi [1])++;
-                else if (tempi [3] == 2)
-                    ntrips_sub_f (tempi [0], tempi [1])++;
+            {
+                linetxt = linetxt.substr (ipos + 3, linetxt.length () - ipos - 1);
+                tempi [3] = atoi (linetxt.substr (0, 1).c_str()); // Gender
+                if (usertype != "Subscriber")
+                    ntrips_cust (tempi [0], tempi [1])++;
                 else
-                    ntrips_sub_n (tempi [0], tempi [1])++;
+                    if (tempi [3] == 1)
+                        ntrips_sub_m (tempi [0], tempi [1])++;
+                    else if (tempi [3] == 2)
+                        ntrips_sub_f (tempi [0], tempi [1])++;
+                    else
+                        ntrips_sub_n (tempi [0], tempi [1])++;
+            }
             count++; 
         } // end if stations in StnIndxLen
     } // end while getline
@@ -437,11 +463,58 @@ int RideData::aggregateTrips ()
                 for (int j=0; j<numStations; j++)
                     ntrips (i, j) += (double) ntrips_sub_f (i, j);
     }
-    else
+    else if (subscriber == 2)
     {
         for (int i=0; i<numStations; i++)
             for (int j=0; j<numStations; j++)
                 ntrips (i, j) += (double) ntrips_cust (i, j);
+    }
+    else
+    {
+        if (gender == 1920)
+            for (int i=0; i<numStations; i++)
+                for (int j=0; j<numStations; j++)
+                    ntrips (i, j) += (double) ntrips1920 (i, j);
+        else if (gender == 1930)
+            for (int i=0; i<numStations; i++)
+                for (int j=0; j<numStations; j++)
+                    ntrips (i, j) += (double) ntrips1930 (i, j);
+        else if (gender == 1940)
+            for (int i=0; i<numStations; i++)
+                for (int j=0; j<numStations; j++)
+                    ntrips (i, j) += (double) ntrips1940 (i, j);
+        else if (gender == 1950)
+            for (int i=0; i<numStations; i++)
+                for (int j=0; j<numStations; j++)
+                    ntrips (i, j) += (double) ntrips1950 (i, j);
+        else if (gender == 1960)
+            for (int i=0; i<numStations; i++)
+                for (int j=0; j<numStations; j++)
+                    ntrips (i, j) += (double) ntrips1960 (i, j);
+        else if (gender == 1970)
+            for (int i=0; i<numStations; i++)
+                for (int j=0; j<numStations; j++)
+                    ntrips (i, j) += (double) ntrips1970 (i, j);
+        else if (gender == 1980)
+            for (int i=0; i<numStations; i++)
+                for (int j=0; j<numStations; j++)
+                    ntrips (i, j) += (double) ntrips1980 (i, j);
+        else if (gender == 1990)
+            for (int i=0; i<numStations; i++)
+                for (int j=0; j<numStations; j++)
+                    ntrips (i, j) += (double) ntrips1990 (i, j);
+        else if (gender == 2000)
+            for (int i=0; i<numStations; i++)
+                for (int j=0; j<numStations; j++)
+                    ntrips (i, j) += (double) ntrips2000 (i, j);
+        else // default should not happen!
+            for (int i=0; i<numStations; i++)
+                for (int j=0; j<numStations; j++)
+                    ntrips (i, j) += (double) ntrips1920 (i, j) +
+                    (double) ntrips1930 (i, j) + (double) ntrips1940 (i, j) +
+                    (double) ntrips1950 (i, j) + (double) ntrips1960 (i, j) +
+                    (double) ntrips1970 (i, j) + (double) ntrips1980 (i, j) +
+                    (double) ntrips1990 (i, j) + (double) ntrips2000 (i, j);
     }
 } // end aggregateTrips
 

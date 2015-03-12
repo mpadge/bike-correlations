@@ -13,6 +13,10 @@ int main(int argc, char *argv[]) {
     std::cout << "|\t1. <city> for <city>=<london/nyc>\t\t\t\t\t\t|" << std::endl;
     std::cout << "|\t2. (0,1,2) for analyses of (all, subscriber, customer)" <<
         " data (NYC only)\t\t|" << std::endl;
+    std::cout << "|\t ---or set the second parameter to >2 for analysis of" <<
+        " age-class data---\t\t|" << std::endl;
+    std::cout << "|\t ---in which case the 3rd parameter is the decade to"
+        " be analysed---\t\t|" << std::endl;
     std::cout << "|\t3. (0,1,2) for analyses of (all, male, female) " <<
         "data (NYC only)\t\t\t|" << std::endl;
     std::cout << "|\t(NOTE that (male,female) can only be analysed for " <<
@@ -42,7 +46,7 @@ int main(int argc, char *argv[]) {
             }
         } else {
             tempi [count] = atoi (*argv);
-            if (tempi [count] < 0 || tempi [count] > 2)
+            if (tempi [count] < 0)
                 tempi [count] = 0; 
         }
         count++;
@@ -54,21 +58,29 @@ int main(int argc, char *argv[]) {
         std::cout << "\t\t\t\t\t\t|" << std::endl;
     else {
         std::cout << " --- data = (";
-        tempstr.resize (0);
-        tempstr.push_back ("all");
-        tempstr.push_back ("subscriber");
-        tempstr.push_back ("customer");
-        std::cout << tempstr [tempi [0]] << ", ";
-        tempstr.resize (0);
-        tempstr.push_back ("all");
-        tempstr.push_back ("male");
-        tempstr.push_back ("female");
-        std::cout << tempstr [tempi [1]] << ")";
-        if (tempi [0] == 0 || (tempi [0] == 1 && tempi [1] == 0) ||
-                (tempi [0] == 2 && tempi [1] < 2))
-            std::cout << "\t";
-        std::cout << "\t\t\t\t|" << std::endl;
-        tempstr.resize (0);
+        if (tempi [0] < 3)
+        {
+            tempstr.resize (0);
+            tempstr.push_back ("all");
+            tempstr.push_back ("subscriber");
+            tempstr.push_back ("customer");
+            tempstr.push_back ("age");
+            std::cout << tempstr [tempi [0]] << ", ";
+            tempstr.resize (0);
+            tempstr.push_back ("all");
+            tempstr.push_back ("male");
+            tempstr.push_back ("female");
+            std::cout << tempstr [tempi [1]] << ")";
+            if (tempi [0] == 0 || (tempi [0] == 1 && tempi [1] == 0) ||
+                    (tempi [0] == 2 && tempi [1] < 2))
+                std::cout << "\t";
+            std::cout << "\t\t\t\t|" << std::endl;
+            tempstr.resize (0);
+        }
+        else
+        {
+            std::cout << "age)\t\t\t\t\t\t|" << std::endl;
+        }
     }
     std::cout << "_____________________________________________" << 
         "____________________________________________" << std::endl << std::endl;
@@ -100,7 +112,7 @@ int main(int argc, char *argv[]) {
         }
     } else { // city = NYC
         count = 0;
-        for (int i=17; i<rideData.getNumFiles(); i++)
+        for (int i=0; i<rideData.getNumFiles(); i++)
         {
             tempi [0] = rideData.getZipFileNameNYC (i);
             if (rideData.fileName != "") {

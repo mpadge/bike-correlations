@@ -100,7 +100,7 @@ int main(int argc, char *argv[]) {
         }
     } else { // city = NYC
         count = 0;
-        for (int i=0; i<rideData.getNumFiles(); i++)
+        for (int i=17; i<rideData.getNumFiles(); i++)
         {
             tempi [0] = rideData.getZipFileNameNYC (i);
             if (rideData.fileName != "") {

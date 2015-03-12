@@ -412,13 +412,17 @@ int RideData::aggregateTrips ()
     // (male, female) only make sense for subscriber = 1, and are ignored
     // otherwise.
     if (subscriber == 0)
+    {
         for (int i=0; i<numStations; i++)
             for (int j=0; j<numStations; j++)
                 ntrips (i, j) += (double) ntrips_sub_f (i, j) +
                     (double) ntrips_sub_m (i, j) +
                     (double) ntrips_sub_n (i, j) +
                     (double) ntrips_cust (i, j);
+
+    }
     else if (subscriber == 1)
+    {
         if (gender == 0)
             for (int i=0; i<numStations; i++)
                 for (int j=0; j<numStations; j++)
@@ -432,10 +436,13 @@ int RideData::aggregateTrips ()
             for (int i=0; i<numStations; i++)
                 for (int j=0; j<numStations; j++)
                     ntrips (i, j) += (double) ntrips_sub_f (i, j);
+    }
     else
+    {
         for (int i=0; i<numStations; i++)
             for (int j=0; j<numStations; j++)
                 ntrips (i, j) += (double) ntrips_cust (i, j);
+    }
 } // end aggregateTrips
 
 

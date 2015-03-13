@@ -17,6 +17,8 @@ int main(int argc, char *argv[]) {
         " age-class data---\t\t|" << std::endl;
     std::cout << "|\t ---in which case the 3rd parameter is the decade to"
         " be analysed---\t\t|" << std::endl;
+    std::cout << "|\t ---or set to 0 for \"young\" = <40, and 1 for \"old\"" <<
+        "---\t\t\t\t|" << std::endl;
     std::cout << "|\t3. (0,1,2) for analyses of (all, male, female) " <<
         "data (NYC only)\t\t\t|" << std::endl;
     std::cout << "|\t(NOTE that (male,female) can only be analysed for " <<
@@ -121,6 +123,7 @@ int main(int argc, char *argv[]) {
             }
         } // end for i
         std::cout << "Total number of trips = " << count << std::endl;
+        rideData.summaryStatsNYC ();
         tempi [0] = rideData.aggregateTrips ();
     }
 

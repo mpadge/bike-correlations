@@ -30,7 +30,9 @@ class RideData: public StationData
         dmat ntrips; // dmat to allow standardisation to unit sum
         imat ntrips_cust, ntrips_sub_m, ntrips_sub_f, ntrips_sub_n;
         imat ntrips1920, ntrips1930, ntrips1940, ntrips1950, ntrips1960,
-             ntrips1970, ntrips1980, ntrips1990, ntrips2000;
+             ntrips1970, ntrips1980, ntrips1990, ntrips2000,
+             ntripsYoung, ntripsOld;
+        int ageDistribution [99];
         // Customers by definition have no data, and the _n files are
         // subscribers whose gender is not given
         dmat r2, cov, dists;
@@ -75,6 +77,8 @@ class RideData: public StationData
                 ntrips1980.resize (_numStations, _numStations);
                 ntrips1990.resize (_numStations, _numStations);
                 ntrips2000.resize (_numStations, _numStations);
+                ntripsYoung.resize (_numStations, _numStations);
+                ntripsOld.resize (_numStations, _numStations);
                 for (int i=0; i<_numStations; i++)
                 {
                     for (int j=0; j<_numStations; j++)
@@ -88,6 +92,8 @@ class RideData: public StationData
                         ntrips1980 (i, j) = 0;
                         ntrips1990 (i, j) = 0;
                         ntrips2000 (i, j) = 0;
+                        ntripsYoung (i, j) = 0;
+                        ntripsOld (i, j) = 0;
                     }
                 }
             } // else subscriber > 2
@@ -105,6 +111,8 @@ class RideData: public StationData
                 }
             }
             _standardise = true; // false doesn't make sense
+            for (int i=0; i<99; i++)
+                ageDistribution [i] = 0;
 
             txtzerolist.resize (0);
             txtzerolist.push_back ("zeros");
@@ -137,6 +145,8 @@ class RideData: public StationData
                 ntrips1980.resize (0, 0);
                 ntrips1990.resize (0, 0);
                 ntrips2000.resize (0, 0);
+                ntripsYoung.resize (0, 0);
+                ntripsOld.resize (0, 0);
             }
             r2.resize (0, 0);
             cov.resize (0, 0);
@@ -160,6 +170,7 @@ class RideData: public StationData
 
         int getZipFileNameNYC (int filei);
         int readOneFileNYC (int filei);
+        void summaryStatsNYC ();
         int aggregateTrips ();
 
         int writeNumTrips ();

@@ -247,12 +247,11 @@ fit.decay <- function (city="nyc", from=TRUE, mod.type="power", covar=TRUE,
 # ************************************************************ 
 
 fit.gaussian <- function (city="nyc", from=TRUE, covar=TRUE, std=TRUE,
-                          nearfar=0, zeros=TRUE, subscriber=0, mf=0)
+                          nearfar=0, zeros=TRUE, subscriber=0, mf=0, msg=FALSE)
 {
     # Produces a data frame with [i, k, y, ss, ntrips]
     # If !covar, then models are fitted to R2 values, otherwise they are fitted
     # to covariances.
-    msg <- TRUE
     dat <- get.data (city=city, from=from, covar=covar, std=std,
                      nearfar=nearfar, zeros=zeros, subscriber=subscriber,
                      mf=mf, msg=msg)
@@ -572,7 +571,6 @@ compare.nearfar <- function (covar=TRUE, std=TRUE, zeros=TRUE)
              formatC (sd (dat1$k), format="f", digits=2), ", ",
              formatC (mean (dat2$k), format="f", digits=2), "+/-",
              formatC (sd (dat2$k), format="f", digits=2), ")\n", sep="")
-
     }
 
     # -------------------------------------------------
@@ -694,7 +692,7 @@ compare.subscribers <- function (covar=TRUE, std=TRUE, zeros=TRUE)
 compare.age <- function (covar=TRUE, std=TRUE, zeros=TRUE)
 {
     years <- (192:199) * 10
-    kmn <- ksd <- rep (NA, length (years))
+    kmn <- ksd <- rep (NA, length (years)) # Just used to get ylims
     dat <- list ()
     for (i in 1:length (years))
     {
@@ -702,20 +700,22 @@ compare.age <- function (covar=TRUE, std=TRUE, zeros=TRUE)
                                    zeros=zeros, subscriber=3, mf=years [i])
         kmn [i] <- mean (dat [[i]]$k)
         ksd [i] <- sd (dat [[i]]$k)
+        cat (".", sep="")
     }
+    cat ("\n")
     age <- 2015 - years
 
+    xlims <- range (age)
     ylims <- range (c (kmn - ksd, kmn + ksd))
-    plot (age, kmn, "l", col="red", lwd=2, ylim=ylims, bty="l")
-    lines (age, kmn - ksd, col="red", lwd=2, lty=2)
-    lines (age, kmn + ksd, col="red", lwd=2, lty=2)
 
-    # The regression is then calculated on the full data, not means
+    # Convert to single vectors for boxplot
     kvals <- unlist (sapply (dat, function (x) x$k))
     ages <- NULL
     for (i in 1:length (years))
         ages <- c (ages, rep (age [i], dim (dat [[i]]) [1]))
-    maxage <- 80
+    boxplot (kvals ~ ages, notch=TRUE, ylim=ylims, col="lawngreen")
+
+    maxage <- 90
     indx <- which (ages < maxage)
     ages <- ages [indx]
     kvals <- kvals [indx]
@@ -723,9 +723,77 @@ compare.age <- function (covar=TRUE, std=TRUE, zeros=TRUE)
     age <- age [which (age < maxage)]
     fit <- predict (mod, new=data.frame (ages=age))
 
-    lines (age, fit, col="blue", lwd=2)
+    par (new=TRUE)
+    plot (age, fit, "l", col="blue", lwd=2, xlim=xlims, ylim=ylims,
+          xaxt="n", yaxt="n", xlab="", ylab="", frame=FALSE)
     r2 <- formatC (summary (mod)$r.squared, format="f", digits=2)
     p <- formatC (summary (mod)$coefficients [8], format="f", digits=4)
     title (main=paste ("R2 = ", r2, " (p = ", p, ")", sep=""))
-    cat ("NOTE: Regression only calculated to age < 80\n")
+    
+    dat1 <- fit.gaussian (city="nyc", covar=covar, std=std, zeros=zeros, 
+                          nearfar=0, subscriber=3, mf=0) # young
+    dat2 <- fit.gaussian (city="nyc", covar=covar, std=std, zeros=zeros,
+                          nearfar=0, subscriber=3, mf=1) # old
+    tt <- t.test (dat1$k, dat2$k)
+    cat ("NYC Young/Old: T = ",
+         formatC (tt$statistic, format="f", digits=2), "; df = ",
+         formatC (tt$parameter, format="f", digits=1), "; p = ",
+         formatC (tt$p.value, format="f", digits=4), "\n", sep="")
+    cat ("Mean +/- SD k-values for (young, old) are (",
+         formatC (mean (dat1$k), format="f", digits=2), "+/-",
+         formatC (sd (dat1$k), format="f", digits=2), ", ",
+         formatC (mean (dat2$k), format="f", digits=2), "+/-",
+         formatC (sd (dat2$k), format="f", digits=2), ")\n", sep="")
 } # end compare.age()
+
+
+# ************************************************************ 
+# ************************************************************ 
+# *****                                                  *****
+# *****                   SUMMARY.STATS                  *****
+# *****                                                  *****
+# ************************************************************ 
+# ************************************************************ 
+
+summary.stats <- function (covar=TRUE, std=TRUE, zeros=TRUE)
+{
+    cat ("-----T-statistics for pairwise comparisons between k-values-----\n")
+    cat ("NOTE: Comparisons are ordered as written, so negative T-values",
+         "mean the first value is lower\n\n")
+    # Direct comparison of all T-statistics 
+    city <- c ("london", rep ("nyc", 8))
+    nearfar1 <- c (1, 1, 1, 1, 1, 1, 0, 0, 0)
+    nearfar2 <- c (2, 2, 2, 2, 2, 2, 0, 0, 0)
+    subscriber1 <- c (0, 0, 1, 2, 1, 1, 1, 1, 3)
+    subscriber2 <- c (0, 0, 1, 2, 1, 1, 2, 1, 3)
+    gender1 <- c (0, 0, 0, 0, 2, 1, 0, 2, 0)
+    gender2 <- c (0, 0, 0, 0, 2, 1, 0, 1, 1)
+
+    nftxt <- c (rep ("NEAR/FAR", 6), rep ("all\t", 3))
+    subtxt <- c (rep ("all\t", 2), "subscriber", "customer",
+                 rep ("subscriber", 2), "SUB/CUST", rep ("subscriber", 2))
+    gtxt <- c (rep ("all\t", 4), "female\t", "male\t", "all\t", "FEMALE/MALE",
+               "all\t")
+    atxt <- c (rep ("all\t", 8), "YOUNG/OLD")
+
+    cat ("|\tCity\tNear/Far\tSubscriber Status\tGender\t\tAge\t\t",
+         "T-value\tp-value\t|\n", sep="")
+    cat (rep ("-", 105), "\n", sep="")
+
+    for (i in 1:length (city))
+    {
+        cat ("|\t", city [i], "\t", nftxt [i], "\t", subtxt [i], "\t\t", 
+             gtxt [i], "\t", atxt [i], "\t", sep="")
+
+        dat1 <- fit.gaussian (city=city[i], covar=covar, std=std, zeros=zeros, 
+                              nearfar=nearfar1[i], 
+                              subscriber=subscriber1[i], mf=gender1[i])
+        dat2 <- fit.gaussian (city=city[i], covar=covar, std=std, zeros=zeros, 
+                              nearfar=nearfar2[i], 
+                              subscriber=subscriber2[i], mf=gender2[i]) 
+        tt <- t.test (dat1$k, dat2$k)
+        cat (formatC (tt$statistic, format="f", digits=2), "\t",
+         formatC (tt$p.value, format="f", digits=4), "\t|\n", sep="")
+    }
+    cat (rep ("-", 105), "\n", sep="")
+}

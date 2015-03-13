@@ -281,7 +281,7 @@ int RideData::readOneFileNYC (int filei)
     struct zip_file *zf;
     struct zip_stat sb;
     char buf[100]; 
-    int err, len;
+    int err, len, fileYear, age;
     long long sum;
 
     archive = fname.c_str ();
@@ -290,6 +290,7 @@ int RideData::readOneFileNYC (int filei)
     zip_stat_index(za, 0, 0, &sb);
     std::string fname_csv = StationData::GetDirName() + '/' + fileName;
     std::ofstream out_file (fname_csv.c_str(), std::ios::out);
+    fileYear = atoi (fileName.substr (0, 4).c_str());
 
     sum = 0;
     while (sum != sb.size) {
@@ -374,9 +375,16 @@ int RideData::readOneFileNYC (int filei)
             linetxt = linetxt.substr (ipos + 3, linetxt.length () - ipos - 1);
             ipos = linetxt.find ("\",\"", 0);
             tempi [2] = atoi (linetxt.substr (0, ipos).c_str()); // Birthyear
+            age = fileYear - tempi [2];
+            if (age > 0 && age < 99)
+                ageDistribution [age]++;
             tempi [2] = floor (tempi [2] / 10);
             if (RideData::getSubscriber () > 2)
             {
+                if (age > 0 && age < 38) // Average age is 37.7
+                    ntripsYoung (tempi [0], tempi [1])++;
+                else if (age < 99)
+                    ntripsOld (tempi [0], tempi [1])++;
                 // TODO: Write this better!
                 if (tempi [2] == 192)
                     ntrips1920 (tempi [0], tempi [1])++;
@@ -419,6 +427,44 @@ int RideData::readOneFileNYC (int filei)
 
     return count;
 } // end readOneFileNYC
+
+
+/************************************************************************
+ ************************************************************************
+ **                                                                    **
+ **                          SUMMARYSTATSNYC                           **
+ **                                                                    **
+ ************************************************************************
+ ************************************************************************/
+
+void RideData::summaryStatsNYC ()
+{
+    // Average Age
+    int tempi [2] = {0,0};
+    for (int i=0; i<99; i++)
+    {
+        tempi [0] += i * ageDistribution [i];
+        tempi [1] += ageDistribution [i];
+    }
+    std::cout << "Average Age = " << (double) tempi [0] / (double) tempi [1] << 
+        std::endl;
+
+    if (RideData::getSubscriber () < 3)
+    {
+        // Male-Female ratio
+        tempi [0] = tempi [1] = 0;
+        int numStations = RideData::getNumStations ();
+        for (int i=0; i<numStations; i++)
+            for (int j=0; j<numStations; j++)
+            {
+                tempi [0] += ntrips_sub_f (i, j);
+                tempi [1] += ntrips_sub_m (i, j);
+            }
+        std::cout << "Female/Male ratio = " << (double) tempi [0] /
+            (double) tempi [1] << std::endl;
+    }
+} // end summaryStatsNYC
+
 
 /************************************************************************
  ************************************************************************
@@ -471,7 +517,15 @@ int RideData::aggregateTrips ()
     }
     else
     {
-        if (gender == 1920)
+        if (gender == 0) // "young"
+            for (int i=0; i<numStations; i++)
+                for (int j=0; j<numStations; j++)
+                    ntrips (i, j) += (double) ntripsYoung (i, j);
+        else if (gender == 1) // "old"
+            for (int i=0; i<numStations; i++)
+                for (int j=0; j<numStations; j++)
+                    ntrips (i, j) += (double) ntripsOld (i, j);
+        else if (gender == 1920)
             for (int i=0; i<numStations; i++)
                 for (int j=0; j<numStations; j++)
                     ntrips (i, j) += (double) ntrips1920 (i, j);

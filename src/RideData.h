@@ -168,6 +168,8 @@ class RideData: public StationData
         void dumpMissingStations ();
         int removeFile ();
 
+        int readOyster ();
+
         int getZipFileNameNYC (int filei);
         int readOneFileNYC (int filei);
         void summaryStatsNYC ();

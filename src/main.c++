@@ -41,11 +41,12 @@ int main(int argc, char *argv[]) {
         {
             city = *argv;
             std::transform (city.begin(), city.end(), city.begin(), ::tolower);
-            if (city.substr (0, 2) == "lo") {
+            if (city.substr (0, 2) == "lo")
                 city = "london";
-            } else {
+            else if (city.substr (0, 3) == "oys")
+                city = "oyster";
+            else
                 city = "nyc";
-            }
         } else {
             tempi [count] = atoi (*argv);
             if (tempi [count] < 0)
@@ -53,10 +54,19 @@ int main(int argc, char *argv[]) {
         }
         count++;
     }
+    // TODO: Delete this!
+    tempi [0] = 0;
+    if (city == "oyster")
+    {
+        tempi [0] = 1;
+        city = "london";
+    }
     RideData rideData (city, tempi [0], tempi [1]);
+    if (tempi [0] == 1)
+        city = "oyster";
 
     std::cout << "|\t\tcity = " << city;
-    if (city == "london")
+    if (city == "london" || city == "oyster")
         std::cout << "\t\t\t\t\t\t|" << std::endl;
     else {
         std::cout << " --- data = (";
@@ -93,7 +103,8 @@ int main(int argc, char *argv[]) {
         rideData.getNumFiles() << " trip files." << std::endl;
 
     count = 0;
-    if (city == "london") {
+    if (city == "london")
+    {
         for (int i=0; i<rideData.getNumFiles(); i++)
         {
             nfiles = rideData.countFilesLondon (i);
@@ -112,6 +123,10 @@ int main(int argc, char *argv[]) {
             rideData.dumpMissingStations ();
             std::cout << "Total Number of Trips = " << count << std::endl;
         }
+    } else if (city == "oyster")
+    {
+        tempi [0] = rideData.GetRailStations ();
+        tempi [0] = rideData.readOyster ();
     } else { // city = NYC
         count = 0;
         for (int i=0; i<rideData.getNumFiles(); i++)

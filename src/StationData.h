@@ -43,17 +43,25 @@ class StationData
             filelist.resize (0);
             FileList.resize (0);
         }
-        struct OneStation {
+        struct OneStation
+        {
             int ID, indx;
             float lon, lat;
         };
+        struct OneRailStation 
+        {
+            std::string Name;
+            float lon, lat;
+        };
         std::vector <OneStation> StationList;
+        std::vector <OneRailStation> RailStationList;
         std::vector <std::string> filelist;
 
         std::string GetDirName ();
         void GetDirList ();
         void MakeStationIndex ();
         int GetStations ();
+        int GetRailStations ();
 
         int getNumStations () { return _numStations;  }
         int getMaxStation () { return _maxStations;  }

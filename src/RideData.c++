@@ -47,7 +47,7 @@ int RideData::countFilesLondon (int filei)
 /************************************************************************
  ************************************************************************
  **                                                                    **
- **                         GETFILENAMESLONDON                         **
+ **                         UNZIPONEFILELONDON                         **
  **                                                                    **
  ************************************************************************
  ************************************************************************/
@@ -199,7 +199,7 @@ void RideData::dumpMissingStations ()
 /************************************************************************
  ************************************************************************
  **                                                                    **
- **                         READONEFILELONDON                          **
+ **                            REMOVEFILE                              **
  **                                                                    **
  ************************************************************************
  ************************************************************************/
@@ -212,6 +212,142 @@ int RideData::removeFile ()
         return 1;
     else
         return 0;
+}
+
+
+/************************************************************************
+ ************************************************************************
+ **                                                                    **
+ **                            READOYSTER                              **
+ **                                                                    **
+ ************************************************************************
+ ************************************************************************/
+
+int RideData::readOyster ()
+{
+    const char *archive;
+    struct zip *za;
+    struct zip_file *zf;
+    struct zip_stat sb;
+    char buf[100]; 
+    int err, len, sum = 0;
+    std::ofstream out_file;
+
+    std::string fname_base = "/data/data/oystercardjourneyinformation.zip",
+        dirName = "/data/data/";
+    std::string fname_csv;
+    archive = fname_base.c_str ();
+    if ((za = zip_open(archive, 0, &err)) == NULL) {
+        zip_error_to_str(buf, sizeof(buf), err, errno);
+        std::cout << stderr << archive << "can't open size archive : " <<
+            buf << std::endl;
+        return -1;
+    } 
+    int nfiles = zip_get_num_entries (za, 0);
+    for (int i=0; i<nfiles; i++)
+    {
+        if (zip_stat_index (za, i, 0, &sb) == 0) {
+            fname_csv = dirName + sb.name;
+            zf = zip_fopen_index(za, 0, 0);
+            if (!zf) {
+                std::cout << stderr << "ERROR: cannot open file#" <<
+                    i << " in archive " << archive << std::endl;
+                return 1;
+            }
+            out_file.open (fname_csv.c_str(), std::ios::out);
+            while (sum != sb.size) {
+                len = zip_fread(zf, buf, 100);
+                if (len < 0) {
+                    // INSERT ERROR HANDLER
+                }
+                out_file.write (buf, len);
+                sum += len;
+            }
+            out_file.close ();
+
+            zip_fclose(zf); 
+        }
+    }
+    zip_close (za);
+
+
+    int ID, count = 0, ipos, tempi [2];
+    std::string mode, start, stop;
+    std::ifstream in_file;
+    std::string linetxt;
+    std::vector <std::string> stationList;
+    bool startIn, stopIn;
+
+    stationList.resize (0);
+
+    in_file.open (fname_csv.c_str (), std::ifstream::in);
+    if (in_file.fail ()) {
+        // INSERT ERROR HANDLER
+        return -1;
+    }
+    in_file.clear ();
+    in_file.seekg (0); // Both lines needed to rewind file.
+    getline (in_file, linetxt, '\n');
+
+    while (getline (in_file, linetxt, '\n')) { 
+        ipos = linetxt.find("\",\"",0);
+        linetxt = linetxt.substr (ipos + 3, linetxt.length () - ipos - 1);
+        ipos = linetxt.find("\",\"",0);
+        mode = linetxt.substr (0, ipos);
+        linetxt = linetxt.substr (ipos + 3, linetxt.length () - ipos - 1);
+        ipos = linetxt.find("\",\"",0);
+        start = linetxt.substr (0, ipos);
+        linetxt = linetxt.substr (ipos + 3, linetxt.length () - ipos - 1);
+        ipos = linetxt.find("\",\"",0);
+        stop = linetxt.substr (0, ipos);
+
+        if ((mode == "NR" || mode == "LUL" || mode == "LUL/DLR" ||
+                    mode == "DLR") && (start != "Unstarted" &&
+                stop != "Unfinished" && start != "Bus" && stop != "Bus" &&
+                start != "Not Applicable" && stop != "Not Applicable"))
+        {
+            startIn = stopIn = false;
+            for (std::vector <std::string>::iterator pos=stationList.begin();
+                    pos != stationList.end(); pos++)
+            {
+                if (*pos == start)
+                    startIn = true;
+                if (*pos == stop) 
+                    stopIn = true;
+            }
+            if (!startIn)
+                stationList.push_back (start);
+            if (!stopIn && startIn)
+                stationList.push_back (stop);
+            count++; 
+        }
+    } // end while getline
+    in_file.close();
+    remove (fname_csv.c_str ());
+    std::sort (stationList.begin(), stationList.end());
+
+    std::cout << "There are " << stationList.size () << " stations and " << 
+        count << " valid trips." << std::endl;
+    OneRailStation onest;
+    for (std::vector <std::string>::iterator pos=stationList.begin();
+            pos != stationList.end(); pos++)
+    {
+        startIn = false;
+        for (std::vector <OneRailStation>::iterator posr=RailStationList.begin();
+                posr != RailStationList.end(); posr++)
+        {
+            onest = *posr;
+            if (onest.Name == *pos)
+                startIn = true;
+        }
+        if (!startIn)
+            std::cout << "---" << *pos << " not in Rail Station List" <<
+                std::endl;
+    }
+
+    stationList.resize (0);
+
+    return count;
 }
 
 

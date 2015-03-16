@@ -3,7 +3,7 @@
 /************************************************************************
  ************************************************************************
  **                                                                    **
- **                           STATIONDATA                              **
+ **                           GETDIRNAME                               **
  **                                                                    **
  ************************************************************************
  ************************************************************************/
@@ -38,6 +38,14 @@ std::string StationData::GetDirName ()
     return dirtxt;
 } // end StationData::GetDirName
 
+/************************************************************************
+ ************************************************************************
+ **                                                                    **
+ **                           GETDIRLIST                               **
+ **                                                                    **
+ ************************************************************************
+ ************************************************************************/
+
 void StationData::GetDirList ()
 {
     std::string fname;
@@ -66,6 +74,15 @@ void StationData::GetDirList ()
         //return EXIT_FAILURE;
     }
 } // end StationData::GetDirList
+
+
+/************************************************************************
+ ************************************************************************
+ **                                                                    **
+ **                          GETSTATIONS                               **
+ **                                                                    **
+ ************************************************************************
+ ************************************************************************/
 
 int StationData::GetStations ()
 {
@@ -118,6 +135,85 @@ int StationData::GetStations ()
 
     return StationList.size ();
 } // end StationData::GetStations
+
+
+/************************************************************************
+ ************************************************************************
+ **                                                                    **
+ **                        GETRAILSTATIONS                             **
+ **                                                                    **
+ ************************************************************************
+ ************************************************************************/
+
+int StationData::GetRailStations ()
+{
+    // Reads both tube and National Rail stations from separate files
+    const std::string dir = "data/"; 
+    int ipos, tempi;
+    OneRailStation oneStation;
+    std::string fname;
+    std::ifstream in_file;
+    std::string linetxt;
+
+    RailStationList.resize (0);
+    _maxStations = 0;
+
+    fname = dir + "London-tube-stations.txt";
+    in_file.open (fname.c_str (), std::ifstream::in);
+    assert (!in_file.fail ());
+    in_file.clear ();
+    in_file.seekg (0); 
+    getline (in_file, linetxt, '\n'); // header
+    while (getline (in_file, linetxt,'\n'))
+    {
+        ipos = linetxt.find(',',0);
+        oneStation.Name = linetxt.substr (0, ipos).c_str();
+        linetxt = linetxt.substr (ipos + 1, linetxt.length () - ipos - 1);
+        for (int i=0; i<2; i++)
+        {
+            ipos = linetxt.find(',',0);
+            linetxt = linetxt.substr (ipos + 1, linetxt.length () - ipos - 1);
+        }
+        ipos = linetxt.find(',',0);
+        oneStation.lat = atof (linetxt.substr (0, ipos).c_str());
+        linetxt = linetxt.substr (ipos + 1, linetxt.length () - ipos - 1);
+        ipos = linetxt.find(',',0);
+        oneStation.lon = atof (linetxt.substr (0, ipos).c_str());
+        RailStationList.push_back (oneStation);
+    }
+    in_file.close();
+
+    fname = dir + "London-rail-stations.txt";
+    in_file.open (fname.c_str (), std::ifstream::in);
+    assert (!in_file.fail ());
+    in_file.clear ();
+    in_file.seekg (0); 
+    getline (in_file, linetxt, '\n'); // header
+    while (getline (in_file, linetxt,'\n'))
+    {
+        ipos = linetxt.find(',',0);
+        oneStation.Name = linetxt.substr (0, ipos).c_str();
+        linetxt = linetxt.substr (ipos + 1, linetxt.length () - ipos - 1);
+        ipos = linetxt.find(',',0);
+        oneStation.lat = atof (linetxt.substr (0, ipos).c_str());
+        linetxt = linetxt.substr (ipos + 1, linetxt.length () - ipos - 1);
+        ipos = linetxt.find(',',0);
+        oneStation.lon = atof (linetxt.substr (0, ipos).c_str());
+        RailStationList.push_back (oneStation);
+    }
+    in_file.close();
+
+    return RailStationList.size ();
+} // end StationData::GetStations
+
+
+/************************************************************************
+ ************************************************************************
+ **                                                                    **
+ **                          MAKESTATIONINDEX                          **
+ **                                                                    **
+ ************************************************************************
+ ************************************************************************/
 
 void StationData::MakeStationIndex ()
 {

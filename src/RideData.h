@@ -50,66 +50,9 @@ class RideData: public StationData
             missingStations.resize (0);
             ntrips.resize (_numStations, _numStations);
             if (_subscriber < 3)
-            {
-                ntrips_cust.resize (_numStations, _numStations);
-                ntrips_sub_f.resize (_numStations, _numStations);
-                ntrips_sub_m.resize (_numStations, _numStations);
-                ntrips_sub_n.resize (_numStations, _numStations);
-                for (int i=0; i<_numStations; i++)
-                {
-                    for (int j=0; j<_numStations; j++)
-                    {
-                        ntrips_cust (i, j) = 0;
-                        ntrips_sub_f (i, j) = 0;
-                        ntrips_sub_m (i, j) = 0;
-                        ntrips_sub_n (i, j) = 0;
-                    }
-                }
-            }
+                subscriberMFConstruct ();
             else
-            {
-                ntrips1920.resize (_numStations, _numStations);
-                ntrips1930.resize (_numStations, _numStations);
-                ntrips1940.resize (_numStations, _numStations);
-                ntrips1950.resize (_numStations, _numStations);
-                ntrips1960.resize (_numStations, _numStations);
-                ntrips1970.resize (_numStations, _numStations);
-                ntrips1980.resize (_numStations, _numStations);
-                ntrips1990.resize (_numStations, _numStations);
-                ntrips2000.resize (_numStations, _numStations);
-                ntripsYoung.resize (_numStations, _numStations);
-                ntripsOld.resize (_numStations, _numStations);
-                for (int i=0; i<_numStations; i++)
-                {
-                    for (int j=0; j<_numStations; j++)
-                    {
-                        ntrips1920 (i, j) = 0;
-                        ntrips1930 (i, j) = 0;
-                        ntrips1940 (i, j) = 0;
-                        ntrips1950 (i, j) = 0;
-                        ntrips1960 (i, j) = 0;
-                        ntrips1970 (i, j) = 0;
-                        ntrips1980 (i, j) = 0;
-                        ntrips1990 (i, j) = 0;
-                        ntrips2000 (i, j) = 0;
-                        ntripsYoung (i, j) = 0;
-                        ntripsOld (i, j) = 0;
-                    }
-                }
-            } // else subscriber > 2
-            r2.resize (_numStations, _numStations);
-            cov.resize (_numStations, _numStations);
-            dists.resize (_numStations, _numStations);
-            for (int i=0; i<_numStations; i++)
-            {
-                for (int j=0; j<_numStations; j++)
-                {
-                    ntrips (i, j) = 0.0;
-                    r2 (i, j) = -9999.9;
-                    cov (i, j) = -9999.9;
-                    dists (i, j) = -9999.9;
-                }
-            }
+                subscriberAgeConstruct ();
             _standardise = true; // false doesn't make sense
             for (int i=0; i<99; i++)
                 ageDistribution [i] = 0;
@@ -128,26 +71,9 @@ class RideData: public StationData
             missingStations.resize (0);
             ntrips.resize (0, 0);
             if (_subscriber < 3)
-            {
-                ntrips_cust.resize (0, 0);
-                ntrips_sub_f.resize (0, 0);
-                ntrips_sub_m.resize (0, 0);
-                ntrips_sub_n.resize (0, 0);
-            }
+                subscriberMFDestruct();
             else
-            {
-                ntrips1920.resize (0, 0);
-                ntrips1930.resize (0, 0);
-                ntrips1940.resize (0, 0);
-                ntrips1950.resize (0, 0);
-                ntrips1960.resize (0, 0);
-                ntrips1970.resize (0, 0);
-                ntrips1980.resize (0, 0);
-                ntrips1990.resize (0, 0);
-                ntrips2000.resize (0, 0);
-                ntripsYoung.resize (0, 0);
-                ntripsOld.resize (0, 0);
-            }
+                subscriberAgeDestruct();
             r2.resize (0, 0);
             cov.resize (0, 0);
             dists.resize (0, 0);
@@ -155,6 +81,7 @@ class RideData: public StationData
             txtnflist.resize (0);
         }
         
+
         int getSubscriber () { return _subscriber;  }
         int getGender () { return _gender;  }
 
@@ -168,7 +95,7 @@ class RideData: public StationData
         void dumpMissingStations ();
         int removeFile ();
 
-        int readOyster ();
+        int getTrainStations ();
 
         int getZipFileNameNYC (int filei);
         int readOneFileNYC (int filei);
@@ -181,6 +108,92 @@ class RideData: public StationData
         int writeCovMat (bool from);
         int readR2Mat (bool from);
         int writeDMat ();
+
+        void subscriberMFConstruct()
+        {
+            ntrips_cust.resize (_numStations, _numStations);
+            ntrips_sub_f.resize (_numStations, _numStations);
+            ntrips_sub_m.resize (_numStations, _numStations);
+            ntrips_sub_n.resize (_numStations, _numStations);
+            for (int i=0; i<_numStations; i++)
+            {
+                for (int j=0; j<_numStations; j++)
+                {
+                    ntrips_cust (i, j) = 0;
+                    ntrips_sub_f (i, j) = 0;
+                    ntrips_sub_m (i, j) = 0;
+                    ntrips_sub_n (i, j) = 0;
+                }
+            }
+        }
+        void subscriberAgeConstruct()
+        {
+            ntrips1920.resize (_numStations, _numStations);
+            ntrips1930.resize (_numStations, _numStations);
+            ntrips1940.resize (_numStations, _numStations);
+            ntrips1950.resize (_numStations, _numStations);
+            ntrips1960.resize (_numStations, _numStations);
+            ntrips1970.resize (_numStations, _numStations);
+            ntrips1980.resize (_numStations, _numStations);
+            ntrips1990.resize (_numStations, _numStations);
+            ntrips2000.resize (_numStations, _numStations);
+            ntripsYoung.resize (_numStations, _numStations);
+            ntripsOld.resize (_numStations, _numStations);
+            for (int i=0; i<_numStations; i++)
+            {
+                for (int j=0; j<_numStations; j++)
+                {
+                    ntrips1920 (i, j) = 0;
+                    ntrips1930 (i, j) = 0;
+                    ntrips1940 (i, j) = 0;
+                    ntrips1950 (i, j) = 0;
+                    ntrips1960 (i, j) = 0;
+                    ntrips1970 (i, j) = 0;
+                    ntrips1980 (i, j) = 0;
+                    ntrips1990 (i, j) = 0;
+                    ntrips2000 (i, j) = 0;
+                    ntripsYoung (i, j) = 0;
+                    ntripsOld (i, j) = 0;
+                }
+            }
+        }
+        void InitialiseArrays ()
+        {
+            r2.resize (_numStations, _numStations);
+            cov.resize (_numStations, _numStations);
+            dists.resize (_numStations, _numStations);
+            for (int i=0; i<_numStations; i++)
+            {
+                for (int j=0; j<_numStations; j++)
+                {
+                    ntrips (i, j) = 0.0;
+                    r2 (i, j) = -9999.9;
+                    cov (i, j) = -9999.9;
+                    dists (i, j) = -9999.9;
+                }
+            }
+        }
+        void subscriberMFDestruct()
+        {
+            ntrips_cust.resize (0, 0);
+            ntrips_sub_f.resize (0, 0);
+            ntrips_sub_m.resize (0, 0);
+            ntrips_sub_n.resize (0, 0);
+        }
+        void subscriberAgeDestruct ()
+        {
+            ntrips1920.resize (0, 0);
+            ntrips1930.resize (0, 0);
+            ntrips1940.resize (0, 0);
+            ntrips1950.resize (0, 0);
+            ntrips1960.resize (0, 0);
+            ntrips1970.resize (0, 0);
+            ntrips1980.resize (0, 0);
+            ntrips1990.resize (0, 0);
+            ntrips2000.resize (0, 0);
+            ntripsYoung.resize (0, 0);
+            ntripsOld.resize (0, 0);
+        }
 };
 
 #endif

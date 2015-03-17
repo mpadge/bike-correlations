@@ -35,7 +35,10 @@ class StationData
             _dirName = GetDirName ();
             GetDirList ();
             FileList = filelist;
-            _numStations = GetStations ();
+            if (_city == "oyster")
+                _numStations = GetRailStations ();
+            else
+                _numStations = GetStations ();
             MakeStationIndex ();
         }
         ~StationData ()
@@ -51,6 +54,7 @@ class StationData
         struct OneRailStation 
         {
             std::string Name;
+            bool tube;
             float lon, lat;
         };
         std::vector <OneStation> StationList;

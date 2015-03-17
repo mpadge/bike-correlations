@@ -179,6 +179,7 @@ int StationData::GetRailStations ()
         linetxt = linetxt.substr (ipos + 1, linetxt.length () - ipos - 1);
         ipos = linetxt.find(',',0);
         oneStation.lon = atof (linetxt.substr (0, ipos).c_str());
+        oneStation.tube = true;
         RailStationList.push_back (oneStation);
     }
     in_file.close();
@@ -188,7 +189,6 @@ int StationData::GetRailStations ()
     assert (!in_file.fail ());
     in_file.clear ();
     in_file.seekg (0); 
-    getline (in_file, linetxt, '\n'); // header
     while (getline (in_file, linetxt,'\n'))
     {
         ipos = linetxt.find(',',0);
@@ -199,12 +199,13 @@ int StationData::GetRailStations ()
         linetxt = linetxt.substr (ipos + 1, linetxt.length () - ipos - 1);
         ipos = linetxt.find(',',0);
         oneStation.lon = atof (linetxt.substr (0, ipos).c_str());
+        oneStation.tube = false;
         RailStationList.push_back (oneStation);
     }
     in_file.close();
 
     return RailStationList.size ();
-} // end StationData::GetStations
+} // end StationData::GetRailStations
 
 
 /************************************************************************

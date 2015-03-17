@@ -218,12 +218,12 @@ int RideData::removeFile ()
 /************************************************************************
  ************************************************************************
  **                                                                    **
- **                            READOYSTER                              **
+ **                         GETTRAINSTATIONS                           **
  **                                                                    **
  ************************************************************************
  ************************************************************************/
 
-int RideData::readOyster ()
+int RideData::getTrainStations ()
 {
     const char *archive;
     struct zip *za;
@@ -275,9 +275,8 @@ int RideData::readOyster ()
     std::string mode, start, stop;
     std::ifstream in_file;
     std::string linetxt;
-    std::vector <std::string> stationList;
     bool startIn, stopIn;
-
+    std::vector <std::string> stationList; // As read from trip file
     stationList.resize (0);
 
     in_file.open (fname_csv.c_str (), std::ifstream::in);
@@ -320,6 +319,14 @@ int RideData::readOyster ()
             if (!stopIn && startIn)
                 stationList.push_back (stop);
             count++; 
+            // Use these lines to examine whether stations not in list are NR or
+            // LUL:
+            /*
+            if (count < 1000 && (start == "Harrow Wealdstone" || 
+                        stop == "Harrow Wealdstone"))
+                std::cout << "******" << mode << ": " << start << 
+                    "->" << stop << "***" << std::endl;
+            */
         }
     } // end while getline
     in_file.close();
@@ -328,7 +335,87 @@ int RideData::readOyster ()
 
     std::cout << "There are " << stationList.size () << " stations and " << 
         count << " valid trips." << std::endl;
-    OneRailStation onest;
+
+    /*
+     * stationList is as read from the trip data, whereas RailStationList is
+     * read at construction from the two tube and NR files (with 976 stations).
+     * The former are sometimes written differently in the trip data to how they
+     * appear in the "official" RailStationList, so the following list of
+     * possible substitutions is scanned to find potential matches with
+     * alternative versions.
+     *
+     * The test dataset has 57 stations not in RailStationList.
+     * 5 of these simply have " NR" appended (leaving 52)
+     * 7 have " DLR" (assumed to be tube, not NR stations; leaving 45)
+     * 3 have "St" or "Rd" instead of "Street" or "Road" (leaving 42)
+     * 2 have "D" or "M" instead of "(District)" or "(Met.") (leaving 40).
+     * ... and the rest are done individually
+     */
+    OneRailStation oneStation;
+    size_t found;
+    struct subs
+    {
+        bool tube;
+        std::string told, tnew;
+    };
+    std::vector <subs> strSubs;
+    strSubs.push_back ({true, "Street","St"});
+    strSubs.push_back ({false, "Street","St"});
+    strSubs.push_back ({true, "Road","Rd"});
+    strSubs.push_back ({false, "Road","Rd"});
+    strSubs.push_back ({true, "(District)", "D"});
+    strSubs.push_back ({true, "(Met.)", "M"});
+    strSubs.push_back ({true, "(Bakerloo)", "B"});
+    strSubs.push_back ({true, "Park", "Pk"});
+    strSubs.push_back ({true, "Terminal", "Term"}); // Heathrow
+    strSubs.push_back ({true, "Terminals 1 2 3", "Terms 123"}); 
+    strSubs.push_back ({true, "Kensington", "Kens"});
+    strSubs.push_back ({true, "Bromley-by-Bow", "Bromley By Bow"});
+    strSubs.push_back ({true, "Road and Barnsbury", "Rd&B'sby"});
+
+    strSubs.push_back ({true, "Balham", "Balham SCL"});
+    strSubs.push_back ({false, "Fenchurch Street", "Fenchurch St NR"});
+    strSubs.push_back ({false, "Fenchurch Street", "FENCHURCH ST NR"});
+    strSubs.push_back ({true, "Canary Wharf", "Canary Wharf E2"});
+    strSubs.push_back ({true, "Crossharbour and London Arena", "Crossharbour"});
+    strSubs.push_back ({true, "Cutty Sark for Maritime Greenwich", "Cutty Sark"});
+    strSubs.push_back ({true, 
+            "Edgware Road (Circle/District/Hammersmith and City)",
+            "Edgware Road M"}); // just a presumption there
+    // From this point on modes of rail (tube=t/f) have been determined by
+    // examining the modes associated with the actual trips corresponding to
+    // these station names using the commented-out lines above
+    strSubs.push_back ({true, "Harrow-on-the-Hill", "Harrow On The Hill"});
+    strSubs.push_back ({true, "Harrow and Wealdstone", "Harrow Wealdstone"});
+    strSubs.push_back ({true, "Highbury and Islington", "Highbury"});
+    strSubs.push_back ({false, "Kensington (Olympia)", "Kensington Olympia"});
+    strSubs.push_back ({true, "King's", "Kings"});
+    strSubs.push_back ({false, "King's", "Kings"});
+    strSubs.push_back ({true, "King's Cross", "Kings Cross M"});
+    strSubs.push_back ({true, "King's Cross", "Kings Cross T"});
+    strSubs.push_back ({false, "Liverpool Street", 
+            "Liverpool St WAGN TOC Gates"});
+    strSubs.push_back ({false, "Norwood Junction", "Norwood Junction SR"});
+    strSubs.push_back ({false, "Paddington", "Paddington FGW"});
+    strSubs.push_back ({false, "Rainham", "Rainham Essex"});
+    strSubs.push_back ({true, "Shepherds Bush Market", "Shepherd's Bush Mkt"});
+    strSubs.push_back ({true, "Shepherds Bush Market", "Shepherd's Bush Und"});
+    strSubs.push_back ({true, "St. James's Park", "St James's Park"});
+    strSubs.push_back ({true, "St. Johns Wood", "St Johns Wood"});
+    strSubs.push_back ({false, "St Pancras", "St Pancras International"});
+    strSubs.push_back ({true, "St. Pauls", "St Pauls"});
+    strSubs.push_back ({false, "Sudbury & Harrow Road", "Sudbury&Harrow Rd"});
+    strSubs.push_back ({false, "Sutton", "Sutton Surrey"});
+    strSubs.push_back ({false, "Sydenham", "Sydenham SR"});
+    strSubs.push_back ({true, "Totteridge and Whetstone", "Totteridge"});
+    strSubs.push_back ({false, "Victoria", "Victoria TOCs"});
+    strSubs.push_back ({true, "Waterloo", "Waterloo JLE"});
+    strSubs.push_back ({true, "Watford", "Watford Met"});
+    strSubs.push_back ({false, "West Hampstead", "West Hampst'd NL"});
+
+    std::string strAlt;
+
+    count = 0;
     for (std::vector <std::string>::iterator pos=stationList.begin();
             pos != stationList.end(); pos++)
     {
@@ -336,16 +423,41 @@ int RideData::readOyster ()
         for (std::vector <OneRailStation>::iterator posr=RailStationList.begin();
                 posr != RailStationList.end(); posr++)
         {
-            onest = *posr;
-            if (onest.Name == *pos)
+            if (*pos == oneStation.Name)
                 startIn = true;
+            else // search alternatives
+            {
+                oneStation = *posr;
+                if (*pos == ((*posr).Name + " NR"))
+                    startIn = true;
+                else if ((*posr).tube && *pos == ((*posr).Name + " DLR"))
+                    startIn = true;
+                for (std::vector <subs>::iterator poss=strSubs.begin();
+                        poss != strSubs.end(); poss++)
+                {
+                    strAlt = (*posr).Name;
+                    if ((*posr).tube == (*poss).tube &&
+                            (found = strAlt.find ((*poss).told)) != 
+                            std::string::npos)
+                    {
+                        strAlt.replace (found, (*poss).told.length(), (*poss).tnew);
+                        if (*pos == strAlt)
+                            startIn = true;
+                        else if (!(*posr).tube && *pos == (strAlt + " NR"))
+                            startIn = true;
+                    }
+                } 
+            } // end else (*pos != oneStation.Name)
         }
         if (!startIn)
-            std::cout << "---" << *pos << " not in Rail Station List" <<
-                std::endl;
+        {
+            std::cout << "---" << count << "-" << *pos << 
+                " not in Rail Station List" << std::endl;
+            count++;
+        }
     }
-
     stationList.resize (0);
+    strSubs.resize (0);
 
     return count;
 }

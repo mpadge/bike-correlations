@@ -54,13 +54,6 @@ int main(int argc, char *argv[]) {
         }
         count++;
     }
-    // TODO: Delete this!
-    tempi [0] = 0;
-    if (city == "oyster")
-    {
-        tempi [0] = 1;
-        city = "london";
-    }
     RideData rideData (city, tempi [0], tempi [1]);
     if (tempi [0] == 1)
         city = "oyster";
@@ -125,8 +118,8 @@ int main(int argc, char *argv[]) {
         }
     } else if (city == "oyster")
     {
-        tempi [0] = rideData.GetRailStations ();
-        tempi [0] = rideData.readOyster ();
+        tempi [0] = rideData.getTrainStations ();
+        std::cout << "-----returned from getting train stations-----" << std::endl;
     } else { // city = NYC
         count = 0;
         for (int i=0; i<rideData.getNumFiles(); i++)

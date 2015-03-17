@@ -10,7 +10,7 @@ int main(int argc, char *argv[]) {
     std::cout << "|\t\t\t\t\t\t\t\t\t\t\t|" << std::endl;
     std::cout << "|\t./bikes with the following 3 parameters " <<
         "(defaulting to first values):\t\t|" << std::endl;
-    std::cout << "|\t1. <city> for <city>=<london/nyc>\t\t\t\t\t\t|" << std::endl;
+    std::cout << "|\t1. <city> for <city>=<london/nyc/oyster>\t\t\t\t\t|" << std::endl;
     std::cout << "|\t2. (0,1,2) for analyses of (all, subscriber, customer)" <<
         " data (NYC only)\t\t|" << std::endl;
     std::cout << "|\t ---or set the second parameter to >2 for analysis of" <<
@@ -59,9 +59,12 @@ int main(int argc, char *argv[]) {
         city = "oyster";
 
     std::cout << "|\t\tcity = " << city;
-    if (city == "london" || city == "oyster")
+    if (city == "london")
         std::cout << "\t\t\t\t\t\t|" << std::endl;
-    else {
+    else if (city == "oyster")
+        std::cout << "\t\t\t\t\t\t\t\t|" << std::endl;
+    else
+    {
         std::cout << " --- data = (";
         if (tempi [0] < 3)
         {
@@ -91,9 +94,13 @@ int main(int argc, char *argv[]) {
         "____________________________________________" << std::endl << std::endl;
 
     int numStations = rideData.getNumStations();
-    std::cout << "There are " << numStations << 
-        " stations [max#=" << rideData.getStnIndxLen() << "] and " << 
-        rideData.getNumFiles() << " trip files." << std::endl;
+    if (city != "oyster")
+        std::cout << "There are " << numStations << 
+            " stations [max#=" << rideData.getStnIndxLen() << "] and " << 
+            rideData.getNumFiles() << " trip files." << std::endl;
+    else
+        std::cout << "There are " << numStations << 
+            " tube and NR stations in total" << std::endl;
 
     count = 0;
     if (city == "london")

@@ -26,25 +26,28 @@ class StationData
         std::string _nearfarTxt [3];
     protected:
         int _numStations, _maxStations;
-        std::vector <std::string> FileList;
+        std::vector <std::string> FileList, _OysterStationNames;
         std::vector <int> _StationIndex;
     public:
         StationData (std::string str)
             : _city (str)
         {
             _dirName = GetDirName ();
-            GetDirList ();
-            FileList = filelist;
             if (_city == "oyster")
                 _numStations = GetRailStations ();
             else
+            {
+                GetDirList ();
+                FileList = filelist;
                 _numStations = GetStations ();
-            MakeStationIndex ();
+                MakeStationIndex ();
+            }
         }
         ~StationData ()
         {
             filelist.resize (0);
             FileList.resize (0);
+            _StationIndex.resize (0);
         }
         struct OneStation
         {

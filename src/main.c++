@@ -103,68 +103,70 @@ int main(int argc, char *argv[]) {
             " tube and NR stations in total" << std::endl;
 
     count = 0;
-    if (city == "london")
-    {
-        for (int i=0; i<rideData.getNumFiles(); i++)
-        {
-            nfiles = rideData.countFilesLondon (i);
-            for (int j=0; j<nfiles; j++) {
-                tempi [0] = rideData.unzipOneFileLondon (i, j);
-                std::cout << "Reading file[";
-                if (j < 10)
-                    std::cout << " ";
-                std::cout << j << "/" << nfiles << "]:" << rideData.fileName;
-                std::cout.flush ();
-                tempi [0] = rideData.readOneFileLondon ();
-                std::cout << " = " << tempi [0] << " trips." << std::endl;
-                count += tempi [0];
-                tempi [0] = rideData.removeFile ();
-            }
-            rideData.dumpMissingStations ();
-            std::cout << "Total Number of Trips = " << count << std::endl;
-        }
-    } else if (city == "oyster")
+    if (city == "oyster")
     {
         tempi [0] = rideData.getTrainStations ();
-        std::cout << "-----returned from getting train stations-----" << std::endl;
-    } else { // city = NYC
-        count = 0;
-        for (int i=0; i<rideData.getNumFiles(); i++)
-        {
-            tempi [0] = rideData.getZipFileNameNYC (i);
-            if (rideData.fileName != "") {
-                count += rideData.readOneFileNYC (i);
-                tempi [0] = rideData.removeFile ();
-            }
-        } // end for i
-        std::cout << "Total number of trips = " << count << std::endl;
-        rideData.summaryStatsNYC ();
-        tempi [0] = rideData.aggregateTrips ();
     }
-
-    rideData.writeDMat (); // Also fills RideData.dists
-    rideData.writeNumTrips ();
-
-    // Then loop over (include,ignore) zeros and (all, near, far) data
-    for (int i=0; i<2; i++)
+    else 
     {
-        if (i == 0) rideData.ignoreZeros = false;
-        else rideData.ignoreZeros = true;
-        rideData.txtzero = rideData.txtzerolist [i];
-        for (int j=0; j<3; j++)
-        {
-            rideData.nearfar = j;
-            rideData.txtnf = rideData.txtnflist [j];
+        if (city == "london") {
+            for (int i=0; i<rideData.getNumFiles(); i++)
+            {
+                nfiles = rideData.countFilesLondon (i);
+                for (int j=0; j<nfiles; j++) {
+                    tempi [0] = rideData.unzipOneFileLondon (i, j);
+                    std::cout << "Reading file[";
+                    if (j < 10)
+                        std::cout << " ";
+                    std::cout << j << "/" << nfiles << "]:" << rideData.fileName;
+                    std::cout.flush ();
+                    tempi [0] = rideData.readOneFileLondon ();
+                    std::cout << " = " << tempi [0] << " trips." << std::endl;
+                    count += tempi [0];
+                    tempi [0] = rideData.removeFile ();
+                }
+                rideData.dumpMissingStations ();
+                std::cout << "Total Number of Trips = " << count << std::endl;
+            }
+        } else { // city = NYC
+            count = 0;
+            for (int i=0; i<rideData.getNumFiles(); i++)
+            {
+                tempi [0] = rideData.getZipFileNameNYC (i);
+                if (rideData.fileName != "") {
+                    count += rideData.readOneFileNYC (i);
+                    tempi [0] = rideData.removeFile ();
+                }
+            } // end for i
+            std::cout << "Total number of trips = " << count << std::endl;
+            rideData.summaryStatsNYC ();
+            tempi [0] = rideData.aggregateTrips ();
+        } // end else city == NYC
 
-            rideData.calcR2 (true);
-            rideData.writeR2Mat (true);
-            rideData.writeCovMat (true);
-            rideData.calcR2 (false);
-            rideData.writeR2Mat (false);
-            rideData.writeCovMat (false);
+        rideData.writeDMat (); // Also fills RideData.dists
+        rideData.writeNumTrips ();
+
+        // Then loop over (include,ignore) zeros and (all, near, far) data
+        for (int i=0; i<2; i++)
+        {
+            if (i == 0) rideData.ignoreZeros = false;
+            else rideData.ignoreZeros = true;
+            rideData.txtzero = rideData.txtzerolist [i];
+            for (int j=0; j<3; j++)
+            {
+                rideData.nearfar = j;
+                rideData.txtnf = rideData.txtnflist [j];
+
+                rideData.calcR2 (true);
+                rideData.writeR2Mat (true);
+                rideData.writeCovMat (true);
+                rideData.calcR2 (false);
+                rideData.writeR2Mat (false);
+                rideData.writeCovMat (false);
+            }
         }
-    }
-    //rideData.readR2Mat (false);
+        //rideData.readR2Mat (false);
+    } // end else !oyster
     std::cout << "_____________________________________________" << 
         "____________________________________________" << std::endl << std::endl;
 }

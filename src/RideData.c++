@@ -265,15 +265,22 @@ int RideData::getTrainStations ()
     {
         in_file.clear ();
         in_file.seekg (0); // Both lines needed to rewind file.
+        tempi [0] = tempi [1] = 0;
         while (getline (in_file, linetxt, '\n'))
         {
             ipos = linetxt.find(",",0);
             mode = linetxt.substr (0, ipos);
             linetxt = linetxt.substr (ipos + 1, linetxt.length () - ipos - 1);
             _OysterStations.push_back ({mode, linetxt});
+            if (mode == "NR")
+                tempi [0]++;
+            else
+                tempi [1]++;
+
         }
         in_file.close();
-        std::cout << "There are " << _OysterStations.size () << 
+        std::cout << "There are " << tempi [0] << " NR + " << tempi [1] <<
+            " LUL = " << _OysterStations.size () << 
             " stations in the oystercard data." << std::endl;
     }
     else
@@ -369,7 +376,6 @@ int RideData::getTrainStations ()
         } // end while getline
         in_file.close();
         remove (fname_csv.c_str ());
-        //std::sort (_OysterStationNames.begin(), _OysterStationNames.end());
         std::sort (_OysterStations.begin(), _OysterStations.end(),
                 [] (oysterOne a, oysterOne b){ return a.name < b.name; });
 

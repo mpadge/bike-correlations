@@ -26,8 +26,13 @@ class StationData
         std::string _nearfarTxt [3];
     protected:
         int _numStations, _maxStations;
-        std::vector <std::string> FileList, _OysterStationNames;
+        struct oysterOne
+        {
+            std::string mode, name; // mode is NR, LUL, DLR
+        };
+        std::vector <std::string> FileList;
         std::vector <int> _StationIndex;
+        std::vector <oysterOne> _OysterStations;
     public:
         StationData (std::string str)
             : _city (str)

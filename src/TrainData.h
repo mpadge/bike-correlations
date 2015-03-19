@@ -32,6 +32,7 @@ class RideData: public BikeStationData
         imat ntrips1920, ntrips1930, ntrips1940, ntrips1950, ntrips1960,
              ntrips1970, ntrips1980, ntrips1990, ntrips2000,
              ntripsYoung, ntripsOld;
+        imat ntrips_rail, ntrips_tube;
         int ageDistribution [99];
         // Customers by definition have no data, and the _n files are
         // subscribers whose gender is not given
@@ -49,7 +50,9 @@ class RideData: public BikeStationData
             _stnIndxLen = _StationIndex.size ();
             missingStations.resize (0);
             ntrips.resize (_numStations, _numStations);
-            if (_subscriber < 3)
+            if (getCity() == "oyster")
+                subscriberOysterConstruct ();
+            else if (_subscriber < 3)
                 subscriberMFConstruct ();
             else
                 subscriberAgeConstruct ();
@@ -70,7 +73,9 @@ class RideData: public BikeStationData
         {
             missingStations.resize (0);
             ntrips.resize (0, 0);
-            if (_subscriber < 3)
+            if (getCity() == "oyster")
+                subscriberRailDestruct();
+            else if (_subscriber < 3)
                 subscriberMFDestruct();
             else
                 subscriberAgeDestruct();
@@ -95,6 +100,9 @@ class RideData: public BikeStationData
         void dumpMissingStations ();
         int removeFile ();
 
+        int getTrainStations ();
+        int getTrainTrips ();
+
         int getZipFileNameNYC (int filei);
         int readOneFileNYC (int filei);
         void summaryStatsNYC ();
@@ -107,6 +115,17 @@ class RideData: public BikeStationData
         int readR2Mat (bool from);
         int writeDMat ();
 
+        void subscriberOysterConstruct()
+        {
+            ntrips_rail.resize (_numRailStations, _numRailStations);
+            for (int i=0; i<_numRailStations; i++)
+                for (int j=0; j<_numRailStations; j++)
+                    ntrips_rail (i, j) = 0;
+            ntrips_tube.resize (_numTubeStations, _numTubeStations);
+            for (int i=0; i<_numTubeStations; i++)
+                for (int j=0; j<_numTubeStations; j++)
+                    ntrips_tube (i, j) = 0;
+        }
         void subscriberMFConstruct()
         {
             ntrips_cust.resize (_numStations, _numStations);
@@ -170,6 +189,11 @@ class RideData: public BikeStationData
                     dists (i, j) = -9999.9;
                 }
             }
+        }
+        void subscriberRailDestruct()
+        {
+            ntrips_rail.resize (0, 0);
+            ntrips_tube.resize (0, 0);
         }
         void subscriberMFDestruct()
         {

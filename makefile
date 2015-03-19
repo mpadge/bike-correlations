@@ -2,7 +2,7 @@ CC=g++
 CFLAGS=-c -std=c++11
 LIBS=-lzip
 VPATH=./src
-OBJECTS = main.o StationData.o RideData.o Utils.o
+OBJECTS = mainBikes.o StationData.o RideData.o Utils.o
 
 all: main
 

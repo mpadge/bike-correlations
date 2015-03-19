@@ -93,7 +93,7 @@ int main(int argc, char *argv[]) {
     std::cout << "_____________________________________________" << 
         "____________________________________________" << std::endl << std::endl;
 
-    int numStations = rideData.getNumStations();
+    int numStations;
     if (city != "oyster")
     {
         numStations = rideData.getNumStations();

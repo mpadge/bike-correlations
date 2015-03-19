@@ -25,31 +25,18 @@ class BikeStationData
         bool _standardise;
         std::string _nearfarTxt [3];
     protected:
-        int _numStations, _maxStations, _numRailStations, _numTubeStations;
-        struct oysterOne
-        {
-            std::string mode, name; // mode is NR, LUL, DLR
-        };
+        int _numStations, _maxStations;
         std::vector <std::string> FileList;
         std::vector <int> _StationIndex;
-        std::vector <oysterOne> _OysterStations;
     public:
         BikeStationData (std::string str)
             : _city (str)
         {
             _dirName = GetDirName ();
-            if (_city == "oyster")
-            {
-                _numRailStations = GetRailStations ();
-                _numTubeStations = GetTubeStations ();
-            }
-            else
-            {
-                GetDirList ();
-                FileList = filelist;
-                _numStations = GetStations ();
-                MakeStationIndex ();
-            }
+            GetDirList ();
+            FileList = filelist;
+            _numStations = GetStations ();
+            MakeStationIndex ();
         }
         ~BikeStationData ()
         {
@@ -63,16 +50,12 @@ class BikeStationData
             float lon, lat;
         };
         std::vector <OneStation> StationList;
-        std::vector <std::string> RailStationList;
-        std::vector <std::string> TubeStationList;
         std::vector <std::string> filelist;
 
         std::string GetDirName ();
         void GetDirList ();
         void MakeStationIndex ();
         int GetStations ();
-        int GetRailStations ();
-        int GetTubeStations ();
 
         int getNumStations () { return _numStations;  }
         int getMaxStation () { return _maxStations;  }
@@ -85,40 +68,25 @@ class TrainStationData
 {
     private:
         std::string _dirName;
-        const std::string _city;
         bool _standardise;
         std::string _nearfarTxt [3];
     protected:
-        int _numStations, _maxStations, _numRailStations, _numTubeStations;
+        int _numRailStations, _numTubeStations;
         struct oysterOne
         {
             std::string mode, name; // mode is NR, LUL, DLR
         };
-        std::vector <std::string> FileList;
         std::vector <int> _StationIndex;
         std::vector <oysterOne> _OysterStations;
     public:
         TrainStationData (std::string str)
-            : _city (str)
         {
             _dirName = GetDirName ();
-            if (_city == "oyster")
-            {
-                _numRailStations = GetRailStations ();
-                _numTubeStations = GetTubeStations ();
-            }
-            else
-            {
-                GetDirList ();
-                FileList = filelist;
-                _numStations = GetStations ();
-                MakeStationIndex ();
-            }
+            _numRailStations = GetRailStations ();
+            _numTubeStations = GetTubeStations ();
         }
         ~TrainStationData ()
         {
-            filelist.resize (0);
-            FileList.resize (0);
             _StationIndex.resize (0);
         }
         struct OneStation
@@ -126,10 +94,8 @@ class TrainStationData
             int ID, indx;
             float lon, lat;
         };
-        std::vector <OneStation> StationList;
         std::vector <std::string> RailStationList;
         std::vector <std::string> TubeStationList;
-        std::vector <std::string> filelist;
 
         std::string GetDirName ();
         void GetDirList ();
@@ -138,9 +104,8 @@ class TrainStationData
         int GetRailStations ();
         int GetTubeStations ();
 
-        int getNumStations () { return _numStations;  }
-        int getMaxStation () { return _maxStations;  }
-        std::string getCity () { return _city;    }
+        int getNumRailStations () { return _numRailStations;  }
+        int getNumTubeStations () { return _numTubeStations;  }
         std::vector <int> getStationIndex() { return _StationIndex; }
 }; // end class TrainStationData
 

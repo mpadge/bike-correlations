@@ -145,7 +145,7 @@ int BikeStationData::GetStations ()
  ************************************************************************
  ************************************************************************/
 
-int BikeStationData::GetRailStations ()
+int TrainStationData::GetRailStations ()
 {
     // Reads both tube and National Rail stations from separate files
     const std::string dir = "data/"; 
@@ -169,7 +169,7 @@ int BikeStationData::GetRailStations ()
     in_file.close();
 
     return RailStationList.size ();
-} // end BikeStationData::GetRailStations
+} // end TrainStationData::GetRailStations
 
 
 /************************************************************************
@@ -180,7 +180,7 @@ int BikeStationData::GetRailStations ()
  ************************************************************************
  ************************************************************************/
 
-int BikeStationData::GetTubeStations ()
+int TrainStationData::GetTubeStations ()
 {
     // Reads both tube and National Rail stations from separate files
     const std::string dir = "data/"; 
@@ -204,7 +204,7 @@ int BikeStationData::GetTubeStations ()
     in_file.close();
 
     return TubeStationList.size ();
-} // end BikeStationData::GetTubeStations
+} // end TrainStationData::GetTubeStations
 
 
 /************************************************************************

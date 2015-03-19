@@ -3,24 +3,62 @@ import os, math, sys, csv, pqdict
 import pandas as pd
 import numpy as np
 
+
+import string
+ 
+def normalise(s):
+    s.replace(' and ',' & ')
+    s.replace(' And ',' & ')
+    for p in string.punctuation:
+        s = s.replace(p, '')
+    return s.lower().strip()
+
 class LondonRailStations (object):
-    def __init__(self, latlon_file, network_file):
-        self.latlons = pd.read_csv (latlon_file, header=None,
-                names=["name","lat","lon"])
-        self.lines = pd.read_csv (network_file, header=None,
-                names=["from","to"])
+    def __init__(self, tube=True):
+        if tube:
+            latlon_file = '../data/London-tube-stations.txt'
+            network_file = '../data/London tube lines.csv'
+            self.lines = pd.read_csv (network_file, header=0,
+                    names=['line','from','to'],
+                    usecols=['from','to'])
+            self.latlons = pd.read_csv (latlon_file, header=0,
+                    names=['name','x','y','lat','lon','zone','postcode'],
+                    usecols=['name','lat','lon'])
+        else:
+            latlon_file = "../data/London-rail-stations.txt"
+            network_file = "../data/London-rail-lines.txt"
+            self.latlons = pd.read_csv (latlon_file, header=None,
+                    names=["name","lat","lon"])
+            self.lines = pd.read_csv (network_file, header=None,
+                    names=["from","to"])
+        for index, row in self.latlons.iterrows ():
+            self.latlons['name'][index] = normalise (row ['name'])
+        for index, row in self.lines.iterrows ():
+            self.lines['from'][index] = normalise (row ['from'])
+            self.lines['to'][index] = normalise (row ['to'])
+        if tube:
+            # These latlons include all stations, so the self.latlons df is made
+            # by appending only actual tube stations
+            latlons = pd.DataFrame()
+            for index, row in self.latlons.iterrows():
+                found = [i for i in self.lines['from'] if i == row['name']]
+                found += [i for i in self.lines['to'] if i == row['name']]
+                if len (found) > 0:
+                    dat = {'name':row['name'],'lat':row['lat'],'lon':row['lon']}
+                    latlons = latlons.append (dat, ignore_index=True)
+            self.latlons = latlons
     def getDists (self):
-        n = len (data.lines)
+        n = len (self.lines)
         self.lines = pd.DataFrame ({'from': self.lines['from'],
                                     'to': self.lines['to'],
                                     'd': pd.Series (None,range(n))})
         for index, row in self.lines.iterrows():
             st = row["from"]
-            fromlon = float (self.latlons[self.latlons["name"] == st]["lon"])
-            fromlat = float (self.latlons[self.latlons["name"] == st]["lat"])
+            fromlon = float (self.latlons [self.latlons["name"] == st]["lon"])
+            fromlat = float (self.latlons [self.latlons["name"] == st]["lat"])
             st = row["to"]
-            tolon = float (self.latlons[self.latlons["name"] == st]["lon"])
-            tolat = float (self.latlons[self.latlons["name"] == st]["lat"])
+            tolon = float (self.latlons [self.latlons["name"] == st]["lon"])
+            tolat = float (self.latlons [self.latlons["name"] == st]["lat"])
             x = (tolon - fromlon) * math.pi / 180
             y = (tolat - fromlat) * math.pi / 180
             d = math.sin (y / 2) * math.sin (y / 2) +\
@@ -53,17 +91,12 @@ class LondonRailStations (object):
             self.makeGraph ()
         n = len (self.latlons)
         self.dmat = np.zeros ((n, n))
-        for index, row in data.latlons.iterrows():
-            dist, pred = dijkstra (data.graph, source = row['name'])
+        for index, row in self.latlons.iterrows():
+            dist, pred = dijkstra (self.graph, source = row['name'])
             vals = [value for key,value in sorted (dist.items())]
             self.dmat [index,] = vals
         self.dmatNames = sorted (dist.keys())
 
-'''
-stfrom = data.latlons.iloc [0] ['name']
-stto = data.latlons.iloc [1] ['name']
-d = dijkstra (data.graph, stfrom, stto)
-'''
 
 def dijkstra(graph, source, target=None):
     '''
@@ -104,18 +137,26 @@ def dijkstra(graph, source, target=None):
 
 
 if __name__ == "__main__":
-    latlon_file = "../data/London-rail-stations.txt"
-    network_file = "../data/London-rail-lines.txt"
-    data = LondonRailStations (latlon_file, network_file)
-    print "There are %s stations" % len (data.latlons)
-    print "And the network has %s entries" % len (data.lines)
-    data.makeDMat ()
-    np.savetxt ("../data/London-rail-station-dists.txt", data.dmat,
+    rail = LondonRailStations (tube=False)
+    print "There are %s rail stations" % len (rail.latlons)
+    rail.makeDMat ()
+    np.savetxt ("../data/London-rail-station-dists.txt", rail.dmat,
             delimiter=',')
     with open('../data/London-rail-station-names.txt', 'wb') as outfile:
         wr = csv.writer (outfile, delimiter='\n', quoting=csv.QUOTE_ALL)
-        wr.writerow (data.dmatNames)
-    print 'Distance matrix of %s stations written to' % data.dmat.shape[0],
+        wr.writerow (rail.dmatNames)
+    print 'Distance matrix of %s stations written to' % rail.dmat.shape[0],
     print 'London-rail-station-dists.txt'
     print '\talong with vector of London-rail-station-names.txt' 
-    
+
+    tube = LondonRailStations (tube=True)
+    print "There are %s tube stations" % len (tube.latlons)
+    tube.makeDMat ()
+    np.savetxt ("../data/London-tube-station-dists.txt", tube.dmat,
+            delimiter=',')
+    with open('../data/London-tube-station-names.txt', 'wb') as outfile:
+        wr = csv.writer (outfile, delimiter='\n', quoting=csv.QUOTE_ALL)
+        wr.writerow (tube.dmatNames)
+    print 'Distance matrix of %s stations written to' % tube.dmat.shape[0],
+    print 'London-tube-station-dists.txt'
+    print '\talong with vector of London-tube-station-names.txt' 

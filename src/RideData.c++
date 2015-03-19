@@ -17,7 +17,7 @@ int RideData::countFilesLondon (int filei)
     char buf[100]; 
     int err;
 
-    std::string fname_base = StationData::GetDirName() + '/' + filelist [filei];
+    std::string fname_base = BikeStationData::GetDirName() + '/' + filelist [filei];
     archive = fname_base.c_str ();
     if ((za = zip_open(archive, 0, &err)) == NULL) {
         zip_error_to_str(buf, sizeof(buf), err, errno);
@@ -63,7 +63,7 @@ int RideData::unzipOneFileLondon (int filei, int filej)
     int err, sum, len;
 
     std::ofstream out_file;
-    std::string fname_csv, fname_base = StationData::GetDirName() + '/' + filelist [filei];
+    std::string fname_csv, fname_base = BikeStationData::GetDirName() + '/' + filelist [filei];
 
     archive = fname_base.c_str ();
     // Error checks already done with countFilesLondon
@@ -72,7 +72,7 @@ int RideData::unzipOneFileLondon (int filei, int filej)
         fileName = sb.name;
         zf = zip_fopen_index(za, filej, 0);
 
-        fname_csv = StationData::GetDirName() + '/' + fileName;
+        fname_csv = BikeStationData::GetDirName() + '/' + fileName;
         out_file.open (fname_csv.c_str(), std::ios::out);
         sum = 0;
         while (sum != sb.size) {
@@ -107,7 +107,7 @@ int RideData::readOneFileLondon ()
     int ID, count = 0, ipos, tempi [2];
     int nstations = RideData::getNumStations (), 
         maxStation = RideData::getMaxStation ();
-    std::string fname = StationData::GetDirName() + '/' + fileName;
+    std::string fname = BikeStationData::GetDirName() + '/' + fileName;
     std::ifstream in_file;
     std::string linetxt;
 
@@ -206,7 +206,7 @@ void RideData::dumpMissingStations ()
 
 int RideData::removeFile ()
 {
-    std::string fname_csv = StationData::GetDirName() + '/' + fileName;
+    std::string fname_csv = BikeStationData::GetDirName() + '/' + fileName;
 
     if (remove(fname_csv.c_str()) != 0)
         return 1;
@@ -402,7 +402,6 @@ int RideData::getTrainStations ()
      * scanned to find potential matches with alternative versions.
      */
     bool tube;
-    OneRailStation oneStation;
     size_t found;
     std::string stName;
     struct subs
@@ -439,6 +438,7 @@ int RideData::getTrainStations ()
             "Edgware Road M"}); // just a presumption there
     strSubs.push_back ({true, "Harrow-on-the-Hill", "Harrow On The Hill"});
     strSubs.push_back ({true, "Harrow and Wealdstone", "Harrow Wealdstone"});
+    strSubs.push_back ({false, "Harrow & Wealdstone", "Harrow Wealdstone"});
     strSubs.push_back ({true, "Highbury and Islington", "Highbury"});
     strSubs.push_back ({false, "Kensington (Olympia)", "Kensington Olympia"});
     strSubs.push_back ({true, "King's", "Kings"});
@@ -481,10 +481,41 @@ int RideData::getTrainStations ()
         startIn = false;
         for (int i=0; i<RailStationList.size (); i++)
         {
-            stName = RailStationList [i].Name;
-            tube = RailStationList [i].tube;
-            if ((*pos).name == stName || (*pos).name == (stName + " NR") ||
-                    (tube && (*pos).name == (stName + " DLR")))
+            stName = RailStationList [i];
+            if ((*pos).name == stName || (*pos).name == (stName + " NR"))
+            {
+                startIn = true;
+                _StationIndex.push_back (i);
+                break;
+            }
+            else // search alternatives
+            {
+                for (std::vector <subs>::iterator poss=strSubs.begin();
+                        poss != strSubs.end(); poss++)
+                {
+                    strAlt = stName;
+                    if (tube == (*poss).tube &&
+                            (found = strAlt.find ((*poss).told)) != 
+                            std::string::npos)
+                    {
+                        strAlt.replace (found, (*poss).told.length(), (*poss).tnew);
+                        if ((*pos).name == strAlt || 
+                                (!tube && (*pos).name == (strAlt + " NR")))
+                        {
+                            startIn = true;
+                            _StationIndex.push_back (i);
+                            break;
+                        }
+                    }
+                } // end for iterator over strSubs
+                if (startIn)
+                    break;
+            }
+        } // end for i over RailStationList
+        for (int i=0; i<TubeStationList.size (); i++)
+        {
+            stName = TubeStationList [i];
+            if ((*pos).name == stName || (*pos).name == (stName + " DLR"))
             {
                 startIn = true;
                 _StationIndex.push_back (i);
@@ -517,7 +548,7 @@ int RideData::getTrainStations ()
         if (!startIn)
         {
             std::cout << "---" << count << "-" << (*pos).name << 
-                " not in Rail Station List" << std::endl;
+                " not in Rail or Tube Station List" << std::endl;
             count++;
         }
     }
@@ -530,6 +561,149 @@ int RideData::getTrainStations ()
     // TODO: Insert proper error handler
 
     return _StationIndex.size ();
+}
+
+/************************************************************************
+ ************************************************************************
+ **                                                                    **
+ **                          GETTRAINTRIPS                             **
+ **                                                                    **
+ ************************************************************************
+ ************************************************************************/
+
+int RideData::getTrainTrips ()
+{
+    /*
+     * There are 976 tube and NR stations, and yet only 392 of these appear in
+     * the oystercard data. To avoid making big ntrips matrices (and all
+     * others), only to have to reduce them later, the relevant stations are
+     * first extracted here by reading all oystercard data.
+     *
+     * These station names are dumped to a file called "oystercardnames.csv". If
+     * this file exists, then it is subsequently read instead of loading all raw
+     * data again. Thus, if new raw data appear, the file can simply be deleted
+     * and will be automatically regenerated the next time.
+     *
+     * These 392 station names are then aligned here with the (often different)
+     * names of the tube and NR stations, and _StationIndex is filled with 392
+     * entries correponding to the indices into the 976 of the latter stations.
+     * These include lat-lons, and so enable station coordinates to easily be
+     * obtained.
+     */
+    const char *archive;
+    struct zip *za;
+    struct zip_file *zf;
+    struct zip_stat sb;
+    char buf[100]; 
+    int err, len, sum = 0;
+    std::ifstream in_file; 
+    std::ofstream out_file;
+
+    int ID, count = 0, ipos, tempi [2];
+    std::string mode, start, stop, linetxt;
+    bool startIn, stopIn;
+
+    // First check if oystercardnames.csv exists
+    _OysterStations.resize (0);
+    std::string dirName = "/data/data/", 
+        fname_oyster = "./data/oystercardnames.csv", 
+        fname_base = "/data/data/oystercardjourneyinformation.zip";
+
+    std::string fname_csv;
+    archive = fname_base.c_str ();
+    if ((za = zip_open(archive, 0, &err)) == NULL) {
+        zip_error_to_str(buf, sizeof(buf), err, errno);
+        std::cout << stderr << archive << "can't open size archive : " <<
+            buf << std::endl;
+        return -1;
+    } 
+    int nfiles = zip_get_num_entries (za, 0);
+    for (int i=0; i<nfiles; i++)
+    {
+        if (zip_stat_index (za, i, 0, &sb) == 0) {
+            fname_csv = dirName + sb.name;
+            zf = zip_fopen_index(za, 0, 0);
+            if (!zf) {
+                std::cout << stderr << "ERROR: cannot open file#" <<
+                    i << " in archive " << archive << std::endl;
+                return 1;
+            }
+            out_file.open (fname_csv.c_str(), std::ios::out);
+            while (sum != sb.size) {
+                len = zip_fread(zf, buf, 100);
+                if (len < 0) {
+                    // INSERT ERROR HANDLER
+                }
+                out_file.write (buf, len);
+                sum += len;
+            }
+            out_file.close ();
+
+            zip_fclose(zf); 
+        }
+    }
+    zip_close (za);
+
+    in_file.open (fname_csv.c_str (), std::ifstream::in);
+    if (in_file.fail ()) {
+        // INSERT ERROR HANDLER
+        return -1;
+    }
+    in_file.clear ();
+    in_file.seekg (0); // Both lines needed to rewind file.
+    getline (in_file, linetxt, '\n');
+
+    while (getline (in_file, linetxt, '\n')) { 
+        ipos = linetxt.find("\",\"",0);
+        linetxt = linetxt.substr (ipos + 3, linetxt.length () - ipos - 1);
+        ipos = linetxt.find("\",\"",0);
+        mode = linetxt.substr (0, ipos);
+        linetxt = linetxt.substr (ipos + 3, linetxt.length () - ipos - 1);
+        ipos = linetxt.find("\",\"",0);
+        start = linetxt.substr (0, ipos);
+        linetxt = linetxt.substr (ipos + 3, linetxt.length () - ipos - 1);
+        ipos = linetxt.find("\",\"",0);
+        stop = linetxt.substr (0, ipos);
+
+        if ((mode == "NR" || mode == "LUL" || mode == "LUL/DLR" ||
+                    mode == "DLR") && (start != "Unstarted" &&
+                stop != "Unfinished" && start != "Bus" && stop != "Bus" &&
+                start != "Not Applicable" && stop != "Not Applicable"))
+        {
+            startIn = stopIn = false;
+            for (std::vector <oysterOne>::iterator 
+                    pos =_OysterStations.begin();
+                    pos != _OysterStations.end(); pos++)
+            {
+                if ((*pos).name == start)
+                    startIn = true;
+                if ((*pos).name == stop) 
+                    stopIn = true;
+            }
+            if (!startIn)
+                _OysterStations.push_back ({mode, start});
+            if (!stopIn && startIn)
+                _OysterStations.push_back ({mode, stop});
+            count++; 
+        }
+    } // end while getline
+    in_file.close();
+    remove (fname_csv.c_str ());
+    std::sort (_OysterStations.begin(), _OysterStations.end(),
+            [] (oysterOne a, oysterOne b){ return a.name < b.name; });
+
+    std::cout << "The oystercard data has " << count << " trips between " <<
+        _OysterStations.size () << 
+        " stations; station names writte to " << 
+        fname_oyster << std::endl;
+
+    out_file.open (fname_oyster.c_str());
+    for (std::vector <oysterOne>::iterator pos=_OysterStations.begin();
+            pos != _OysterStations.end(); pos++)
+        out_file << (*pos).mode << "," << (*pos).name << std::endl;
+    out_file.close ();
+
+    return 0;
 }
 
 
@@ -550,7 +724,7 @@ int RideData::getZipFileNameNYC (int filei)
     char buf[100]; 
     int err;
 
-    std::string fname_base = StationData::GetDirName() + '/' + filelist [filei];
+    std::string fname_base = BikeStationData::GetDirName() + '/' + filelist [filei];
     archive = fname_base.c_str ();
     if ((za = zip_open(archive, 0, &err)) == NULL) {
         zip_error_to_str(buf, sizeof(buf), err, errno);
@@ -593,7 +767,7 @@ int RideData::readOneFileNYC (int filei)
 {
     // First unzip file, for which all error checks have been done in
     // getZipFileNameNYC above
-    std::string fname = StationData::GetDirName() + '/' + filelist [filei];
+    std::string fname = BikeStationData::GetDirName() + '/' + filelist [filei];
     const char *archive;
     struct zip *za;
     struct zip_file *zf;
@@ -606,7 +780,7 @@ int RideData::readOneFileNYC (int filei)
     za = zip_open(archive, 0, &err);
     zf = zip_fopen_index(za, 0, 0);
     zip_stat_index(za, 0, 0, &sb);
-    std::string fname_csv = StationData::GetDirName() + '/' + fileName;
+    std::string fname_csv = BikeStationData::GetDirName() + '/' + fileName;
     std::ofstream out_file (fname_csv.c_str(), std::ios::out);
     fileYear = atoi (fileName.substr (0, 4).c_str());
 

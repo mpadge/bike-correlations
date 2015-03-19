@@ -8,7 +8,7 @@
  ************************************************************************
  ************************************************************************/
 
-std::string StationData::GetDirName ()
+std::string BikeStationData::GetDirName ()
 {
     std::ifstream in_file;
     std::string dirtxt, fname;
@@ -36,7 +36,7 @@ std::string StationData::GetDirName ()
     }
     in_file.close ();
     return dirtxt;
-} // end StationData::GetDirName
+} // end BikeStationData::GetDirName
 
 /************************************************************************
  ************************************************************************
@@ -46,7 +46,7 @@ std::string StationData::GetDirName ()
  ************************************************************************
  ************************************************************************/
 
-void StationData::GetDirList ()
+void BikeStationData::GetDirList ()
 {
     std::string fname;
     DIR *dir;
@@ -73,7 +73,7 @@ void StationData::GetDirList ()
         std::cout << outstr << std::endl;
         //return EXIT_FAILURE;
     }
-} // end StationData::GetDirList
+} // end BikeStationData::GetDirList
 
 
 /************************************************************************
@@ -84,7 +84,7 @@ void StationData::GetDirList ()
  ************************************************************************
  ************************************************************************/
 
-int StationData::GetStations ()
+int BikeStationData::GetStations ()
 {
     /*
      * Reads from station_latlons which is constructed with getLatLons.py and
@@ -134,7 +134,7 @@ int StationData::GetStations ()
     in_file.close();
 
     return StationList.size ();
-} // end StationData::GetStations
+} // end BikeStationData::GetStations
 
 
 /************************************************************************
@@ -145,67 +145,66 @@ int StationData::GetStations ()
  ************************************************************************
  ************************************************************************/
 
-int StationData::GetRailStations ()
+int BikeStationData::GetRailStations ()
 {
     // Reads both tube and National Rail stations from separate files
     const std::string dir = "data/"; 
     int ipos, tempi;
-    OneRailStation oneStation;
     std::string fname;
     std::ifstream in_file;
     std::string linetxt;
 
     RailStationList.resize (0);
-    _maxStations = 0;
 
-    fname = dir + "London-tube-stations.txt";
-    in_file.open (fname.c_str (), std::ifstream::in);
-    assert (!in_file.fail ());
-    in_file.clear ();
-    in_file.seekg (0); 
-    getline (in_file, linetxt, '\n'); // header
-    while (getline (in_file, linetxt,'\n'))
-    {
-        ipos = linetxt.find(',',0);
-        oneStation.Name = linetxt.substr (0, ipos).c_str();
-        linetxt = linetxt.substr (ipos + 1, linetxt.length () - ipos - 1);
-        for (int i=0; i<2; i++)
-        {
-            ipos = linetxt.find(',',0);
-            linetxt = linetxt.substr (ipos + 1, linetxt.length () - ipos - 1);
-        }
-        ipos = linetxt.find(',',0);
-        oneStation.lat = atof (linetxt.substr (0, ipos).c_str());
-        linetxt = linetxt.substr (ipos + 1, linetxt.length () - ipos - 1);
-        ipos = linetxt.find(',',0);
-        oneStation.lon = atof (linetxt.substr (0, ipos).c_str());
-        oneStation.tube = true;
-        RailStationList.push_back (oneStation);
-    }
-    in_file.close();
-
-    fname = dir + "London-rail-stations.txt";
+    fname = dir + "London-rail-station-names.txt";
     in_file.open (fname.c_str (), std::ifstream::in);
     assert (!in_file.fail ());
     in_file.clear ();
     in_file.seekg (0); 
     while (getline (in_file, linetxt,'\n'))
     {
-        ipos = linetxt.find(',',0);
-        oneStation.Name = linetxt.substr (0, ipos).c_str();
-        linetxt = linetxt.substr (ipos + 1, linetxt.length () - ipos - 1);
-        ipos = linetxt.find(',',0);
-        oneStation.lat = atof (linetxt.substr (0, ipos).c_str());
-        linetxt = linetxt.substr (ipos + 1, linetxt.length () - ipos - 1);
-        ipos = linetxt.find(',',0);
-        oneStation.lon = atof (linetxt.substr (0, ipos).c_str());
-        oneStation.tube = false;
-        RailStationList.push_back (oneStation);
+        linetxt = linetxt.substr (1, linetxt.length()-2);
+        RailStationList.push_back (linetxt);
     }
     in_file.close();
 
     return RailStationList.size ();
-} // end StationData::GetRailStations
+} // end BikeStationData::GetRailStations
+
+
+/************************************************************************
+ ************************************************************************
+ **                                                                    **
+ **                        GETTUBESTATIONS                             **
+ **                                                                    **
+ ************************************************************************
+ ************************************************************************/
+
+int BikeStationData::GetTubeStations ()
+{
+    // Reads both tube and National Rail stations from separate files
+    const std::string dir = "data/"; 
+    int ipos, tempi;
+    std::string fname;
+    std::ifstream in_file;
+    std::string linetxt;
+
+    TubeStationList.resize (0);
+
+    fname = dir + "London-tube-station-names.txt";
+    in_file.open (fname.c_str (), std::ifstream::in);
+    assert (!in_file.fail ());
+    in_file.clear ();
+    in_file.seekg (0); 
+    while (getline (in_file, linetxt,'\n'))
+    {
+        linetxt = linetxt.substr (1, linetxt.length()-2);
+        TubeStationList.push_back (linetxt.c_str());
+    }
+    in_file.close();
+
+    return TubeStationList.size ();
+} // end BikeStationData::GetTubeStations
 
 
 /************************************************************************
@@ -216,7 +215,7 @@ int StationData::GetRailStations ()
  ************************************************************************
  ************************************************************************/
 
-void StationData::MakeStationIndex ()
+void BikeStationData::MakeStationIndex ()
 {
     // First station is #1 and last is _maxStations, so _StationIndex has 
     // len (_maxStns + 1), with _StationIndex [sti.ID=1] = 0 and
@@ -232,4 +231,4 @@ void StationData::MakeStationIndex ()
         sti = StationList [i];
         _StationIndex [sti.ID] = i;
     }
-} // end StationData::MakeStationIndex
+} // end BikeStationData::MakeStationIndex

@@ -95,27 +95,21 @@ int main(int argc, char *argv[]) {
 
     int numStations = rideData.getNumStations();
     if (city != "oyster")
+    {
+        numStations = rideData.getNumStations();
         std::cout << "There are " << numStations << 
             " stations [max#=" << rideData.getStnIndxLen() << "] and " << 
             rideData.getNumFiles() << " trip files." << std::endl;
+    }
     else
     {
-        tempi [0] = tempi [1] = 0;
-        for (std::vector <RideData::OneRailStation>::iterator 
-                itr = rideData.RailStationList.begin ();
-                itr != rideData.RailStationList.end(); itr++)
-            if (!(*itr).tube)
-                tempi [0]++;
-            else
-                tempi [1]++;
-        std::cout << "There are " << tempi [0] << " NR + " << tempi [1] <<
-            " LUL = " << numStations << " stations in total" << std::endl;
     }
 
     count = 0;
     if (city == "oyster")
     {
         tempi [0] = rideData.getTrainStations ();
+        tempi [0] = rideData.getTrainTrips ();
     }
     else 
     {

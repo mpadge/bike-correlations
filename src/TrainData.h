@@ -19,8 +19,8 @@ class TrainData: public TrainStationData
         bool ignoreZeros;
         int nearfar;
         dmat ntrips; // dmat to allow standardisation to unit sum
-        imat ntrips_rail, ntrips_tube;
-        dmat r2, cov, dists;
+        imat ntripsRail, ntripsTube;
+        dmat r2Rail, r2Tube, covRail, covTube, distsRail, distsTube;
         std::string fileName;
         std::vector <int> missingStations;
         std::string txtzero, txtnf;
@@ -31,9 +31,9 @@ class TrainData: public TrainStationData
         {
             _numRailStations = getNumRailStations ();
             _numTubeStations = getNumTubeStations ();
-            ntrips_rail.resize (_numRailStations, _numRailStations);
-            ntrips_tube.resize (_numTubeStations, _numTubeStations);
-            subscriberOysterConstruct ();
+            ntripsRail.resize (_numRailStations, _numRailStations);
+            ntripsTube.resize (_numTubeStations, _numTubeStations);
+            TrainDataConstruct ();
             _standardise = true; // false doesn't make sense
 
             txtzerolist.resize (0);
@@ -49,10 +49,14 @@ class TrainData: public TrainStationData
         {
             missingStations.resize (0);
             ntrips.resize (0, 0);
-            subscriberRailDestruct();
-            r2.resize (0, 0);
-            cov.resize (0, 0);
-            dists.resize (0, 0);
+            r2Rail.resize (0, 0);
+            r2Tube.resize (0, 0);
+            covRail.resize (0, 0);
+            covTube.resize (0, 0);
+            distsRail.resize (0, 0);
+            distsTube.resize (0, 0);
+            ntripsRail.resize (0, 0);
+            ntripsTube.resize (0, 0);
             txtzerolist.resize (0);
             txtnflist.resize (0);
         }
@@ -61,10 +65,6 @@ class TrainData: public TrainStationData
         int getNumFiles () { return _numTripFiles;  }
         int getStnIndxLen () { return _stnIndxLen;  }
         int getStandardise () { return _standardise;    }
-        int getNumRailStations () { return _numRailStations;    }
-        int getNumTubeStations () { return _numTubeStations;   }
-
-        int removeFile ();
 
         int getTrainStations ();
         int getTrainTrips ();
@@ -76,37 +76,45 @@ class TrainData: public TrainStationData
         int readR2Mat (bool from);
         int writeDMat ();
 
-        void subscriberOysterConstruct()
+        void TrainDataConstruct()
         {
-            ntrips_rail.resize (_numRailStations, _numRailStations);
+            ntripsRail.resize (_numRailStations, _numRailStations);
             for (int i=0; i<_numRailStations; i++)
                 for (int j=0; j<_numRailStations; j++)
-                    ntrips_rail (i, j) = 0;
-            ntrips_tube.resize (_numTubeStations, _numTubeStations);
+                    ntripsRail (i, j) = 0;
+            ntripsTube.resize (_numTubeStations, _numTubeStations);
             for (int i=0; i<_numTubeStations; i++)
                 for (int j=0; j<_numTubeStations; j++)
-                    ntrips_tube (i, j) = 0;
+                    ntripsTube (i, j) = 0;
         }
         void InitialiseArrays ()
         {
-            r2.resize (_numRailStations, _numRailStations);
-            cov.resize (_numRailStations, _numRailStations);
-            dists.resize (_numRailStations, _numRailStations);
+            r2Rail.resize (_numRailStations, _numRailStations);
+            covRail.resize (_numRailStations, _numRailStations);
+            distsRail.resize (_numRailStations, _numRailStations);
             for (int i=0; i<_numRailStations; i++)
             {
                 for (int j=0; j<_numRailStations; j++)
                 {
-                    ntrips (i, j) = 0.0;
-                    r2 (i, j) = -9999.9;
-                    cov (i, j) = -9999.9;
-                    dists (i, j) = -9999.9;
+                    ntripsRail (i, j) = 0.0;
+                    r2Rail (i, j) = -9999.9;
+                    covRail (i, j) = -9999.9;
+                    distsRail (i, j) = -9999.9;
                 }
             }
-        }
-        void subscriberRailDestruct()
-        {
-            ntrips_rail.resize (0, 0);
-            ntrips_tube.resize (0, 0);
+            r2Tube.resize (_numRailStations, _numRailStations);
+            covTube.resize (_numRailStations, _numRailStations);
+            distsTube.resize (_numRailStations, _numRailStations);
+            for (int i=0; i<_numTubeStations; i++)
+            {
+                for (int j=0; j<_numTubeStations; j++)
+                {
+                    ntripsTube (i, j) = 0.0;
+                    r2Tube (i, j) = -9999.9;
+                    covTube (i, j) = -9999.9;
+                    distsTube (i, j) = -9999.9;
+                }
+            }
         }
 };
 

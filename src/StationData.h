@@ -17,7 +17,26 @@
 #include <iomanip> // for setfill
 #include <sys/ioctl.h> // for console width: Linux only!
 
-class BikeStationData 
+// TODO: Make base class of StationData, then Bike and Train versions that
+// inherit that class.
+
+class StationData // for both bikes and trains
+{
+    protected:
+        std::string _dirName;
+        const std::string _city;
+        bool _standardise;
+    public:
+        StationData (std::string str)
+            : _city (str)
+        {
+            _dirName = GetDirName ();
+        }
+        std::string GetDirName ();
+        std::string returnCity () { return _city;  }
+};
+
+class BikeStationData : public StationData
 {
     private:
         std::string _dirName;
@@ -30,9 +49,8 @@ class BikeStationData
         std::vector <int> _StationIndex;
     public:
         BikeStationData (std::string str)
-            : _city (str)
+            : StationData (str)
         {
-            _dirName = GetDirName ();
             GetDirList ();
             FileList = filelist;
             _numStations = GetStations ();
@@ -46,13 +64,12 @@ class BikeStationData
         }
         struct OneStation
         {
-            int ID, indx;
+            int ID;
             float lon, lat;
         };
         std::vector <OneStation> StationList;
         std::vector <std::string> filelist;
 
-        std::string GetDirName ();
         void GetDirList ();
         void MakeStationIndex ();
         int GetStations ();
@@ -67,7 +84,7 @@ class BikeStationData
 class TrainStationData 
 {
     private:
-        std::string _dirName;
+        std::string _dirName, _city = "oyster";
         bool _standardise;
         std::string _nearfarTxt [3];
     protected:

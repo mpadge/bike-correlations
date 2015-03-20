@@ -8,7 +8,45 @@
  ************************************************************************
  ************************************************************************/
 
-std::string BikeStationData::GetDirName ()
+std::string StationData::GetDirName ()
+{
+    std::ifstream in_file;
+    std::string dirtxt, fname;
+    std::string configfile = "bikes.cfg"; // Contains name of data directory
+    DIR *dir;
+    struct dirent *ent;
+
+    in_file.open (configfile.c_str (), std::ifstream::in);
+    assert (!in_file.fail ());
+
+    while (!in_file.eof ())
+    {
+        getline (in_file, dirtxt, '\n');
+        if (dirtxt.find (':') < std::string::npos) 
+        {
+            dirtxt = dirtxt.substr (0, dirtxt.find (':'));
+            std::transform (dirtxt.begin(), dirtxt.end(), 
+                    dirtxt.begin(), ::tolower);
+            if (dirtxt.substr (0, 3) == _city.substr (0, 3)) 
+            {
+                getline (in_file, dirtxt, '\n');
+                break;
+            }
+        }
+    }
+    in_file.close ();
+    return dirtxt;
+} // end StationData::GetDirName
+
+/************************************************************************
+ ************************************************************************
+ **                                                                    **
+ **                           GETDIRNAME                               **
+ **                                                                    **
+ ************************************************************************
+ ************************************************************************/
+
+std::string TrainStationData::GetDirName ()
 {
     std::ifstream in_file;
     std::string dirtxt, fname;

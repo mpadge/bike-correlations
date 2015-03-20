@@ -2,12 +2,18 @@ CC=g++
 CFLAGS=-c -std=c++11
 LIBS=-lzip
 VPATH=./src
-OBJECTS = mainBikes.o StationData.o RideData.o Utils.o
+OBJECTS_BIKES = mainBikes.o StationData.o RideData.o Utils.o
+OBJECTS_TRAINS = mainTrains.o StationData.o RideData.o Utils.o
 
-all: main
+bikes: mainBikes
 
-main: $(OBJECTS)
-	$(CC) $(OBJECTS) -o bikes $(LIBS) 
+mainBikes: $(OBJECTS_BIKES)
+	$(CC) $(OBJECTS_BIKES) -o bikes $(LIBS) 
+
+trains: mainTrains
+
+mainTrains: $(OBJECTS_TRAINS)
+	$(CC) $(OBJECTS_TRAINS) -o trains $(LIBS) 
 
 %.o: %.c++
 	$(CC) $(CFLAGS) $<

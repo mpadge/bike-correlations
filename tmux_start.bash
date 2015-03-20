@@ -5,13 +5,17 @@ SESSION="bike-correlations"
 tmux -2 new-session -d -s $SESSION
 
 tmux new-window -t $SESSION:1 -k -n main
-tmux send-keys -t $SESSION:1 'vim main.h' C-m
-tmux send-keys -t $SESSION:1 ':' 'tabe main.c++' C-m
+tmux send-keys -t $SESSION:1 'vim mainBikes.h' C-m
+tmux send-keys -t $SESSION:1 ':' 'tabe mainBikes.c++' C-m
+tmux send-keys -t $SESSION:1 ':' 'tabe mainTrains.h' C-m
+tmux send-keys -t $SESSION:1 ':' 'tabe mainTrains.c++' C-m
 tmux split-window -h
 tmux send-keys -t $SESSION:1 'vim StationData.h' C-m
 tmux send-keys -t $SESSION:1 ':' 'tabe StationData.c++' C-m
 tmux send-keys -t $SESSION:1 ':' 'tabe RideData.h' C-m
 tmux send-keys -t $SESSION:1 ':' 'tabe RideData.c++' C-m
+tmux send-keys -t $SESSION:1 ':' 'tabe TrainData.h' C-m
+tmux send-keys -t $SESSION:1 ':' 'tabe TrainData.c++' C-m
 tmux select-pane -t 0
 
 tmux new-window -t $SESSION:2 -n routines1

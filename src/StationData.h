@@ -79,7 +79,7 @@ class TrainStationData
         std::vector <int> _StationIndex;
         std::vector <oysterOne> _OysterStations;
     public:
-        TrainStationData (std::string str)
+        TrainStationData ()
         {
             _dirName = GetDirName ();
             _numRailStations = GetRailStations ();

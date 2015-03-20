@@ -105,8 +105,8 @@ int RideData::readOneFileLondon ()
 {
     bool alreadyMissing;
     int ID, count = 0, ipos, tempi [2];
-    int nstations = RideData::getNumStations (), 
-        maxStation = RideData::getMaxStation ();
+    int nstations = RideData::returnNumStations (), 
+        maxStation = RideData::returnMaxStation ();
     std::string fname = BikeStationData::GetDirName() + '/' + fileName;
     std::ifstream in_file;
     std::string linetxt;
@@ -455,7 +455,7 @@ void RideData::summaryStatsNYC ()
     {
         // Male-Female ratio
         tempi [0] = tempi [1] = 0;
-        int numStations = RideData::getNumStations ();
+        int numStations = RideData::returnNumStations ();
         for (int i=0; i<numStations; i++)
             for (int j=0; j<numStations; j++)
             {
@@ -478,7 +478,7 @@ void RideData::summaryStatsNYC ()
 
 int RideData::aggregateTrips ()
 {
-    int numStations = RideData::getNumStations (),
+    int numStations = RideData::returnNumStations (),
         subscriber = RideData::getSubscriber (),
         gender = RideData::getGender ();
     // subscriber = (0, 1, 2) for (all, subscriber, customer)
@@ -585,9 +585,9 @@ int RideData::aggregateTrips ()
 
 int RideData::writeNumTrips ()
 {
-    int numStations = RideData::getNumStations ();
+    int numStations = RideData::returnNumStations ();
     std::string fname;
-    if (RideData::getCity() == "london")
+    if (RideData::returnCity() == "london")
         fname = "NumTrips_london.csv";
     else
         fname = "NumTrips_nyc_" +
@@ -626,7 +626,7 @@ int RideData::writeNumTrips ()
 int RideData::calcR2 (bool from)
 {
     bool standardise = RideData::getStandardise();
-    int tempi, numStations = RideData::getNumStations ();
+    int tempi, numStations = RideData::returnNumStations ();
     double tempd [2];
     std::vector <double> x0, y0, x1, x2, y2, d;
     RegrResults regrResults;
@@ -766,11 +766,11 @@ int RideData::calcR2 (bool from)
 
 int RideData::writeR2Mat (bool from)
 {
-    int numStations = RideData::getNumStations (),
+    int numStations = RideData::returnNumStations (),
         subscriber = RideData::getSubscriber (),
         gender = RideData::getGender ();
     std::string r2File;
-    if (RideData::getCity() == "london")
+    if (RideData::returnCity() == "london")
         if (from) 
             r2File = "R2_london_from_" + txtnf + "_" + txtzero + ".csv";
         else
@@ -812,7 +812,7 @@ int RideData::writeR2Mat (bool from)
 
 int RideData::writeCovMat (bool from)
 {
-    int numStations = RideData::getNumStations ();
+    int numStations = RideData::returnNumStations ();
     std::string covFile, stdext;
     bool standardise = RideData::getStandardise ();
     if (standardise)
@@ -820,7 +820,7 @@ int RideData::writeCovMat (bool from)
     else
         stdext = "_unstd";
 
-    if (RideData::getCity() == "london")
+    if (RideData::returnCity() == "london")
         if (from)
             covFile = "Cov_london_from" + stdext + "_" + txtnf + 
                 "_" + txtzero + ".csv";
@@ -868,7 +868,7 @@ int RideData::readR2Mat (bool from)
     int count, ipos;
     double tempd;
     std::string linetxt;
-    int numStations = RideData::getNumStations ();
+    int numStations = RideData::returnNumStations ();
     std::string r2File;
     if (from)
         r2File = "R2_from.csv";
@@ -906,13 +906,13 @@ int RideData::readR2Mat (bool from)
 
 int RideData::writeDMat ()
 {
-    std::string city = RideData::getCity(), distFile;
+    std::string city = RideData::returnCity(), distFile;
     if (city == "london")
         distFile = "results/station_dists_london.txt";
     else if (city == "nyc")
         distFile = "results/station_dists_nyc.txt";
 
-    int numStations = RideData::getNumStations ();
+    int numStations = RideData::returnNumStations ();
 
     int count, ipos, tempi [2];
     double d;

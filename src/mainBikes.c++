@@ -89,8 +89,7 @@ int main(int argc, char *argv[]) {
     std::cout << "_____________________________________________" << 
         "____________________________________________" << std::endl << std::endl;
 
-    int numStations = rideData.getNumStations();
-    numStations = rideData.getNumStations();
+    int numStations = rideData.returnNumStations();
     std::cout << "There are " << numStations << 
         " stations [max#=" << rideData.getStnIndxLen() << "] and " << 
         rideData.getNumFiles() << " trip files." << std::endl;

@@ -17,69 +17,69 @@
 #include <iomanip> // for setfill
 #include <sys/ioctl.h> // for console width: Linux only!
 
-// TODO: Make base class of StationData, then Bike and Train versions that
-// inherit that class.
-
 class StationData // for both bikes and trains
 {
     protected:
+        int _numStations;
         std::string _dirName;
         const std::string _city;
         bool _standardise;
     public:
+        std::string fileName;
         StationData (std::string str)
             : _city (str)
         {
             _dirName = GetDirName ();
         }
+        ~StationData ()
+        {
+        }
+
+        std::string returnDirName () { return _dirName; }
+        std::string returnCity () { return _city;   }
+        int returnNumStations () { return _numStations; }
+        
         std::string GetDirName ();
-        std::string returnCity () { return _city;  }
 };
+
 
 class BikeStationData : public StationData
 {
-    private:
-        std::string _dirName;
-        const std::string _city;
-        bool _standardise;
-        std::string _nearfarTxt [3];
     protected:
-        int _numStations, _maxStations;
-        std::vector <std::string> FileList;
+        int _maxStation;
         std::vector <int> _StationIndex;
+        std::string _nearfarTxt [3];
     public:
-        BikeStationData (std::string str)
-            : StationData (str)
-        {
-            GetDirList ();
-            FileList = filelist;
-            _numStations = GetStations ();
-            MakeStationIndex ();
-        }
-        ~BikeStationData ()
-        {
-            filelist.resize (0);
-            FileList.resize (0);
-            _StationIndex.resize (0);
-        }
-        struct OneStation
+        std::vector <int> missingStations;
+        struct OneStation 
         {
             int ID;
             float lon, lat;
         };
         std::vector <OneStation> StationList;
+
+        BikeStationData (std::string str)
+            : StationData (str)
+        {
+            GetDirList ();
+            _maxStation = GetStations ();
+            _numStations = StationList.size ();
+            missingStations.resize (0);
+            MakeStationIndex ();
+        }
+        ~BikeStationData()
+        {
+            filelist.resize (0);
+            missingStations.resize (0);
+        }
+
+        int returnMaxStation () { return _maxStation;   }
+
         std::vector <std::string> filelist;
-
         void GetDirList ();
-        void MakeStationIndex ();
         int GetStations ();
-
-        int getNumStations () { return _numStations;  }
-        int getMaxStation () { return _maxStations;  }
-        std::string getCity () { return _city;    }
-        std::vector <int> getStationIndex() { return _StationIndex; }
+        void MakeStationIndex ();
 }; // end class BikeStationData
-
 
 class TrainStationData 
 {

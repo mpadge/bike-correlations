@@ -44,7 +44,7 @@ class RideData: public BikeStationData
         RideData (std::string str, int i0, int i1)
             : BikeStationData (str), _subscriber (i0), _gender (i1)
         {
-            _numStations = getNumStations();
+            _numStations = returnNumStations();
             _numTripFiles = filelist.size ();
             _stnIndxLen = _StationIndex.size ();
             missingStations.resize (0);

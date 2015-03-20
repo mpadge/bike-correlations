@@ -142,7 +142,7 @@ int BikeStationData::GetStations ()
     std::string linetxt;
 
     StationList.resize (0);
-    _maxStations = 0;
+    _maxStation = 0;
 
     fname = dir + "station_latlons_" + _city + ".txt";
     in_file.open (fname.c_str (), std::ifstream::in);
@@ -157,8 +157,8 @@ int BikeStationData::GetStations ()
         {
             ipos = linetxt.find(',',0);
             tempi = atoi (linetxt.substr (0, ipos).c_str());
-            if (tempi > _maxStations) 
-                _maxStations = tempi;
+            if (tempi > _maxStation) 
+                _maxStation = tempi;
             oneStation.ID = tempi;
             linetxt = linetxt.substr (ipos + 1, linetxt.length () - ipos - 1);
             ipos = linetxt.find (',', 0);
@@ -255,12 +255,12 @@ int TrainStationData::GetTubeStations ()
 
 void BikeStationData::MakeStationIndex ()
 {
-    // First station is #1 and last is _maxStations, so _StationIndex has 
+    // First station is #1 and last is _maxStation, so _StationIndex has 
     // len (_maxStns + 1), with _StationIndex [sti.ID=1] = 0 and
-    // _StationIndex [sti.ID=_maxStations] = _numStations.
+    // _StationIndex [sti.ID=_maxStation] = _numStations.
     OneStation sti;
 
-    _StationIndex.resize (_maxStations + 1);
+    _StationIndex.resize (_maxStation + 1);
     for (std::vector <int>::iterator pos=_StationIndex.begin();
             pos != _StationIndex.end(); pos++)
         *pos = INT_MIN;

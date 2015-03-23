@@ -1,5 +1,5 @@
-#ifndef RIDEDATA_H
-#define RIDEDATA_H
+#ifndef TRAINDATA_H
+#define TRAINDATA_H
 
 #include "Utils.h"
 #include "Structures.h"
@@ -8,11 +8,12 @@
 #include <zip.h>
 #include <errno.h>
 
-class TrainData: public TrainStationData 
+class TrainData: public StationData 
 {
     private:
         int _numTripFiles, _stnIndxLen;
         bool _standardise;
+        const bool _tube;
         // Standardises ntrips to unit sum, so covariances do not depend on
         // scales of actual numbers of trips. Set to true in initialisation.
     public:
@@ -26,15 +27,12 @@ class TrainData: public TrainStationData
         std::string txtzero, txtnf;
         std::vector <std::string> txtzerolist, txtnflist;
 
-        TrainData ()
-            : TrainStationData ()
+        TrainData (std::string str, bool tube)
+            : StationData (str), _tube (tube)
         {
-            _numRailStations = getNumRailStations ();
-            _numTubeStations = getNumTubeStations ();
-            ntripsRail.resize (_numRailStations, _numRailStations);
-            ntripsTube.resize (_numTubeStations, _numTubeStations);
-            TrainDataConstruct ();
+            _numStations = getNumStations (_tube);
             _standardise = true; // false doesn't make sense
+            InitialiseArrays ();
 
             txtzerolist.resize (0);
             txtzerolist.push_back ("zeros");
@@ -49,14 +47,11 @@ class TrainData: public TrainStationData
         {
             missingStations.resize (0);
             ntrips.resize (0, 0);
-            r2Rail.resize (0, 0);
-            r2Tube.resize (0, 0);
-            covRail.resize (0, 0);
-            covTube.resize (0, 0);
-            distsRail.resize (0, 0);
-            distsTube.resize (0, 0);
-            ntripsRail.resize (0, 0);
-            ntripsTube.resize (0, 0);
+            r2.resize (0, 0);
+            r2.resize (0, 0);
+            cov.resize (0, 0);
+            cov.resize (0, 0);
+            dists.resize (0, 0);
             txtzerolist.resize (0);
             txtnflist.resize (0);
         }
@@ -66,53 +61,23 @@ class TrainData: public TrainStationData
         int getStnIndxLen () { return _stnIndxLen;  }
         int getStandardise () { return _standardise;    }
 
-        int getTrainStations ();
-        int getTrainTrips ();
+        int getNumStations (bool tube);
 
-        int writeNumTrips ();
-        int calcR2 (bool from);
-        int writeR2Mat (bool from);
-        int writeCovMat (bool from);
-        int readR2Mat (bool from);
-        int writeDMat ();
 
-        void TrainDataConstruct()
-        {
-            ntripsRail.resize (_numRailStations, _numRailStations);
-            for (int i=0; i<_numRailStations; i++)
-                for (int j=0; j<_numRailStations; j++)
-                    ntripsRail (i, j) = 0;
-            ntripsTube.resize (_numTubeStations, _numTubeStations);
-            for (int i=0; i<_numTubeStations; i++)
-                for (int j=0; j<_numTubeStations; j++)
-                    ntripsTube (i, j) = 0;
-        }
         void InitialiseArrays ()
         {
-            r2Rail.resize (_numRailStations, _numRailStations);
-            covRail.resize (_numRailStations, _numRailStations);
-            distsRail.resize (_numRailStations, _numRailStations);
-            for (int i=0; i<_numRailStations; i++)
+            ntrips.resize (_numStations, _numStations);
+            r2.resize (_numStations, _numStations);
+            cov.resize (_numStations, _numStations);
+            dists.resize (_numStations, _numStations);
+            for (int i=0; i<_numStations; i++)
             {
-                for (int j=0; j<_numRailStations; j++)
+                for (int j=0; j<_numStations; j++)
                 {
-                    ntripsRail (i, j) = 0.0;
-                    r2Rail (i, j) = -9999.9;
-                    covRail (i, j) = -9999.9;
-                    distsRail (i, j) = -9999.9;
-                }
-            }
-            r2Tube.resize (_numRailStations, _numRailStations);
-            covTube.resize (_numRailStations, _numRailStations);
-            distsTube.resize (_numRailStations, _numRailStations);
-            for (int i=0; i<_numTubeStations; i++)
-            {
-                for (int j=0; j<_numTubeStations; j++)
-                {
-                    ntripsTube (i, j) = 0.0;
-                    r2Tube (i, j) = -9999.9;
-                    covTube (i, j) = -9999.9;
-                    distsTube (i, j) = -9999.9;
+                    ntrips (i, j) = 0.0;
+                    r2 (i, j) = -9999.9;
+                    cov (i, j) = -9999.9;
+                    dists (i, j) = -9999.9;
                 }
             }
         }

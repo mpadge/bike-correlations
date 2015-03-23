@@ -2,8 +2,9 @@
 
 int main (int argc, char *argv[]) {
 
-    TrainData trainData;
-    std::cout << "There are " << trainData.getNumRailStations () << 
-        " rail and " << trainData.getNumTubeStations () << 
+    TrainData railData ("OysterRail", false),
+              tubeData ("OysterTube", true);
+    std::cout << "There are " << railData.returnNumStations () << 
+        " rail and " << tubeData.returnNumStations () << 
         " tube stations." << std::endl;
 }

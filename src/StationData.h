@@ -112,50 +112,5 @@ class StationData : public Stations
         }
 }; // end class StationData
 
-class TrainStationData 
-{
-    private:
-        std::string _dirName, _city = "oyster";
-        bool _standardise;
-        std::string _nearfarTxt [3];
-    protected:
-        int _numRailStations, _numTubeStations;
-        struct oysterOne
-        {
-            std::string mode, name; // mode is NR, LUL, DLR
-        };
-        std::vector <int> _StationIndex;
-        std::vector <oysterOne> _OysterStations;
-    public:
-        TrainStationData ()
-        {
-            _dirName = GetDirName ();
-            _numRailStations = GetRailStations ();
-            _numTubeStations = GetTubeStations ();
-        }
-        ~TrainStationData ()
-        {
-            _StationIndex.resize (0);
-        }
-        struct OneStation
-        {
-            int ID, indx;
-            float lon, lat;
-        };
-        std::vector <std::string> RailStationList;
-        std::vector <std::string> TubeStationList;
-
-        std::string GetDirName ();
-        void GetDirList ();
-        void MakeStationIndex ();
-        int GetStations ();
-        int GetRailStations ();
-        int GetTubeStations ();
-
-        int getNumRailStations () { return _numRailStations;  }
-        int getNumTubeStations () { return _numTubeStations;  }
-        std::vector <int> getStationIndex() { return _StationIndex; }
-}; // end class TrainStationData
-
 
 #endif

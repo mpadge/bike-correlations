@@ -41,44 +41,6 @@ std::string Stations::GetDirName ()
 /************************************************************************
  ************************************************************************
  **                                                                    **
- **                           GETDIRNAME                               **
- **                                                                    **
- ************************************************************************
- ************************************************************************/
-
-std::string TrainStationData::GetDirName ()
-{
-    std::ifstream in_file;
-    std::string dirtxt, fname;
-    std::string configfile = "bikes.cfg"; // Contains name of data directory
-    DIR *dir;
-    struct dirent *ent;
-
-    in_file.open (configfile.c_str (), std::ifstream::in);
-    assert (!in_file.fail ());
-
-    while (!in_file.eof ())
-    {
-        getline (in_file, dirtxt, '\n');
-        if (dirtxt.find (':') < std::string::npos) 
-        {
-            dirtxt = dirtxt.substr (0, dirtxt.find (':'));
-            std::transform (dirtxt.begin(), dirtxt.end(), 
-                    dirtxt.begin(), ::tolower);
-            if (dirtxt.substr (0, 3) == _city.substr (0, 3)) 
-            {
-                getline (in_file, dirtxt, '\n');
-                break;
-            }
-        }
-    }
-    in_file.close ();
-    return dirtxt;
-} // end TrainStationData::GetDirName
-
-/************************************************************************
- ************************************************************************
- **                                                                    **
  **                           GETDIRLIST                               **
  **                                                                    **
  ************************************************************************
@@ -144,105 +106,42 @@ int StationData::GetStations ()
     StationList.resize (0);
     count = 0;
 
-    fname = dir + "station_latlons_" + _city + ".txt";
-    in_file.open (fname.c_str (), std::ifstream::in);
-    assert (!in_file.fail ());
-    in_file.clear ();
-    in_file.seekg (0); 
-    getline (in_file, linetxt, '\n'); // header
-    while (!in_file.eof ()) 
+    if (_city == "london" || _city == "nyc")
     {
-        getline (in_file, linetxt,'\n');
-        if (linetxt.length () > 1) 
+        fname = dir + "station_latlons_" + _city + ".txt";
+        in_file.open (fname.c_str (), std::ifstream::in);
+        assert (!in_file.fail ());
+        in_file.clear ();
+        in_file.seekg (0); 
+        getline (in_file, linetxt, '\n'); // header
+        while (!in_file.eof ()) 
         {
-            ipos = linetxt.find(',',0);
-            tempi = atoi (linetxt.substr (0, ipos).c_str());
-            if (tempi > count) 
-                count = tempi;
-            oneStation.ID = tempi;
-            linetxt = linetxt.substr (ipos + 1, linetxt.length () - ipos - 1);
-            ipos = linetxt.find (',', 0);
-            oneStation.lat = atof (linetxt.substr (0, ipos).c_str());
-            linetxt = linetxt.substr (ipos + 1, linetxt.length () - ipos - 1);
-            ipos = linetxt.find (',', 0);
-            oneStation.lon = atof (linetxt.substr (0, ipos).c_str());
-            StationList.push_back (oneStation);
+            getline (in_file, linetxt,'\n');
+            if (linetxt.length () > 1) 
+            {
+                ipos = linetxt.find(',',0);
+                tempi = atoi (linetxt.substr (0, ipos).c_str());
+                if (tempi > count) 
+                    count = tempi;
+                oneStation.ID = tempi;
+                linetxt = linetxt.substr (ipos + 1, linetxt.length () - ipos - 1);
+                ipos = linetxt.find (',', 0);
+                oneStation.lat = atof (linetxt.substr (0, ipos).c_str());
+                linetxt = linetxt.substr (ipos + 1, linetxt.length () - ipos - 1);
+                ipos = linetxt.find (',', 0);
+                oneStation.lon = atof (linetxt.substr (0, ipos).c_str());
+                StationList.push_back (oneStation);
+            }
         }
+        in_file.close();
+    } else if (_city == "oysterRail")
+    {
+    } else if (_city == "oysterTube")
+    {
     }
-    in_file.close();
 
     return count;
 } // end StationData::GetStations
-
-
-/************************************************************************
- ************************************************************************
- **                                                                    **
- **                        GETRAILSTATIONS                             **
- **                                                                    **
- ************************************************************************
- ************************************************************************/
-
-int TrainStationData::GetRailStations ()
-{
-    // Reads both tube and National Rail stations from separate files
-    const std::string dir = "data/"; 
-    int ipos, tempi;
-    std::string fname;
-    std::ifstream in_file;
-    std::string linetxt;
-
-    RailStationList.resize (0);
-
-    fname = dir + "London-rail-station-names.txt";
-    in_file.open (fname.c_str (), std::ifstream::in);
-    assert (!in_file.fail ());
-    in_file.clear ();
-    in_file.seekg (0); 
-    while (getline (in_file, linetxt,'\n'))
-    {
-        linetxt = linetxt.substr (1, linetxt.length()-2);
-        RailStationList.push_back (linetxt);
-    }
-    in_file.close();
-
-    return RailStationList.size ();
-} // end TrainStationData::GetRailStations
-
-
-/************************************************************************
- ************************************************************************
- **                                                                    **
- **                        GETTUBESTATIONS                             **
- **                                                                    **
- ************************************************************************
- ************************************************************************/
-
-int TrainStationData::GetTubeStations ()
-{
-    // Reads both tube and National Rail stations from separate files
-    const std::string dir = "data/"; 
-    int ipos, tempi;
-    std::string fname;
-    std::ifstream in_file;
-    std::string linetxt;
-
-    TubeStationList.resize (0);
-
-    fname = dir + "London-tube-station-names.txt";
-    in_file.open (fname.c_str (), std::ifstream::in);
-    assert (!in_file.fail ());
-    in_file.clear ();
-    in_file.seekg (0); 
-    while (getline (in_file, linetxt,'\n'))
-    {
-        linetxt = linetxt.substr (1, linetxt.length()-2);
-        TubeStationList.push_back (linetxt.c_str());
-    }
-    in_file.close();
-
-    return TubeStationList.size ();
-} // end TrainStationData::GetTubeStations
 
 
 /************************************************************************

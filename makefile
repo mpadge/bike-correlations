@@ -3,7 +3,7 @@ CFLAGS=-c -std=c++11
 LIBS=-lzip
 VPATH=./src
 OBJECTS_BIKES = mainBikes.o StationData.o RideData.o Utils.o
-OBJECTS_TRAINS = mainTrains.o StationData.o RideData.o Utils.o
+OBJECTS_TRAINS = mainTrains.o StationData.o TrainData.o Utils.o
 
 bikes: mainBikes
 

@@ -17,36 +17,41 @@
 #include <iomanip> // for setfill
 #include <sys/ioctl.h> // for console width: Linux only!
 
-class StationData // for both bikes and trains
+class Stations // for both bikes and trains
 {
+    /*
+     * Stations and BikeStation data are generic classes into which all data
+     * is initially loaded, and the only classes on which subsequent
+     * manipulations should be make. The descendent class RideData exists only
+     * to load data into the standard StationData and BikeStation classes.
+     */
     protected:
-        int _numStations;
         std::string _dirName;
         const std::string _city;
         bool _standardise;
+        dmat dists2;
     public:
         std::string fileName;
-        StationData (std::string str)
+        Stations (std::string str)
             : _city (str)
         {
             _dirName = GetDirName ();
         }
-        ~StationData ()
+        ~Stations ()
         {
         }
 
         std::string returnDirName () { return _dirName; }
         std::string returnCity () { return _city;   }
-        int returnNumStations () { return _numStations; }
         
         std::string GetDirName ();
 };
 
 
-class BikeStationData : public StationData
+class StationData : public Stations
 {
     protected:
-        int _maxStation;
+        int _numStations, _maxStation;
         std::vector <int> _StationIndex;
         std::string _nearfarTxt [3];
     public:
@@ -57,29 +62,55 @@ class BikeStationData : public StationData
             float lon, lat;
         };
         std::vector <OneStation> StationList;
+        dmat ntrips; // dmat to allow standardisation to unit sum
+        dmat r2, cov, dists;
 
-        BikeStationData (std::string str)
-            : StationData (str)
+        StationData (std::string str)
+            : Stations (str)
         {
             GetDirList ();
-            GetStations ();
+            _maxStation = GetStations ();
             _numStations = StationList.size ();
             missingStations.resize (0);
             MakeStationIndex ();
+            InitialiseArrays ();
         }
-        ~BikeStationData()
+        ~StationData()
         {
             filelist.resize (0);
             missingStations.resize (0);
+            ntrips.resize (0, 0);
+            r2.resize (0, 0);
+            cov.resize (0, 0);
+            dists.resize (0, 0);
         }
 
+        int returnNumStations () { return _numStations; }
         int returnMaxStation () { return _maxStation;   }
 
         std::vector <std::string> filelist;
         void GetDirList ();
-        void GetStations ();
+        int GetStations ();
         void MakeStationIndex ();
-}; // end class BikeStationData
+
+        void InitialiseArrays ()
+        {
+            ntrips.resize (_numStations, _numStations);
+            r2.resize (_numStations, _numStations);
+            cov.resize (_numStations, _numStations);
+            dists.resize (_numStations, _numStations);
+            for (int i=0; i<_numStations; i++)
+            {
+                for (int j=0; j<_numStations; j++)
+                {
+                    //ntrips (i, j) = 0.0;
+                    r2 (i, j) = -9999.9;
+                    cov (i, j) = -9999.9;
+                    dists (i, j) = -9999.9;
+                }
+            }
+        }
+}; // end class StationData
 
 class TrainStationData 
 {

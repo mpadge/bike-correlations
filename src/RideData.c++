@@ -17,7 +17,7 @@ int RideData::countFilesLondon (int filei)
     char buf[100]; 
     int err;
 
-    std::string fname_base = BikeStationData::GetDirName() + '/' + filelist [filei];
+    std::string fname_base = StationData::GetDirName() + '/' + filelist [filei];
     archive = fname_base.c_str ();
     if ((za = zip_open(archive, 0, &err)) == NULL) {
         zip_error_to_str(buf, sizeof(buf), err, errno);
@@ -63,7 +63,7 @@ int RideData::unzipOneFileLondon (int filei, int filej)
     int err, sum, len;
 
     std::ofstream out_file;
-    std::string fname_csv, fname_base = BikeStationData::GetDirName() + '/' + filelist [filei];
+    std::string fname_csv, fname_base = StationData::GetDirName() + '/' + filelist [filei];
 
     archive = fname_base.c_str ();
     // Error checks already done with countFilesLondon
@@ -72,7 +72,7 @@ int RideData::unzipOneFileLondon (int filei, int filej)
         fileName = sb.name;
         zf = zip_fopen_index(za, filej, 0);
 
-        fname_csv = BikeStationData::GetDirName() + '/' + fileName;
+        fname_csv = StationData::GetDirName() + '/' + fileName;
         out_file.open (fname_csv.c_str(), std::ios::out);
         sum = 0;
         while (sum != sb.size) {
@@ -107,7 +107,7 @@ int RideData::readOneFileLondon ()
     int ID, count = 0, ipos, tempi [2];
     int nstations = RideData::returnNumStations (), 
         maxStation = RideData::returnMaxStation ();
-    std::string fname = BikeStationData::GetDirName() + '/' + fileName;
+    std::string fname = StationData::GetDirName() + '/' + fileName;
     std::ifstream in_file;
     std::string linetxt;
 
@@ -206,7 +206,7 @@ void RideData::dumpMissingStations ()
 
 int RideData::removeFile ()
 {
-    std::string fname_csv = BikeStationData::GetDirName() + '/' + fileName;
+    std::string fname_csv = StationData::GetDirName() + '/' + fileName;
 
     if (remove(fname_csv.c_str()) != 0)
         return 1;
@@ -234,7 +234,7 @@ int RideData::getZipFileNameNYC (int filei)
     char buf[100]; 
     int err;
 
-    std::string fname_base = BikeStationData::GetDirName() + '/' + filelist [filei];
+    std::string fname_base = StationData::GetDirName() + '/' + filelist [filei];
     archive = fname_base.c_str ();
     if ((za = zip_open(archive, 0, &err)) == NULL) {
         zip_error_to_str(buf, sizeof(buf), err, errno);
@@ -277,7 +277,7 @@ int RideData::readOneFileNYC (int filei)
 {
     // First unzip file, for which all error checks have been done in
     // getZipFileNameNYC above
-    std::string fname = BikeStationData::GetDirName() + '/' + filelist [filei];
+    std::string fname = StationData::GetDirName() + '/' + filelist [filei];
     const char *archive;
     struct zip *za;
     struct zip_file *zf;
@@ -290,7 +290,7 @@ int RideData::readOneFileNYC (int filei)
     za = zip_open(archive, 0, &err);
     zf = zip_fopen_index(za, 0, 0);
     zip_stat_index(za, 0, 0, &sb);
-    std::string fname_csv = BikeStationData::GetDirName() + '/' + fileName;
+    std::string fname_csv = StationData::GetDirName() + '/' + fileName;
     std::ofstream out_file (fname_csv.c_str(), std::ios::out);
     fileYear = atoi (fileName.substr (0, 4).c_str());
 

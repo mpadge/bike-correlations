@@ -8,7 +8,7 @@
  ************************************************************************
  ************************************************************************/
 
-std::string StationData::GetDirName ()
+std::string Stations::GetDirName ()
 {
     std::ifstream in_file;
     std::string dirtxt, fname;
@@ -36,7 +36,7 @@ std::string StationData::GetDirName ()
     }
     in_file.close ();
     return dirtxt;
-} // end StationData::GetDirName
+} // end Stations::GetDirName
 
 /************************************************************************
  ************************************************************************
@@ -74,7 +74,7 @@ std::string TrainStationData::GetDirName ()
     }
     in_file.close ();
     return dirtxt;
-} // end BikeStationData::GetDirName
+} // end TrainStationData::GetDirName
 
 /************************************************************************
  ************************************************************************
@@ -84,7 +84,7 @@ std::string TrainStationData::GetDirName ()
  ************************************************************************
  ************************************************************************/
 
-void BikeStationData::GetDirList ()
+void StationData::GetDirList ()
 {
     std::string fname;
     DIR *dir;
@@ -111,7 +111,7 @@ void BikeStationData::GetDirList ()
         std::cout << outstr << std::endl;
         //return EXIT_FAILURE;
     }
-} // end BikeStationData::GetDirList
+} // end StationData::GetDirList
 
 
 /************************************************************************
@@ -122,7 +122,7 @@ void BikeStationData::GetDirList ()
  ************************************************************************
  ************************************************************************/
 
-void BikeStationData::GetStations ()
+int StationData::GetStations ()
 {
     /*
      * Reads from station_latlons which is constructed with getLatLons.py and
@@ -135,14 +135,14 @@ void BikeStationData::GetStations ()
      * 
      */
     const std::string dir = "data/"; 
-    int ipos, tempi;
+    int ipos, tempi, count;
     OneStation oneStation;
     std::string fname;
     std::ifstream in_file;
     std::string linetxt;
 
     StationList.resize (0);
-    _maxStation = 0;
+    count = 0;
 
     fname = dir + "station_latlons_" + _city + ".txt";
     in_file.open (fname.c_str (), std::ifstream::in);
@@ -157,8 +157,8 @@ void BikeStationData::GetStations ()
         {
             ipos = linetxt.find(',',0);
             tempi = atoi (linetxt.substr (0, ipos).c_str());
-            if (tempi > _maxStation) 
-                _maxStation = tempi;
+            if (tempi > count) 
+                count = tempi;
             oneStation.ID = tempi;
             linetxt = linetxt.substr (ipos + 1, linetxt.length () - ipos - 1);
             ipos = linetxt.find (',', 0);
@@ -170,7 +170,9 @@ void BikeStationData::GetStations ()
         }
     }
     in_file.close();
-} // end BikeStationData::GetStations
+
+    return count;
+} // end StationData::GetStations
 
 
 /************************************************************************
@@ -251,7 +253,7 @@ int TrainStationData::GetTubeStations ()
  ************************************************************************
  ************************************************************************/
 
-void BikeStationData::MakeStationIndex ()
+void StationData::MakeStationIndex ()
 {
     // First station is #1 and last is _maxStation, so _StationIndex has 
     // len (_maxStns + 1), with _StationIndex [sti.ID=1] = 0 and
@@ -267,4 +269,4 @@ void BikeStationData::MakeStationIndex ()
         sti = StationList [i];
         _StationIndex [sti.ID] = i;
     }
-} // end BikeStationData::MakeStationIndex
+} // end StationData::MakeStationIndex

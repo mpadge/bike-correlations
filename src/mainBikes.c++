@@ -99,7 +99,7 @@ int main(int argc, char *argv[]) {
         for (int i=0; i<rideData.getNumFiles(); i++)
         {
             nfiles = rideData.countFilesLondon (i);
-            for (int j=0; j<nfiles; j++) {
+            for (int j=44; j<nfiles; j++) {
                 tempi [0] = rideData.unzipOneFileLondon (i, j);
                 std::cout << "Reading file[";
                 if (j < 10)

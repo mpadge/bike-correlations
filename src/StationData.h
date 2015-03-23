@@ -62,7 +62,7 @@ class BikeStationData : public StationData
             : StationData (str)
         {
             GetDirList ();
-            _maxStation = GetStations ();
+            GetStations ();
             _numStations = StationList.size ();
             missingStations.resize (0);
             MakeStationIndex ();
@@ -77,7 +77,7 @@ class BikeStationData : public StationData
 
         std::vector <std::string> filelist;
         void GetDirList ();
-        int GetStations ();
+        void GetStations ();
         void MakeStationIndex ();
 }; // end class BikeStationData
 

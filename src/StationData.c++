@@ -122,7 +122,7 @@ void BikeStationData::GetDirList ()
  ************************************************************************
  ************************************************************************/
 
-int BikeStationData::GetStations ()
+void BikeStationData::GetStations ()
 {
     /*
      * Reads from station_latlons which is constructed with getLatLons.py and
@@ -170,8 +170,6 @@ int BikeStationData::GetStations ()
         }
     }
     in_file.close();
-
-    return StationList.size ();
 } // end BikeStationData::GetStations
 
 

@@ -47,8 +47,8 @@ class RideData: public BikeStationData
             _numStations = returnNumStations();
             _numTripFiles = filelist.size ();
             _stnIndxLen = _StationIndex.size ();
+            InitialiseArrays ();
             missingStations.resize (0);
-            ntrips.resize (_numStations, _numStations);
             if (_subscriber < 3)
                 subscriberMFConstruct ();
             else
@@ -157,6 +157,7 @@ class RideData: public BikeStationData
         }
         void InitialiseArrays ()
         {
+            ntrips.resize (_numStations, _numStations);
             r2.resize (_numStations, _numStations);
             cov.resize (_numStations, _numStations);
             dists.resize (_numStations, _numStations);

@@ -15,8 +15,7 @@ int TrainData::getNumStations (bool tube)
     std::string fname, linetxt;
     std::ifstream in_file; 
 
-    std::vector <std::string> stationList; // TODO: Move into class def
-    stationList.resize (0);
+    stationNames.resize (0);
 
     if (tube)
         fname = "data/London-tube-stations.txt";
@@ -28,10 +27,10 @@ int TrainData::getNumStations (bool tube)
     while (getline (in_file, linetxt, '\n'))
     {
         ipos = linetxt.find (",", 0);
-        stationList.push_back (linetxt.substr (0, ipos - 1));
+        stationNames.push_back (linetxt.substr (0, ipos - 1));
     }
 
-    return stationList.size();
+    return stationNames.size();
 }
 
 
@@ -43,10 +42,8 @@ int TrainData::getNumStations (bool tube)
  ************************************************************************
  ************************************************************************/
 
-/*
 int TrainData::getTrainStations ()
 {
-*/
     /*
      * There are 976 tube and NR stations, and yet only 392 of these appear in
      * the oystercard data. To avoid making big ntrips matrices (and all
@@ -64,7 +61,6 @@ int TrainData::getTrainStations ()
      * These include lat-lons, and so enable station coordinates to easily be
      * obtained.
      */
-/*
     const char *archive;
     struct zip *za;
     struct zip_file *zf;
@@ -79,6 +75,11 @@ int TrainData::getTrainStations ()
     bool startIn, stopIn;
 
     // First check if oystercardnames.csv exists
+    struct oysterOne
+    {
+        std::string mode, name;
+    };
+    std::vector <oysterOne> _OysterStations;
     _OysterStations.resize (0);
     std::string dirName = "/data/data/", 
         fname_oyster = "./data/oystercardnames.csv", 
@@ -189,14 +190,12 @@ int TrainData::getTrainStations ()
                 count++; 
                 // Use these lines to examine whether stations not in list are NR or
                 // LUL:
-*/
                 /*
                 if (count < 1000 && (start == "Harrow Wealdstone" || 
                             stop == "Harrow Wealdstone"))
                     std::cout << "******" << mode << ": " << start << 
                         "->" << stop << "***" << std::endl;
                 */
-/*
             }
         } // end while getline
         in_file.close();
@@ -215,7 +214,6 @@ int TrainData::getTrainStations ()
             out_file << (*pos).mode << "," << (*pos).name << std::endl;
         out_file.close ();
     } // end else no oystercardnames.csv
-*/
 
     /*
      * Then match the OysterStationNames to names of the 976 tube and NR
@@ -227,7 +225,6 @@ int TrainData::getTrainStations ()
      * RailStationList, so the following list of possible substitutions is
      * scanned to find potential matches with alternative versions.
      */
-/*
     bool tube;
     size_t found;
     std::string stName;
@@ -293,7 +290,6 @@ int TrainData::getTrainStations ()
     strSubs.push_back ({false, "West Hampstead", "West Hampst'd NL"});
 
     std::string strAlt;
-*/
 
     /*
      * The following lines fill the int _stationIndex [392] vector with indices
@@ -301,16 +297,15 @@ int TrainData::getTrainStations ()
      */
 
 
-/*
     count = 0;
     _StationIndex.resize (0);
     for (std::vector <oysterOne>::iterator pos=_OysterStations.begin();
             pos != _OysterStations.end(); pos++)
     {
         startIn = false;
-        for (int i=0; i<RailStationList.size (); i++)
+        for (int i=0; i<stationNames.size (); i++) // Was RailStationList
         {
-            stName = RailStationList [i];
+            stName = stationNames [i];
             if ((*pos).name == stName || (*pos).name == (stName + " NR"))
             {
                 startIn = true;
@@ -341,9 +336,9 @@ int TrainData::getTrainStations ()
                     break;
             }
         } // end for i over RailStationList
-        for (int i=0; i<TubeStationList.size (); i++)
+        for (int i=0; i<stationNames.size (); i++) // Was TubeStationList
         {
-            stName = TubeStationList [i];
+            stName = stationNames [i];
             if ((*pos).name == stName || (*pos).name == (stName + " DLR"))
             {
                 startIn = true;
@@ -391,4 +386,3 @@ int TrainData::getTrainStations ()
 
     return _StationIndex.size ();
 }
-*/

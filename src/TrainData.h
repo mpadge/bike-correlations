@@ -16,7 +16,9 @@ class TrainData: public StationData
         const bool _tube;
         // Standardises ntrips to unit sum, so covariances do not depend on
         // scales of actual numbers of trips. Set to true in initialisation.
+    protected:
     public:
+        std::vector <std::string> stationNames;
         bool ignoreZeros;
         int nearfar;
         dmat ntrips; // dmat to allow standardisation to unit sum
@@ -24,8 +26,8 @@ class TrainData: public StationData
         dmat r2Rail, r2Tube, covRail, covTube, distsRail, distsTube;
         std::string fileName;
         std::vector <int> missingStations;
-        std::string txtzero, txtnf;
-        std::vector <std::string> txtzerolist, txtnflist;
+        std::string txtnf;
+        std::vector <std::string> txtnflist;
 
         TrainData (std::string str, bool tube)
             : StationData (str), _tube (tube)
@@ -34,9 +36,6 @@ class TrainData: public StationData
             _standardise = true; // false doesn't make sense
             InitialiseArrays ();
 
-            txtzerolist.resize (0);
-            txtzerolist.push_back ("zeros");
-            txtzerolist.push_back ("nozeros");
             txtnflist.resize (0);
             txtnflist.push_back ("all");
             txtnflist.push_back ("near");
@@ -52,7 +51,6 @@ class TrainData: public StationData
             cov.resize (0, 0);
             cov.resize (0, 0);
             dists.resize (0, 0);
-            txtzerolist.resize (0);
             txtnflist.resize (0);
         }
         
@@ -62,6 +60,7 @@ class TrainData: public StationData
         int getStandardise () { return _standardise;    }
 
         int getNumStations (bool tube);
+        int getTrainStations ();
 
 
         void InitialiseArrays ()

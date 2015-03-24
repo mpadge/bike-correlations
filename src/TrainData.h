@@ -18,7 +18,6 @@ class TrainData: public StationData
         // scales of actual numbers of trips. Set to true in initialisation.
     protected:
     public:
-        std::vector <std::string> stationNames;
         bool ignoreZeros;
         int nearfar;
         dmat ntrips; // dmat to allow standardisation to unit sum
@@ -61,6 +60,7 @@ class TrainData: public StationData
 
         int getNumStations (bool tube);
         int getTrainStations ();
+        int getTrainData (bool tube);
 
 
         void InitialiseArrays ()

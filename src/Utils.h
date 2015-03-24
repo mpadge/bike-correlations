@@ -12,6 +12,7 @@
 #include <string>
 #include <iomanip> // for setfill
 #include <sys/ioctl.h> // for console width: Linux only!
+#include <ctype.h>
 
 #include <boost/numeric/ublas/vector.hpp>
 #include <boost/numeric/ublas/matrix.hpp>
@@ -53,6 +54,7 @@ struct DistStruct{
 struct RegrResults {
     double r2, cov, slope, intercept, SS, tval;      };
 
+std::string standardise (std::string sin);
 double calc_angle (double x, double y);
 DistStruct getdists (double xa, double ya, double xb, double yb);
 DistStruct convert_distance (double dist, double midx, double midy);

@@ -58,6 +58,7 @@ class StationData : public Stations
         std::vector <int> missingStations;
         struct OneStation 
         {
+            std::string name; // for train stations only
             int ID;
             float lon, lat;
         };

@@ -7,6 +7,46 @@
 /************************************************************************
  ************************************************************************
  **                                                                    **
+ **                          STANDARDISE                               **
+ **                                                                    **
+ ************************************************************************
+ ************************************************************************/
+
+std::string standardise (std::string str)
+{
+    size_t ipos;
+    typedef std::pair <std::string, std::string> oneSub;
+    std::vector <oneSub> subs;
+    subs.resize (0);
+    subs.push_back ({"&", "and"});
+    subs.push_back ({"-", " "});
+    subs.push_back ({" pk", " park"});
+    subs.push_back ({" rd", " road"});
+
+    std::transform (str.begin(), str.end(), str.begin(), ::tolower);
+    for (std::vector <oneSub>::iterator itr = subs.begin();
+            itr != subs.end(); itr++)
+    {
+        while ((ipos = str.find ((*itr).first)) != std::string::npos)
+            str.replace (ipos, std::string ((*itr).first).length(), 
+                    (*itr).second);
+    }
+    subs.resize (0);
+
+    // nr and st have to be handled individually because their main
+    // identification is that they come at the end of names
+    if ((ipos = str.find (" nr")) == (str.length() - 3))
+        str = str.substr (0, str.length () - 3);
+    if ((ipos = str.find (" st")) == (str.length() - 3))
+        str.replace (ipos, 3, " street");
+
+    return str;
+}
+
+
+/************************************************************************
+ ************************************************************************
+ **                                                                    **
  **                          CALC_ANGLE                                **
  **                                                                    **
  ************************************************************************

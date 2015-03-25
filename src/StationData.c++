@@ -101,10 +101,11 @@ int StationData::GetStations ()
     OneStation oneStation;
     std::string fname;
     std::ifstream in_file;
-    std::string linetxt;
+    std::string linetxt, name;
 
     StationList.resize (0);
     count = 0;
+    oneStation.name = "";
 
     if (_city == "london" || _city == "nyc")
     {
@@ -134,10 +135,34 @@ int StationData::GetStations ()
             }
         }
         in_file.close();
-    } else if (_city == "oysterRail")
+    } else if (_city == "oysterRail" || _city == "oysterTube")
     {
-    } else if (_city == "oysterTube")
-    {
+        oneStation.ID = INT_MIN;
+        if (_city == "oysterRail")
+            fname = dir + "London-rail-stations.txt";
+        else
+            fname = dir + "London-tube-stations.txt";
+        in_file.open (fname.c_str (), std::ifstream::in);
+        std::cout.flush();
+        assert (!in_file.fail ());
+        in_file.clear ();
+        in_file.seekg (0); 
+        while (!in_file.eof ()) 
+        {
+            getline (in_file, linetxt,'\n');
+            if (linetxt.length () > 1) 
+            {
+                ipos = linetxt.find(',',0);
+                oneStation.name = standardise (linetxt.substr (0, ipos).c_str());
+                linetxt = linetxt.substr (ipos + 1, linetxt.length () - ipos - 1);
+                ipos = linetxt.find (',', 0);
+                oneStation.lat = atof (linetxt.substr (0, ipos).c_str());
+                linetxt = linetxt.substr (ipos + 1, linetxt.length () - ipos - 1);
+                oneStation.lon = atof (linetxt.c_str());
+                StationList.push_back (oneStation);
+            }
+        }
+        in_file.close();
     }
 
     return count;

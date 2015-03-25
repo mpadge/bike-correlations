@@ -73,8 +73,9 @@ class StationData : public Stations
             _maxStation = GetStations ();
             _numStations = StationList.size ();
             missingStations.resize (0);
-            MakeStationIndex ();
             InitialiseArrays ();
+            if (_city == "london" || _city == "nyc")
+                MakeStationIndex ();
         }
         ~StationData()
         {

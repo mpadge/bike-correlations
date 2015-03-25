@@ -19,7 +19,7 @@ class TrainData: public StationData
     protected:
     public:
         bool ignoreZeros;
-        int nearfar;
+        int err, nearfar;
         dmat ntrips; // dmat to allow standardisation to unit sum
         imat ntripsRail, ntripsTube;
         dmat r2Rail, r2Tube, covRail, covTube, distsRail, distsTube;
@@ -31,7 +31,7 @@ class TrainData: public StationData
         TrainData (std::string str, bool tube)
             : StationData (str), _tube (tube)
         {
-            _numStations = getNumStations (_tube);
+            err = getTrainData (_tube);
             _standardise = true; // false doesn't make sense
             InitialiseArrays ();
 

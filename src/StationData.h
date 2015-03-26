@@ -94,6 +94,7 @@ class StationData : public Stations
         void GetDirList ();
         int GetStations ();
         void MakeStationIndex ();
+        double CountTrips ();
 
         void InitialiseArrays ()
         {
@@ -105,7 +106,7 @@ class StationData : public Stations
             {
                 for (int j=0; j<_numStations; j++)
                 {
-                    //ntrips (i, j) = 0.0;
+                    ntrips (i, j) = 0.0;
                     r2 (i, j) = -9999.9;
                     cov (i, j) = -9999.9;
                     dists (i, j) = -9999.9;

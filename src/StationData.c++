@@ -143,7 +143,6 @@ int StationData::GetStations ()
         else
             fname = dir + "London-tube-stations.txt";
         in_file.open (fname.c_str (), std::ifstream::in);
-        std::cout.flush();
         assert (!in_file.fail ());
         in_file.clear ();
         in_file.seekg (0); 
@@ -194,3 +193,23 @@ void StationData::MakeStationIndex ()
         _StationIndex [sti.ID] = i;
     }
 } // end StationData::MakeStationIndex
+
+
+/************************************************************************
+ ************************************************************************
+ **                                                                    **
+ **                             COUNTTRIPS                             **
+ **                                                                    **
+ ************************************************************************
+ ************************************************************************/
+
+double StationData::CountTrips ()
+{
+    double count = 0.0;
+
+    for (int i=0; i<_numStations; i++)
+        for (int j=0; j<_numStations; j++)
+            count += ntrips (i, j);
+
+    return (count);
+}

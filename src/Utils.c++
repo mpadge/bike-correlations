@@ -25,13 +25,13 @@ std::string standardise (std::string str)
     // These ones are NR stations
     if (str == "kensington olympia")
         return ("kensington (olympia)");
-    else if (str == "caledonian roadandb'sby")
+    else if (str == "caledonian roadandb'sby" || str == "caledonian rd&b'sby")
         return ("caledonian road and barnsbury");
     else if (str == "liverpool st wagn toc gates")
         return ("liverpool street");
     else if (str == "rainham essex")
         return ("rainham");
-    else if (str == "sudburyandharrow road")
+    else if (str == "sudburyandharrow road" || str == "sudbury&harrow rd")
         return ("sudbury and harrow road");
     else if (str == "sutton surrey")
         return ("sutton");

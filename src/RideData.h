@@ -15,9 +15,6 @@ class RideData: public StationData
      */
     private:
         int _numTripFiles, _stnIndxLen;
-        bool _standardise;
-        // Standardises ntrips to unit sum, so covariances do not depend on
-        // scales of actual numbers of trips. Set to true in initialisation.
         const int _subscriber, _gender;
         // nearfar determines whether correlations are calculated from all data,
         // only from the nearest 50% of stations, or only from the farthest 50%.
@@ -28,7 +25,6 @@ class RideData: public StationData
         // subscriber = (0, 1, 2) for (all, subscriber, customer)
         // gender = (0, 1, 2) for (all, male, female)
     public:
-        bool ignoreZeros;
         int nearfar;
         imat ntrips_cust, ntrips_sub_m, ntrips_sub_f, ntrips_sub_n;
         imat ntrips1920, ntrips1930, ntrips1940, ntrips1950, ntrips1960,
@@ -39,15 +35,14 @@ class RideData: public StationData
         // subscribers whose gender is not given
         std::string fileName;
         std::vector <int> missingStations;
-        std::string txtzero, txtnf;
-        std::vector <std::string> txtzerolist, txtnflist;
+        std::string txtnf;
+        std::vector <std::string> txtnflist;
 
         RideData (std::string str, int i0, int i1)
             : StationData (str), _subscriber (i0), _gender (i1)
         {
             _numTripFiles = filelist.size ();
             _stnIndxLen = _StationIndex.size ();
-            InitialiseArrays ();
             missingStations.resize (0);
             if (_city == "nyc")
             {
@@ -60,9 +55,6 @@ class RideData: public StationData
                     ageDistribution [i] = 0;
             }
 
-            txtzerolist.resize (0);
-            txtzerolist.push_back ("zeros");
-            txtzerolist.push_back ("nozeros");
             txtnflist.resize (0);
             txtnflist.push_back ("all");
             txtnflist.push_back ("near");
@@ -74,7 +66,6 @@ class RideData: public StationData
             missingStations.resize (0);
             subscriberMFDestruct();
             subscriberAgeDestruct();
-            txtzerolist.resize (0);
             txtnflist.resize (0);
         }
         

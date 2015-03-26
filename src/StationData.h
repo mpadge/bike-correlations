@@ -29,7 +29,8 @@ class Stations // for both bikes and trains
         std::string _dirName;
         const std::string _city;
         bool _standardise;
-        dmat dists2;
+        // Standardises ntrips to unit sum, so covariances do not depend on
+        // scales of actual numbers of trips. Set to true in initialisation.
     public:
         std::string fileName;
         Stations (std::string str)
@@ -107,9 +108,9 @@ class StationData : public Stations
                 for (int j=0; j<_numStations; j++)
                 {
                     ntrips (i, j) = 0.0;
-                    r2 (i, j) = -9999.9;
-                    cov (i, j) = -9999.9;
-                    dists (i, j) = -9999.9;
+                    r2 (i, j) = DOUBLE_MIN;
+                    cov (i, j) = DOUBLE_MIN;
+                    dists (i, j) = DOUBLE_MIN;
                 }
             }
         }

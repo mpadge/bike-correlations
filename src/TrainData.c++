@@ -68,7 +68,7 @@ int TrainData::readOysterData ()
             while (sum != sb.size) {
                 len = zip_fread(zf, buf, 100);
                 if (len < 0) {
-                    // INSERT ERROR HANDLER
+                    // TODO: INSERT ERROR HANDLER
                 }
                 out_file.write (buf, len);
                 sum += len;
@@ -82,20 +82,21 @@ int TrainData::readOysterData ()
 
     in_file.open (fname_csv.c_str (), std::ifstream::in);
     if (in_file.fail ()) {
-        // INSERT ERROR HANDLER
+        // TODO: INSERT ERROR HANDLER
         return -1;
     }
     in_file.clear ();
-    in_file.seekg (0); // Both lines needed to rewind file.
+    in_file.seekg (0);
     getline (in_file, linetxt, '\n');
     int nlines = 0;
     while (getline (in_file, linetxt, '\n'))
         nlines++;
     in_file.clear ();
-    in_file.seekg (0); // Both lines needed to rewind file.
+    in_file.seekg (0); 
     getline (in_file, linetxt, '\n');
 
-    std::cout << "Reading oystercarddata for " << modeTxt << "... ";
+    std::cout << "Reading oystercarddata for " << StationList.size () <<
+        " " << modeTxt << " stations ... ";
     std::cout.flush ();
     int progress [2] = {0, 1};
     while (getline (in_file, linetxt, '\n')) { 
@@ -173,8 +174,8 @@ int TrainData::readOysterData ()
         if (floor (100.0 * (double) progress [0] / (double) nlines) >
                 progress [1])
         {
-            std::cout << "\rReading oystercarddata for " << modeTxt <<
-                "... " << progress [1] << "%";
+            std::cout << "\rReading oystercarddata for " << StationList.size () <<
+                " " << modeTxt << " stations ... " << progress [1] << "%";
             std::cout.flush ();
             progress [1]++;
         }
@@ -183,8 +184,8 @@ int TrainData::readOysterData ()
     } // end while getline
     in_file.close();
     remove (fname_csv.c_str ());
-    std::cout << "\rReading oystercarddata for " << modeTxt <<
-        "... 100\% done." << std::endl;
+    std::cout << "\rReading oystercarddata for " << StationList.size () <<
+        " " << modeTxt << " stations ... 100\% done." << std::endl;
 
     std::sort (Oyster2StnIndex.begin(), Oyster2StnIndex.end(),
             [] (OysterIndx a, OysterIndx b) { return a.name < b.name; });
@@ -217,4 +218,58 @@ int TrainData::fillHasData ()
     }
 
     return count;
+}
+
+
+/************************************************************************
+ ************************************************************************
+ **                                                                    **
+ **                          REDUCENTRIPS                              **
+ **                                                                    **
+ ************************************************************************
+ ************************************************************************/
+
+int TrainData::resizeNtrips ()
+{
+    // Actually resizes all StationData matrices (ntrips, r2, cov, dists)
+    int indx [2] = {0, 0}, nSt = StationList.size ();
+    dmat ntemp (numStnsWithData, numStnsWithData);
+    // TODO: Rewrite this in a more robust way. At present just uses the
+    // following simple sanity check.
+    for (std::vector<bool>::iterator itr = hasData.begin ();
+            itr != hasData.end(); itr++)
+        if (*itr)
+            indx [0]++;
+    if (indx [0] != numStnsWithData)
+    {
+        std::cout << "ERROR: hasData includes " << indx [0] << 
+            " but numStnsWithData = " << numStnsWithData << std::endl;
+        return -1;
+    }
+
+    indx [0] = 0;
+    for (int i=0; i<nSt; i++)
+    {
+        if (hasData [i])
+        {
+            indx [1] = 0;
+            for (int j=0; j<nSt; j++)
+                if (hasData [j])
+                {
+                    ntemp (indx [0], indx [1]) = ntrips (i, j);
+                    indx [1]++;
+                }
+            indx [0]++;
+        }
+    } // end for i
+
+    // Then read back into resized ntrips
+    ntrips.resize (numStnsWithData, numStnsWithData);
+    for (int i=0; i<numStnsWithData; i++)
+        for (int j=0; j<numStnsWithData; j++)
+            ntrips (i, j) = ntemp (i, j);
+    ntemp.resize (0, 0);
+    r2.resize (numStnsWithData, numStnsWithData);
+    cov.resize (numStnsWithData, numStnsWithData);
+    dists.resize (numStnsWithData, numStnsWithData);
 }

@@ -99,7 +99,7 @@ int main(int argc, char *argv[]) {
         for (int i=0; i<rideData.getNumFiles(); i++)
         {
             nfiles = rideData.countFilesLondon (i);
-            for (int j=0; j<nfiles; j++) {
+            for (int j=43; j<nfiles; j++) {
                 tempi [0] = rideData.unzipOneFileLondon (i, j);
                 std::cout << "Reading file[";
                 if (j < 10)
@@ -131,24 +131,18 @@ int main(int argc, char *argv[]) {
     rideData.writeDMat (); // Also fills RideData.dists
     rideData.writeNumTrips ();
 
-    // Then loop over (include,ignore) zeros and (all, near, far) data
-    for (int i=0; i<2; i++)
+    // Then loop over (all, near, far) data
+    for (int i=0; i<3; i++)
     {
-        if (i == 0) rideData.ignoreZeros = false;
-        else rideData.ignoreZeros = true;
-        rideData.txtzero = rideData.txtzerolist [i];
-        for (int j=0; j<3; j++)
-        {
-            rideData.nearfar = j;
-            rideData.txtnf = rideData.txtnflist [j];
+        rideData.nearfar = i;
+        rideData.txtnf = rideData.txtnflist [i];
 
-            rideData.calcR2 (true);
-            rideData.writeR2Mat (true);
-            rideData.writeCovMat (true);
-            rideData.calcR2 (false);
-            rideData.writeR2Mat (false);
-            rideData.writeCovMat (false);
-        }
+        rideData.calcR2 (true);
+        rideData.writeR2Mat (true);
+        rideData.writeCovMat (true);
+        rideData.calcR2 (false);
+        rideData.writeR2Mat (false);
+        rideData.writeCovMat (false);
     }
     //rideData.readR2Mat (false);
     std::cout << "_____________________________________________" << 

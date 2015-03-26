@@ -13,6 +13,7 @@ class TrainData: public StationData
     private:
         const bool _tube;
     protected:
+        int numStnsWithData;
         std::vector <bool> hasData;
     public:
         int count, nearfar;
@@ -33,12 +34,12 @@ class TrainData: public StationData
             Oyster2StnIndex.resize (0);
             count = readOysterData ();
             count = CountTrips ();
-            count = fillHasData ();
-            if (count != Oyster2StnIndex.size ())
+            numStnsWithData = fillHasData ();
+            count = resizeNtrips ();
+            if (numStnsWithData != Oyster2StnIndex.size ())
                 std::cout << "ERROR: hasData has " << count << 
                     " stations and Oyster2StnIndex has " << 
                     Oyster2StnIndex.size () << std::endl;
-
 
             txtnflist.resize (0);
             txtnflist.push_back ("all");
@@ -54,6 +55,7 @@ class TrainData: public StationData
         
         int readOysterData ();
         int fillHasData ();
+        int resizeNtrips ();
 };
 
 #endif

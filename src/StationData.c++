@@ -11,9 +11,8 @@
 std::string Stations::GetDirName ()
 {
     std::ifstream in_file;
-    std::string dirtxt, fname;
+    std::string dirtxt;
     std::string configfile = "bikes.cfg"; // Contains name of data directory
-    DIR *dir;
     struct dirent *ent;
 
     in_file.open (configfile.c_str (), std::ifstream::in);
@@ -101,7 +100,7 @@ int StationData::GetStations ()
     OneStation oneStation;
     std::string fname;
     std::ifstream in_file;
-    std::string linetxt, name;
+    std::string linetxt;
 
     StationList.resize (0);
     count = 0;
@@ -207,8 +206,8 @@ double StationData::CountTrips ()
 {
     double count = 0.0;
 
-    for (int i=0; i<_numStations; i++)
-        for (int j=0; j<_numStations; j++)
+    for (int i=0; i<ntrips.size1(); i++)
+        for (int j=0; j<ntrips.size2(); j++)
             count += ntrips (i, j);
 
     return (count);

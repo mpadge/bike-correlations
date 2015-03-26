@@ -78,11 +78,10 @@ int RideData::unzipOneFileLondon (int filei, int filej)
         while (sum != sb.size) {
             len = zip_fread(zf, buf, 100);
             if (len < 0) {
-                // INSERT ERROR HANDLER
+                // TODO: INSERT ERROR HANDLER
             }
             out_file.write (buf, len);
             sum += len;
-            //std::cout << sum << std::endl;
         }
         out_file.close ();
 
@@ -105,19 +104,18 @@ int RideData::readOneFileLondon ()
 {
     bool alreadyMissing;
     int ID, count = 0, ipos, tempi [2];
-    int nstations = RideData::returnNumStations (), 
-        maxStation = RideData::returnMaxStation ();
+    int maxStation = RideData::returnMaxStation ();
     std::string fname = StationData::GetDirName() + '/' + fileName;
     std::ifstream in_file;
     std::string linetxt;
 
     in_file.open (fname.c_str (), std::ifstream::in);
     if (in_file.fail ()) {
-        // INSERT ERROR HANDLER
+        // TODO: INSERT ERROR HANDLER
         return -1;
     }
     in_file.clear ();
-    in_file.seekg (0); // Both lines needed to rewind file.
+    in_file.seekg (0); 
     getline (in_file, linetxt, '\n');
 
     while (getline (in_file, linetxt, '\n')) { 
@@ -298,7 +296,7 @@ int RideData::readOneFileNYC (int filei)
     while (sum != sb.size) {
         len = zip_fread(zf, buf, 100);
         if (len < 0) {
-            // INSERT ERROR HANDLER
+            // TODO: INSERT ERROR HANDLER
         }
         out_file.write (buf, len);
         sum += len;
@@ -314,9 +312,8 @@ int RideData::readOneFileNYC (int filei)
 
     in_file.open (fname_csv.c_str (), std::ifstream::in);
     if (in_file.fail ()) {
-        // INSERT ERROR HANDLER
+        // TODO: INSERT ERROR HANDLER
     } 
-
     getline (in_file, linetxt, '\n');
     while (getline (in_file, linetxt, '\n')) { count++;	}
 
@@ -329,7 +326,7 @@ int RideData::readOneFileNYC (int filei)
     std::cout.flush ();
 
     in_file.clear ();
-    in_file.seekg (0); // Both lines needed to rewind file.
+    in_file.seekg (0); 
     getline (in_file, linetxt, '\n');
     count = 0;
 
@@ -627,7 +624,7 @@ int RideData::calcR2 (bool from)
 {
     bool standardise = RideData::getStandardise();
     int tempi, numStations = RideData::returnNumStations ();
-    double tempd [2];
+    double tempd;
     std::vector <double> x0, y0, x1, x2, y2, d;
     RegrResults regrResults;
 
@@ -659,11 +656,11 @@ int RideData::calcR2 (bool from)
                 x0.push_back (ntrips (j, i));
         if (standardise)
         {
-            tempd [0] = 0.0;
+            tempd = 0.0;
             for (int j=0; j<numStations; j++)
-                tempd [0] += x0 [j];
+                tempd += x0 [j];
             for (int j=0; j<numStations; j++)
-                x0 [j] = x0 [j] / tempd [0];
+                x0 [j] = x0 [j] / tempd;
         }
         for (int j=(i+1); j<numStations; j++)
         {
@@ -680,11 +677,11 @@ int RideData::calcR2 (bool from)
 
             if (standardise)
             {
-                tempd [0] = tempd [1] = 0.0;
+                tempd = 0.0;
                 for (int k=0; k<numStations; k++)
-                    tempd [0] += y0 [k];
+                    tempd += y0 [k];
                 for (int k=0; k<numStations; k++)
-                    y0 [k] = y0 [k] / tempd [0];
+                    y0 [k] = y0 [k] / tempd;
             }
 
             if (nearfar != 0) // Remove half of stations from lists
@@ -694,7 +691,7 @@ int RideData::calcR2 (bool from)
                     d.push_back (dists (i, k) + dists (j, k));
                 std::sort (d.begin(), d.end());
                 tempi = floor (d.size () / 2);
-                tempd [0] = (d [tempi] + d [tempi + 1]) / 2.0;
+                tempd = (d [tempi] + d [tempi + 1]) / 2.0;
                 d.resize (0);
                 for (int k=0; k<numStations; k++)
                     d.push_back (dists (i, k) + dists (j, k));
@@ -702,11 +699,11 @@ int RideData::calcR2 (bool from)
                 y2.resize (0);
                 for (int k=0; k<numStations; k++)
                 {
-                    if (nearfar == 1 && d[k] < tempd [0])
+                    if (nearfar == 1 && d[k] < tempd)
                     {
                         x2.push_back (x1[k]);
                         y2.push_back (y0[k]);
-                    } else if (nearfar == 2 && d[k] > tempd [0])
+                    } else if (nearfar == 2 && d[k] > tempd)
                     {
                         x2.push_back (x1[k]);
                         y2.push_back (y0[k]);
@@ -723,26 +720,6 @@ int RideData::calcR2 (bool from)
                 y2.resize (0);
                 d.resize (0);
             } // end if nearfar
-            if (ignoreZeros)
-            {
-                x2.resize (0);
-                y2.resize (0);
-                for (int k=0; k<x1.size(); k++)
-                    if (x1 [k] > 0.0 && y0 [k] > 0.0)
-                    {
-                        x2.push_back (x1 [k]);
-                        y2.push_back (y0 [k]);
-                    }
-                x1.resize (0);
-                y0.resize (0);
-                for (int k=0; k<x2.size(); k++)
-                {
-                    x1.push_back (x2 [k]);
-                    y0.push_back (y2 [k]);
-                }
-                x2.resize (0);
-                y2.resize (0);
-            } // end if ignoreZeros
             regrResults = regression (x1, y0);
             r2 (i, j) = r2 (j, i) = regrResults.r2;
             cov (i, j) = cov (j, i) = regrResults.cov;
@@ -772,16 +749,16 @@ int RideData::writeR2Mat (bool from)
     std::string r2File;
     if (RideData::returnCity() == "london")
         if (from) 
-            r2File = "R2_london_from_" + txtnf + "_" + txtzero + ".csv";
+            r2File = "R2_london_from_" + txtnf + ".csv";
         else
-            r2File = "R2_london_to_" + txtnf + "_" + txtzero + ".csv";
+            r2File = "R2_london_to_" + txtnf + ".csv";
     else
         if (from)
-            r2File = "R2_nyc_from_" + txtnf + "_" + txtzero + "_" + 
+            r2File = "R2_nyc_from_" + txtnf + "_" + 
                 std::to_string (RideData::getSubscriber ()) + 
                 std::to_string (RideData::getGender ()) + ".csv";
         else
-            r2File = "R2_nyc_to_" + txtnf + "_" + txtzero + "_" + 
+            r2File = "R2_nyc_to_" + txtnf + "_" + 
                 std::to_string (RideData::getSubscriber ()) + 
                 std::to_string (RideData::getGender ()) + ".csv";
 
@@ -822,19 +799,17 @@ int RideData::writeCovMat (bool from)
 
     if (RideData::returnCity() == "london")
         if (from)
-            covFile = "Cov_london_from" + stdext + "_" + txtnf + 
-                "_" + txtzero + ".csv";
+            covFile = "Cov_london_from" + stdext + "_" + txtnf + ".csv";
         else
-            covFile = "Cov_london_to" + stdext + "_" + txtnf + 
-                "_" + txtzero + ".csv";
+            covFile = "Cov_london_to" + stdext + "_" + txtnf + ".csv";
     else
         if (from)
             covFile = "Cov_nyc_from" + stdext + "_" + txtnf + "_" +
-                txtzero + "_" + std::to_string (RideData::getSubscriber ()) + 
+                std::to_string (RideData::getSubscriber ()) + 
                 std::to_string (RideData::getGender ()) + ".csv";
         else
             covFile = "Cov_nyc_to" + stdext + "_" + txtnf + "_" +
-                txtzero + "_" + std::to_string (RideData::getSubscriber ()) + 
+                std::to_string (RideData::getSubscriber ()) + 
                 std::to_string (RideData::getGender ()) + ".csv";
 
     std::ofstream out_file;
@@ -879,7 +854,7 @@ int RideData::readR2Mat (bool from)
     std::ifstream in_file;
     in_file.open (r2File.c_str (), std::ofstream::in);
     in_file.clear ();
-    in_file.seekg (0); // Both lines needed to rewind file.
+    in_file.seekg (0); 
     count = 0;
     while (getline (in_file, linetxt, '\n')) {
         for (int i=0; i<(numStations - 1); i++) {
@@ -920,10 +895,10 @@ int RideData::writeDMat ()
     std::string linetxt;
     in_file.open (distFile.c_str (), std::ifstream::in);
     if (in_file.fail ()) {
-        // INSERT ERROR HANDLER
+        // TODO: INSERT ERROR HANDLER
     } 
     in_file.clear ();
-    in_file.seekg (0); // Both lines needed to rewind file.
+    in_file.seekg (0); 
     count = 0;
     while (getline (in_file, linetxt, '\n')) {
         ipos = linetxt.find(',',0);

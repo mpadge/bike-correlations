@@ -1,11 +1,9 @@
 from __future__ import division # for <python4
-import os, math, sys, csv, pqdict
+import os, math, sys, csv, urllib2, string, pqdict
 import pandas as pd
 import numpy as np
+from bs4 import BeautifulSoup
 
-
-import string
- 
 def normalise(s):
     s.replace(' and ',' & ')
     s.replace(' And ',' & ')
@@ -14,31 +12,75 @@ def normalise(s):
     return s.lower().strip()
 
 class LondonRailStations (object):
+
     def __init__(self, tube=True):
+
         if tube:
-            latlon_file = '../data/London-tube-stations.txt'
+
+            latlon_file = 'http://www.doogal.co.uk/LondonStationsCSV.php'
+            content = urllib2.urlopen (latlon_file).read ()
+            soup = BeautifulSoup (content)
+            lines = soup.get_text().encode('utf-8').split('\n')
+            lines = lines [1:(len (lines) - 1)]
+            self.latlons = pd.DataFrame()
+
+            for line in lines:
+                ls = line.split (",")
+                name = ls[0]
+                lat = float (ls[3])
+                lon = float (ls[4])
+                dat = {'name':name, 'lat':lat, 'lon':lon}
+                self.latlons = self.latlons.append (dat, ignore_index=True)
+
             network_file = '../data/London tube lines.csv'
             self.lines = pd.read_csv (network_file, header=0,
                     names=['line','from','to'],
                     usecols=['from','to'])
-            self.latlons = pd.read_csv (latlon_file, header=0,
-                    names=['name','x','y','lat','lon','zone','postcode'],
-                    usecols=['name','lat','lon'])
         else:
-            latlon_file = "../data/London-rail-stations.txt"
+
+            latlon_file = "http://en.wikipedia.org/wiki/List_of_London_railway_stations"
+            content = urllib2.urlopen (latlon_file).read ()
+            soup = BeautifulSoup (content)
+            table = soup.find ("table")
+            rows = table.findAll ('tr')[1:] # rows[0] is the header
+            self.latlons = pd.DataFrame()
+
+            for ri in rows:
+                cols = ri.findAll ('td')
+                name = cols [0].find(text=True).encode('utf-8').strip()
+                lat = cols [-1].findAll("span", {"class": "latitude"})
+                lat = lat [0].find (text=True).encode ('utf-8')
+                deg = lat.split ('\xc2')[0]
+                min = lat.split ('\xb0')[1].split ('\xe2')[0]
+                sec = lat.split ('\xb2')[1].split ('\xe2')[0]
+                lat = float (deg) + float (min) / 60.0 + float (sec) / 3600.0
+                lon = cols[-1].findAll("span", {"class": "longitude"})
+                lon = lon [0].find (text=True).encode ('utf-8')
+                deg = lon.split ('\xc2')[0]
+                min = lon.split ('\xb0')[1].split ('\xe2')[0]
+                sec = lon.split ('\xb2')[1].split ('\xe2')[0]
+                ew = lon.split ('\xb3')[1]
+                lon = float (deg) + float (min) / 60.0 + float (sec) / 3600.0
+                if (ew == 'W'):
+                    lon = -lon
+                if (name != 'Stratford International'):
+                    dat = {'name':name, 'lat':lat, 'lon':lon}
+                    self.latlons = self.latlons.append (dat, ignore_index=True)
+
             network_file = "../data/London-rail-lines.txt"
-            self.latlons = pd.read_csv (latlon_file, header=None,
-                    names=["name","lat","lon"])
             self.lines = pd.read_csv (network_file, header=None,
                     names=["from","to"])
+
         for index, row in self.latlons.iterrows ():
             self.latlons['name'][index] = normalise (row ['name'])
         for index, row in self.lines.iterrows ():
             self.lines['from'][index] = normalise (row ['from'])
             self.lines['to'][index] = normalise (row ['to'])
+
         if tube:
             # These latlons include all stations, so the self.latlons df is made
             # by appending only actual tube stations
+
             latlons = pd.DataFrame()
             for index, row in self.latlons.iterrows():
                 found = [i for i in self.lines['from'] if i == row['name']]
@@ -47,11 +89,14 @@ class LondonRailStations (object):
                     dat = {'name':row['name'],'lat':row['lat'],'lon':row['lon']}
                     latlons = latlons.append (dat, ignore_index=True)
             self.latlons = latlons
+
     def getDists (self):
+
         n = len (self.lines)
         self.lines = pd.DataFrame ({'from': self.lines['from'],
                                     'to': self.lines['to'],
                                     'd': pd.Series (None,range(n))})
+
         for index, row in self.lines.iterrows():
             st = row["from"]
             fromlon = float (self.latlons [self.latlons["name"] == st]["lon"])
@@ -67,10 +112,13 @@ class LondonRailStations (object):
                 math.sin (x / 2) * math.sin (x / 2)
             d = 2 * math.atan2 (math.sqrt (d), math.sqrt (1 - d));
             self.lines.loc [index, 'd'] = d * 6371
+
     def makeGraph (self): 
+
         if not hasattr (self.lines, 'd'):
             self.getDists ()
         self.graph = {}
+
         for index, row in self.lines.iterrows():
             stfrom = row['from']
             stto = row['to']
@@ -82,19 +130,24 @@ class LondonRailStations (object):
                 self.graph [stto] = {row['from']: row['d']}
             elif not stfrom in self.graph [stto]:
                 self.graph [stto] [stfrom] = row['d']
+
     '''
     The graph data then have to converted to a distance matrix (using dijkstra),
     and written *IN THE STATION ORDER GIVEN IN SELF.LATLONS*
     '''
+
     def makeDMat (self): 
+
         if not hasattr (self, 'graph'):
             self.makeGraph ()
         n = len (self.latlons)
         self.dmat = np.zeros ((n, n))
+
         for index, row in self.latlons.iterrows():
             dist, pred = dijkstra (self.graph, source = row['name'])
             vals = [value for key,value in sorted (dist.items())]
             self.dmat [index,] = vals
+
         self.dmatNames = sorted (dist.keys())
 
 

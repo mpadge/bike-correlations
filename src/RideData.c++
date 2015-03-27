@@ -883,9 +883,9 @@ int RideData::writeDMat ()
 {
     std::string city = RideData::returnCity(), distFile;
     if (city == "london")
-        distFile = "results/station_dists_london.txt";
+        distFile = "data/station_dists_london.txt";
     else if (city == "nyc")
-        distFile = "results/station_dists_nyc.txt";
+        distFile = "data/station_dists_nyc.txt";
 
     int numStations = RideData::returnNumStations ();
 

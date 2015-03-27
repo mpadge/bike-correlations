@@ -5,6 +5,7 @@ import numpy as np
 from bs4 import BeautifulSoup
 
 def normalise(s):
+
     s.replace(' and ',' & ')
     s.replace(' And ',' & ')
     for p in string.punctuation:
@@ -36,6 +37,7 @@ class LondonRailStations (object):
             self.lines = pd.read_csv (network_file, header=0,
                     names=['line','from','to'],
                     usecols=['from','to'])
+
         else:
 
             latlon_file = "http://en.wikipedia.org/wiki/List_of_London_railway_stations"
@@ -82,12 +84,14 @@ class LondonRailStations (object):
             # by appending only actual tube stations
 
             latlons = pd.DataFrame()
+
             for index, row in self.latlons.iterrows():
                 found = [i for i in self.lines['from'] if i == row['name']]
                 found += [i for i in self.lines['to'] if i == row['name']]
                 if len (found) > 0:
                     dat = {'name':row['name'],'lat':row['lat'],'lon':row['lon']}
                     latlons = latlons.append (dat, ignore_index=True)
+
             self.latlons = latlons
 
     def getDists (self):
@@ -195,21 +199,25 @@ if __name__ == "__main__":
     rail.makeDMat ()
     np.savetxt ("../data/London-rail-station-dists.txt", rail.dmat,
             delimiter=',')
-    with open('../data/London-rail-station-names.txt', 'wb') as outfile:
-        wr = csv.writer (outfile, delimiter='\n', quoting=csv.QUOTE_ALL)
-        wr.writerow (rail.dmatNames)
+    #with open('../data/London-rail-station-names.txt', 'wb') as outfile:
+    #    wr = csv.writer (outfile, delimiter='\n', quoting=csv.QUOTE_ALL)
+    #    wr.writerow (rail.dmatNames)
+    rail.latlons.to_csv ("../data/London-rail-stations.txt", header=True,
+            index=False, cols=['name','lat','lon'])
     print 'Distance matrix of %s stations written to' % rail.dmat.shape[0],
     print 'London-rail-station-dists.txt'
-    print '\talong with vector of London-rail-station-names.txt' 
+    print '\talong with lat-lons to London-rail-stations.txt' 
 
     tube = LondonRailStations (tube=True)
     print "There are %s tube stations" % len (tube.latlons)
     tube.makeDMat ()
     np.savetxt ("../data/London-tube-station-dists.txt", tube.dmat,
             delimiter=',')
-    with open('../data/London-tube-station-names.txt', 'wb') as outfile:
-        wr = csv.writer (outfile, delimiter='\n', quoting=csv.QUOTE_ALL)
-        wr.writerow (tube.dmatNames)
+    #with open('../data/London-tube-station-names.txt', 'wb') as outfile:
+    #    wr = csv.writer (outfile, delimiter='\n', quoting=csv.QUOTE_ALL)
+    #    wr.writerow (tube.dmatNames)
+    tube.latlons.to_csv ("../data/London-tube-stations.txt", header=True,
+            index=False, cols=['name','lat','lon'])
     print 'Distance matrix of %s stations written to' % tube.dmat.shape[0],
     print 'London-tube-station-dists.txt'
-    print '\talong with vector of London-tube-station-names.txt' 
+    print '\talong with lat-lons to London-tube-stations.txt' 

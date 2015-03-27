@@ -1,11 +1,7 @@
 data
 =================
 
-Tube station data should be downloaded first as `London-tube-stations.txt` from
-[this link](http://www.doogal.co.uk/london_stations.php).  
-
-NR station data can then be downloaded as `London-rail-stations.txt` from
-[wiki](http://en.wikipedia.org/wiki/List_of_London_railway_stations) with
-`scrapeRailStations.py`  
-
-This python script also converts the `tube-stations` to an identical format
+Tube and NR station data are scraped with `getRailDists.py`, which also dumps station names and lat-lons for both tube and NR systems. Note that
+the tube data are from
+[this link](http://www.doogal.co.uk/london_stations.php), which includes 608 stations from both tube and NR systems. This list is reduced to
+tube stations only by selecting only those present in `../data/London tube lines.csv` which is also downloaded from the above link.

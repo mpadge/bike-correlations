@@ -99,7 +99,7 @@ int main(int argc, char *argv[]) {
         for (int i=0; i<rideData.getNumFiles(); i++)
         {
             nfiles = rideData.countFilesLondon (i);
-            for (int j=43; j<nfiles; j++) {
+            for (int j=0; j<nfiles; j++) {
                 tempi [0] = rideData.unzipOneFileLondon (i, j);
                 std::cout << "Reading file[";
                 if (j < 10)
@@ -116,7 +116,7 @@ int main(int argc, char *argv[]) {
         } // end for i
         fname = "NumTrips_london.csv";
     } else { // city = NYC
-        for (int i=16; i<rideData.getNumFiles(); i++)
+        for (int i=0; i<rideData.getNumFiles(); i++)
         {
             tempi [0] = rideData.getZipFileNameNYC (i);
             if (rideData.fileName != "") {

@@ -397,3 +397,184 @@ int StationData::writeNumTrips (std::string fname)
     return 0;
 }
 
+
+/************************************************************************
+ ************************************************************************
+ **                                                                    **
+ **                              CALCR2                                **
+ **                                                                    **
+ ************************************************************************
+ ************************************************************************/
+
+// Also calculates covariance
+
+int StationData::calcR2 (bool from)
+{
+    int tempi, numStations = StationList.size ();
+    double tempd;
+    std::vector <double> x0, y0, x1, x2, y2, d;
+    RegrResults regrResults;
+
+    d.resize (0);
+
+    /* Double loop over numStations requires multiple (x,y) vectors
+     * x0 is held in outer loop for i over (numStations - 1), potentially in
+     * standardised (0-1) form.
+     * y0 is held in inner loop for j over (i+1):numStations, also potentially
+     * in standardised (0-1) form.
+     *
+     * For each of these inner loops, both vectors may be modified through
+     * reduction to near/far stations only and/or removal of zeros. In each
+     * case/both cases, the modified vectors are stored as (x2, y2), and then
+     * copied after modification to (x1, y0), from which the correlations are
+     * evaluated.
+     *
+     * x1 is necessary to allow it to revert to x0 in each inner loop.
+     * The code ensures that all vectors have the same lengths at all times, and
+     * so explicit loops are used for clarity rather than iterators.
+     */
+    for (int i=0; i<(numStations-1); i++)
+    {
+        x0.resize (0);
+        for (int j=0; j<numStations; j++)
+            if (from)
+                x0.push_back (ntrips (i, j));
+            else
+                x0.push_back (ntrips (j, i));
+        if (_standardise)
+        {
+            tempd = 0.0;
+            for (int j=0; j<numStations; j++)
+                tempd += x0 [j];
+            for (int j=0; j<numStations; j++)
+                x0 [j] = x0 [j] / tempd;
+        }
+        for (int j=(i+1); j<numStations; j++)
+        {
+            x1.resize (0);
+            for (int k=0; k<numStations; k++)
+                x1.push_back (x0 [k]);
+
+            y0.resize (0);
+            for (int k=0; k<numStations; k++)
+                if (from)
+                    y0.push_back (ntrips (j, k));
+                else
+                    y0.push_back (ntrips (k, j));
+
+            if (_standardise)
+            {
+                tempd = 0.0;
+                for (int k=0; k<numStations; k++)
+                    tempd += y0 [k];
+                for (int k=0; k<numStations; k++)
+                    y0 [k] = y0 [k] / tempd;
+            }
+
+            if (nearfar != 0) // Remove half of stations from lists
+            {
+                d.resize (0);
+                for (int k=0; k<numStations; k++)
+                    d.push_back (dists (i, k) + dists (j, k));
+                std::sort (d.begin(), d.end());
+                tempi = floor (d.size () / 2);
+                tempd = (d [tempi] + d [tempi + 1]) / 2.0;
+                d.resize (0);
+                for (int k=0; k<numStations; k++)
+                    d.push_back (dists (i, k) + dists (j, k));
+                x2.resize (0);
+                y2.resize (0);
+                for (int k=0; k<numStations; k++)
+                {
+                    if (nearfar == 1 && d[k] < tempd)
+                    {
+                        x2.push_back (x1[k]);
+                        y2.push_back (y0[k]);
+                    } else if (nearfar == 2 && d[k] > tempd)
+                    {
+                        x2.push_back (x1[k]);
+                        y2.push_back (y0[k]);
+                    }
+                }
+                x1.resize (0);
+                y0.resize (0);
+                for (int k=0; k<x2.size(); k++)
+                {
+                    x1.push_back (x2 [k]);
+                    y0.push_back (y2 [k]);
+                }
+                x2.resize (0);
+                y2.resize (0);
+                d.resize (0);
+            } // end if nearfar
+            regrResults = regression (x1, y0);
+            r2 (i, j) = r2 (j, i) = regrResults.r2;
+            cov (i, j) = cov (j, i) = regrResults.cov;
+        } // end for j over (i+1):numStations
+    } // end for i over (numStations - 1)
+    x0.resize (0);
+    x1.resize (0);
+    y0.resize (0);
+
+    return 0;
+}
+
+
+/************************************************************************
+ ************************************************************************
+ **                                                                    **
+ **                             WRITER2MAT                             **
+ **                                                                    **
+ ************************************************************************
+ ************************************************************************/
+
+int StationData::writeR2Mat (std::string fname)
+{
+    int numStations = StationList.size ();
+
+    std::ofstream out_file;
+    out_file.open (fname.c_str (), std::ofstream::out);
+    for (int i=0; i<numStations; i++) {
+        for (int j=0; j<numStations; j++) {
+            out_file << r2 (i, j);
+            if (j == (numStations - 1))
+                out_file << std::endl;
+            else
+                out_file << ", ";
+        }
+    }
+    out_file.close ();
+    std::cout << "Correlations written to " << fname.c_str () << std::endl;
+
+    return 0;
+}
+
+/************************************************************************
+ ************************************************************************
+ **                                                                    **
+ **                            WRITECOVMAT                             **
+ **                                                                    **
+ ************************************************************************
+ ************************************************************************/
+
+int StationData::writeCovMat (std::string fname)
+{
+    int numStations = StationList.size ();
+
+    std::ofstream out_file;
+    out_file.open (fname.c_str (), std::ofstream::out);
+    for (int i=0; i<numStations; i++) {
+        for (int j=0; j<numStations; j++) {
+            out_file << cov (i, j);
+            if (j == (numStations - 1))
+                out_file << std::endl;
+            else
+                out_file << ", ";
+        }
+    }
+    out_file.close ();
+    std::cout << "Covariances written to " << fname.c_str () << std::endl;
+
+    return 0;
+}
+

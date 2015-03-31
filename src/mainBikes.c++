@@ -3,7 +3,7 @@
 int main(int argc, char *argv[]) {
     int nfiles, count, tempi [2];
     std::vector <std::string> tempstr;
-    std::string city, nfext, fname;
+    std::string city, nfext, fname, r2name, covname;
 
     std::cout << std::endl << "_____________________________________________" << 
         "____________________________________________" << std::endl;
@@ -141,12 +141,42 @@ int main(int argc, char *argv[]) {
         rideData.nearfar = i;
         rideData.txtnf = rideData.txtnflist [i];
 
+        if (rideData.returnCity () == "london")
+        {
+            r2name = "R2_london_from_" + rideData.txtnf + ".csv";
+            covname = "Cov_london_from_" + rideData.txtnf + ".csv";
+        }
+        else
+        {
+            r2name = "R2_nyc_from_" + rideData.txtnf +
+                std::to_string (rideData.getSubscriber ()) +
+                std::to_string (rideData.getGender ()) + ".csv";
+            covname = "Cov_nyc_from_" + rideData.txtnf +
+                std::to_string (rideData.getSubscriber ()) +
+                std::to_string (rideData.getGender ()) + ".csv";
+        }
+        if (rideData.getStandardise ())
+        {
+            r2name.replace (r2name.length () - 4, 4, "_std.csv");
+            covname.replace (covname.length () - 4, 4, "_std.csv");
+        }
+        else
+        {
+            r2name.replace (r2name.length () - 4, 4, "_unstd.csv");
+            covname.replace (covname.length () - 4, 4, "_unstd.csv");
+        }
+
         rideData.calcR2 (true);
-        rideData.writeR2Mat (true);
-        rideData.writeCovMat (true);
+        rideData.writeR2Mat (r2name);
+        rideData.writeCovMat (covname);
+
         rideData.calcR2 (false);
-        rideData.writeR2Mat (false);
-        rideData.writeCovMat (false);
+        count = r2name.find ("_from_");
+        r2name.replace (count, 6, "_to_");
+        count = covname.find ("_from_");
+        covname.replace (count, 6, "_to_");
+        rideData.writeR2Mat (r2name);
+        rideData.writeCovMat (covname);
     }
     //rideData.readR2Mat (false);
     std::cout << "_____________________________________________" << 

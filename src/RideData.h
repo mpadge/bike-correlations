@@ -16,16 +16,9 @@ class RideData: public StationData
     private:
         int _numTripFiles, _stnIndxLen;
         const int _subscriber, _gender;
-        // nearfar determines whether correlations are calculated from all data,
-        // only from the nearest 50% of stations, or only from the farthest 50%.
-        // nearfar = 0 uses all data
-        // nearfar = 1 uses only data from the nearest 50% of stations
-        // nearfar = 2 uses only data from the farthest 50% of stations
-        // Distances are calculated as sums of distances from both stations.
         // subscriber = (0, 1, 2) for (all, subscriber, customer)
         // gender = (0, 1, 2) for (all, male, female)
     public:
-        int nearfar;
         imat ntrips_cust, ntrips_sub_m, ntrips_sub_f, ntrips_sub_n;
         imat ntrips1920, ntrips1930, ntrips1940, ntrips1950, ntrips1960,
              ntrips1970, ntrips1980, ntrips1990, ntrips2000,
@@ -35,8 +28,6 @@ class RideData: public StationData
         // subscribers whose gender is not given
         std::string fileName;
         std::vector <int> missingStations;
-        std::string txtnf;
-        std::vector <std::string> txtnflist;
 
         RideData (std::string str, int i0, int i1)
             : StationData (str), _subscriber (i0), _gender (i1)
@@ -50,15 +41,9 @@ class RideData: public StationData
                     subscriberMFConstruct ();
                 else
                     subscriberAgeConstruct ();
-                _standardise = true; // false doesn't make sense
                 for (int i=0; i<99; i++)
                     ageDistribution [i] = 0;
             }
-
-            txtnflist.resize (0);
-            txtnflist.push_back ("all");
-            txtnflist.push_back ("near");
-            txtnflist.push_back ("far");
         }
 
         ~RideData ()
@@ -66,7 +51,6 @@ class RideData: public StationData
             missingStations.resize (0);
             subscriberMFDestruct();
             subscriberAgeDestruct();
-            txtnflist.resize (0);
         }
         
 
@@ -75,7 +59,6 @@ class RideData: public StationData
 
         int getNumFiles () { return _numTripFiles;  }
         int getStnIndxLen () { return _stnIndxLen;  }
-        int getStandardise () { return _standardise;    }
 
         int countFilesLondon (int file);
         int unzipOneFileLondon (int filei, int filej);
@@ -88,9 +71,6 @@ class RideData: public StationData
         void summaryStatsNYC ();
         int aggregateTrips ();
 
-        int calcR2 (bool from);
-        int writeR2Mat (bool from);
-        int writeCovMat (bool from);
         int readR2Mat (bool from);
 
         void subscriberMFConstruct()

@@ -32,15 +32,25 @@ class Stations // for both bikes and trains
         // Standardises ntrips to unit sum, so covariances do not depend on
         // scales of actual numbers of trips. Set to true in initialisation.
     public:
+        int nearfar;
+        // nearfar determines whether correlations are calculated from all data,
+        // only from the nearest 50% of stations, or only from the farthest 50%.
+        // nearfar = 0 uses all data
+        // nearfar = 1 uses only data from the nearest 50% of stations
+        // nearfar = 2 uses only data from the farthest 50% of stations
+        // Distances are calculated as sums of distances from both stations.
         std::string fileName;
         Stations (std::string str)
             : _city (str)
         {
+            _standardise = true; // false doesn't make sense
             _dirName = GetDirName ();
         }
         ~Stations ()
         {
         }
+
+        int getStandardise () { return _standardise;    }
 
         std::string returnDirName () { return _dirName; }
         std::string returnCity () { return _city;   }
@@ -68,6 +78,9 @@ class StationData : public Stations
         dmat ntrips; // dmat to allow standardisation to unit sum
         dmat r2, cov, dists;
 
+        std::string txtnf;
+        std::vector <std::string> txtnflist;
+
         StationData (std::string str)
             : Stations (str)
         {
@@ -78,6 +91,11 @@ class StationData : public Stations
             InitialiseArrays ();
             if (_city == "london" || _city == "nyc")
                 MakeStationIndex ();
+
+            txtnflist.resize (0);
+            txtnflist.push_back ("all");
+            txtnflist.push_back ("near");
+            txtnflist.push_back ("far");
         }
         ~StationData()
         {
@@ -87,6 +105,7 @@ class StationData : public Stations
             r2.resize (0, 0);
             cov.resize (0, 0);
             dists.resize (0, 0);
+            txtnflist.resize (0);
         }
 
         int returnNumStations () { return _numStations; }
@@ -101,6 +120,10 @@ class StationData : public Stations
         int readDMat ();
         int writeDMat ();
         int writeNumTrips (std::string fname);
+
+        int calcR2 (bool from);
+        int writeR2Mat (std::string fname);
+        int writeCovMat (std::string fname);
 
         void InitialiseArrays ()
         {

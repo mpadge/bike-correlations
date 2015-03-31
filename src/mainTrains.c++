@@ -13,4 +13,6 @@ int main (int argc, char *argv[]) {
     std::cout << "There are " << railData.CountTrips () <<
         " trips between " << railData.Oyster2StnIndex.size () << " stations." <<
         std::endl;
+    railData.calcR2 (true);
+    railData.calcR2 (false);
 }

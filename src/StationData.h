@@ -56,6 +56,7 @@ class StationData : public Stations
         std::vector <int> _StationIndex;
         std::string _nearfarTxt [3];
     public:
+        int tempi;
         std::vector <int> missingStations;
         struct OneStation 
         {
@@ -96,6 +97,9 @@ class StationData : public Stations
         int GetStations ();
         void MakeStationIndex ();
         double CountTrips ();
+
+        int readDMat ();
+        int writeDMat ();
 
         void InitialiseArrays ()
         {

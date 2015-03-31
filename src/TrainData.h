@@ -36,6 +36,7 @@ class TrainData: public StationData
             count = CountTrips ();
             numStnsWithData = fillHasData ();
             count = resizeNtrips ();
+            count = writeDMat ();
             if (numStnsWithData != Oyster2StnIndex.size ())
                 std::cout << "ERROR: hasData has " << count << 
                     " stations and Oyster2StnIndex has " << 
@@ -56,6 +57,8 @@ class TrainData: public StationData
         int readOysterData ();
         int fillHasData ();
         int resizeNtrips ();
+
+        int writeNumTrips ();
 };
 
 #endif

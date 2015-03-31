@@ -236,7 +236,7 @@ int TrainData::fillHasData ()
 /************************************************************************
  ************************************************************************
  **                                                                    **
- **                          REDUCENTRIPS                              **
+ **                          RESIZENTRIPS                              **
  **                                                                    **
  ************************************************************************
  ************************************************************************/
@@ -245,14 +245,21 @@ int TrainData::resizeNtrips ()
 {
     // Actually resizes all StationData matrices (ntrips, r2, cov, dists)
     int indx [2] = {0, 0}, nSt = StationList.size ();
-    dmat ntemp (numStnsWithData, numStnsWithData);
+    dmat ntemp (numStnsWithData, numStnsWithData),
+        r2temp (numStnsWithData, numStnsWithData),
+        covtemp (numStnsWithData, numStnsWithData),
+        dtemp (numStnsWithData, numStnsWithData);
+    std::vector <OneStation> StationListTemp;
+    StationListTemp.resize (0);
     // TODO: Rewrite this in a more robust way. At present just uses the
     // following simple sanity check.
-    for (std::vector<bool>::iterator itr = hasData.begin ();
-            itr != hasData.end(); itr++)
-        if (*itr)
+    for (int i=0; i<returnNumStations(); i++)
+        if (hasData [i])
+        {
             indx [0]++;
-    if (indx [0] != numStnsWithData)
+            StationListTemp.push_back (StationList [i]);
+        }
+    if (indx [0] != numStnsWithData || indx [0] != StationListTemp.size ())
     {
         std::cout << "ERROR: hasData includes " << indx [0] << 
             " but numStnsWithData = " << numStnsWithData << std::endl;
@@ -269,6 +276,9 @@ int TrainData::resizeNtrips ()
                 if (hasData [j])
                 {
                     ntemp (indx [0], indx [1]) = ntrips (i, j);
+                    r2temp (indx [0], indx [1]) = r2 (i, j);
+                    covtemp (indx [0], indx [1]) = cov (i, j);
+                    dtemp (indx [0], indx [1]) = dists (i, j);
                     indx [1]++;
                 }
             indx [0]++;
@@ -277,11 +287,24 @@ int TrainData::resizeNtrips ()
 
     // Then read back into resized ntrips
     ntrips.resize (numStnsWithData, numStnsWithData);
-    for (int i=0; i<numStnsWithData; i++)
-        for (int j=0; j<numStnsWithData; j++)
-            ntrips (i, j) = ntemp (i, j);
-    ntemp.resize (0, 0);
     r2.resize (numStnsWithData, numStnsWithData);
     cov.resize (numStnsWithData, numStnsWithData);
     dists.resize (numStnsWithData, numStnsWithData);
-}
+    StationList.resize (0);
+    for (int i=0; i<numStnsWithData; i++)
+    {
+        StationList.push_back (StationListTemp [i]);
+        for (int j=0; j<numStnsWithData; j++)
+        {
+            ntrips (i, j) = ntemp (i, j);
+            r2(i, j) = r2temp (i, j);
+            cov (i, j) = covtemp (i, j);
+            dists (i, j) = dtemp (i, j);
+        }
+    }
+    ntemp.resize (0, 0);
+    r2temp.resize (0, 0);
+    covtemp.resize (0, 0);
+    dtemp.resize (0, 0);
+    StationListTemp.resize (0);
+} // end function resizeNTrips

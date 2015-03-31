@@ -115,7 +115,7 @@ int main(int argc, char *argv[]) {
             std::cout << "Total Number of Trips = " << count << std::endl;
         }
     } else { // city = NYC
-        for (int i=0; i<rideData.getNumFiles(); i++)
+        for (int i=16; i<rideData.getNumFiles(); i++)
         {
             tempi [0] = rideData.getZipFileNameNYC (i);
             if (rideData.fileName != "") {
@@ -128,7 +128,8 @@ int main(int argc, char *argv[]) {
         tempi [0] = rideData.aggregateTrips ();
     } // end else city == NYC
 
-    rideData.writeDMat (); // Also fills RideData.dists
+    rideData.readDMat ();
+    rideData.writeDMat (); 
     rideData.writeNumTrips ();
 
     // Then loop over (all, near, far) data

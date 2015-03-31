@@ -221,3 +221,146 @@ double StationData::CountTrips ()
 
     return (count);
 }
+
+
+/************************************************************************
+ ************************************************************************
+ **                                                                    **
+ **                              READDMAT                              **
+ **                                                                    **
+ ************************************************************************
+ ************************************************************************/
+
+int StationData::readDMat ()
+{
+    std::string distFile;
+    if (_city == "london")
+        distFile = "data/station_dists_london.txt";
+    else if (_city == "nyc")
+        distFile = "data/station_dists_nyc.txt";
+    else if (_city == "oysterTube")
+        distFile = "data/London-tube-station-dists.txt";
+    else if (_city == "oysterRail")
+        distFile = "data/London-rail-station-dists.txt";
+
+    int count, ipos, tempi [2];
+    double d;
+    std::ifstream in_file;
+    std::string linetxt;
+    in_file.open (distFile.c_str (), std::ifstream::in);
+    if (in_file.fail ()) {
+        // TODO: INSERT ERROR HANDLER
+        return -1;
+    } 
+    in_file.clear ();
+    in_file.seekg (0); 
+    count = 0;
+    
+    if (_city == "london" || _city == "nyc")
+    {
+        while (getline (in_file, linetxt, '\n')) {
+            ipos = linetxt.find(',',0);
+            tempi [0] = atoi (linetxt.substr (0, ipos).c_str()); // Start Station ID
+            linetxt = linetxt.substr (ipos + 1, linetxt.length () - ipos - 1);
+            ipos = linetxt.find(',',0);
+            tempi [1] = atoi (linetxt.substr (0, ipos).c_str()); // End Station ID
+            tempi [0] = _StationIndex [tempi[0]];
+            tempi [1] = _StationIndex [tempi[1]];
+            if (tempi[0] < 0 | tempi[0] > returnNumStations ())
+                std::cout << "ERROR: stn[0]#" << tempi[0] << std::endl;
+            if (tempi[1] < 0 | tempi[1] > returnNumStations ())
+                std::cout << "ERROR: stn[1]#" << tempi[1] << std::endl;
+            linetxt = linetxt.substr (ipos + 1, linetxt.length () - ipos - 1);
+            d = atof (linetxt.c_str());
+            dists (tempi [0], tempi [1]) = dists (tempi [1], tempi [0]) = d;
+            count++;
+        }
+    }
+    else // Distances between train stations, read direct from matrix
+    {
+        while (getline (in_file, linetxt, '\n'))
+            count++;
+        if (count != _numStations)
+        {
+            std::cout << "ERROR: " << distFile << " does not have " <<
+                _numStations << " columns and rows!" << std::endl;
+            return -1;
+        }
+        else
+        {
+            in_file.clear ();
+            in_file.seekg (0); 
+            for (int i=0; i<_numStations; i++)
+            {
+                getline (in_file, linetxt, '\n');
+                for (int j=0; j<(_numStations - 1); j++)
+                {
+                    ipos = linetxt.find (',',0);
+                    dists (i, j) = dists (j, i) = 
+                        atof (linetxt.substr (0, ipos).c_str());
+                    linetxt = linetxt.substr (ipos + 1, 
+                            linetxt.length () - ipos - 1);
+                } // end for j over columns
+                dists (i, _numStations - 1) = dists (_numStations - 1, i) =
+                    atof (linetxt.c_str ());
+            } // end for i over rows
+        } // end else count == _numStations
+    }
+
+    in_file.close ();
+
+    return 0;
+}
+
+
+/************************************************************************
+ ************************************************************************
+ **                                                                    **
+ **                             WRITEDMAT                              **
+ **                                                                    **
+ ************************************************************************
+ ************************************************************************/
+
+int StationData::writeDMat ()
+{
+    int numStations = StationList.size ();
+    std::string distFile, nameFile;
+    std::ofstream dists_out, names_out;
+
+    if (_city == "london")
+        distFile = "stationDistsMat_london.csv";
+    else if (_city == "nyc")
+        distFile = "stationDistsMat_nyc.csv";
+    else if (_city == "oysterTube")
+    {
+        distFile = "DistMatTube.csv";
+        nameFile = "DistMatTube_StationList.csv";
+    }
+    else if (_city == "oysterRail")
+    {
+        distFile = "DistMatRail.csv";
+        nameFile = "DistMatRail_StationList.csv";
+    }
+    
+    dists_out.open (distFile.c_str (), std::ofstream::out);
+    names_out.open (nameFile.c_str (), std::ofstream::out);
+
+    for (int i=0; i<numStations; i++)
+    {
+        names_out << StationList[i].name << ", " << StationList [i].lat <<
+            ", " << StationList [i].lon << std::endl;
+        for (int j=0; j<(numStations - 1); j++)
+            dists_out << dists (i, j) << ", ";
+        dists_out << dists (i, numStations - 1) << std::endl;
+    }
+    dists_out.close ();
+    names_out.close ();
+
+    std::cout << numStations << " inter-station distances written to " << 
+        distFile.c_str () << std::endl;
+    if (_city.substr (0, 6) == "oyster")
+        std::cout << "\t... and corresponding station names written to " <<
+            nameFile.c_str () << std::endl;
+
+    return 0;
+}

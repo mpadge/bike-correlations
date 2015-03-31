@@ -8,7 +8,8 @@ def normalise(s):
 
     s.replace(' and ',' & ')
     s.replace(' And ',' & ')
-    for p in string.punctuation:
+    punc = string.punctuation.replace ('&','') # leave ampersands in!
+    for p in punc:
         s = s.replace(p, '')
     return s.lower().strip()
 

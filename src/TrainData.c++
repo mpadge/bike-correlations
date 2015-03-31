@@ -27,9 +27,11 @@ int TrainData::readOysterData ()
     std::string modeTxt, mode, start, stop, linetxt;
     bool startIn, stopIn; // TODO: DELETE THESE!
 
+    /*
     for (std::vector <OneStation>::iterator itr = StationList.begin();
             itr != StationList.end(); itr++)
         std::cout << "->" << (*itr).name << "<-" << std::endl;
+    */
 
     if (_tube)
         modeTxt = "tube";
@@ -189,8 +191,8 @@ int TrainData::readOysterData ()
             std::cout.flush ();
             progress [1]++;
         }
-        if (progress [1] > 2)
-            break;
+        //if (progress [1] > 2)
+        //    break;
     } // end while getline
     in_file.close();
     remove (fname_csv.c_str ());

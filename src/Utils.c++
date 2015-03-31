@@ -72,15 +72,6 @@ std::string substituteNames (bool tube, std::string str)
 {
     if (tube)
     {
-        // Tube stations often have the line as a single letter at the end
-        /*
-        if ((ipos = str.find (" b")) == (str.length() - 2))
-            str = str.substr (0, str.length () - 2);
-        if ((ipos = str.find (" m")) == (str.length() - 2))
-            str = str.substr (0, str.length () - 2);
-        if ((ipos = str.find (" d")) == (str.length() - 2))
-            str = str.substr (0, str.length () - 2);
-        */
         if (str.substr (0, 11) == "kings cross")
             return ("kings cross st pancras");
         else if (str.substr (0, 12) == "edgware road")
@@ -89,61 +80,49 @@ std::string substituteNames (bool tube, std::string str)
             return ("hammersmith"); 
         else if (str.substr (0, 14) == "shepherds bush")
             return ("shepherds bush");
-        else if (str == "highbury and islington")
-            return ("highbury");
-        else if (str.substr (0, 16) == "high street kens")
-            return ("high street kensington");
-        else if (str == "harrow wealdstone")
-            return ("harrow and wealdstone");
-        else if (str.substr (0, 8) == "waterloo")
-            return ("waterloo");
+        else if (str == "harrow on the hill")
+            return ("harrowonthehill");
         else if (str.substr (0, 12) == "canary wharf") 
             return ("canary wharf"); // just a guess there!
+        else if (str.substr (0, 10) == "totteridge")
+            return ("totteridge and whetstone");
+        else if (str.substr (0, 8) == "waterloo")
+            return ("waterloo");
+        else if (str.substr (0, 7) == "bromley")
+            return ("bromleybybow");
+        else if (str.substr (0, 16) == "high street kens")
+            return ("high street kensington");
         else if (str == "heathrow terms 123")
             return ("heathrow terminals 1 2 3");
         else if (str == "heathrow term 4")
             return ("heathrow terminal 4");
         else if (str == "heathrow term 5")
             return ("heathrow terminal 5");
-        else if (str == "harrow on the hill")
-            return ("harrowonthehill");
-        else if (str.substr (0, 7) == "bromley")
-            return ("bromleybybow");
-        else if (str.substr (0, 10) == "totteridge")
-            return ("totteridge and whetstone");
+        else if (str.substr (0, 8) == "highbury")
+            return ("highbury and islington");
+        else if (str == "harrow wealdstone")
+            return ("harrow and wealdstone");
         else if (str == "watford met")
             return ("watford"); // just a guess
     }
     else
     {
-        if (str == "kensington olympia")
-            return ("kensington (olympia)");
-        else if (str == "caledonian roadandb'sby" || str == "caledonian rd&b'sby")
-            return ("caledonian road and barnsbury");
-        else if (str == "liverpool st wagn toc gates")
-            return ("liverpool street");
-        else if (str == "rainham essex")
-            return ("rainham");
-        else if (str == "sudburyandharrow road" || str == "sudbury&harrow rd")
-            return ("sudbury and harrow road");
+        if (str == "victoria tocs")
+            return ("victoria");
+        else if (str.substr (0, 11) == "kings cross")
+            return ("kings cross");
         else if (str == "sutton surrey")
             return ("sutton");
-        else if (str == "victoria tocs")
-            return ("victoria");
-        else if (str == "west hampst'd nl")
+        else if (str == "rainham essex")
+            return ("rainham");
+        else if (str.substr (0, 11) == "west hampst")
             return ("west hampstead");
-        else if (str == "heathrow terms 123")
-            return ("heathrow terminals 1 2 3");
-        else if (str == "heathrow term 4")
-            return ("heathrow terminal 4");
+        else if (str.substr (0, 15) == "caledonian road")
+            return ("caledonian road and barnsbury");
         else if (str == "heathrow term 5")
             return ("heathrow terminal 5");
-        else if (str == "kings cross t" || str == "king's cross")
-            return ("kings cross");
-        else if (str == "queens park")
-            return ("queens park");
-        else if (str == "acton main line")
-            return ("acton central"); // just a guess there!
+        else if (str.substr (0, 10) == "sudburyand")
+            return ("sudbury and harrow road");
     } // end else NR
 
     return str;

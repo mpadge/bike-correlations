@@ -161,8 +161,6 @@ int StationData::GetStations ()
                 ipos = linetxt.find(',',0);
                 oneStation.name = standardise (linetxt.substr (0, ipos).c_str());
                 oneStation.name = substituteNames (tube, oneStation.name);
-                if (oneStation.name == "south harrow")
-                    std::cout << "***SOUTH HARROW IS IN!***" << std::endl;
                 linetxt = linetxt.substr (ipos + 1, linetxt.length () - ipos - 1);
                 ipos = linetxt.find (',', 0);
                 oneStation.lat = atof (linetxt.substr (0, ipos).c_str());
@@ -172,8 +170,6 @@ int StationData::GetStations ()
             }
         }
         in_file.close();
-        std::cout << "***READ " << StationList.size () << " stations" <<
-            std::endl;
     }
 
     return count;

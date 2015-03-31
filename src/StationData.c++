@@ -97,6 +97,7 @@ int StationData::GetStations ()
      */
     const std::string dir = "data/"; 
     int ipos, tempi, count;
+    bool tube;
     OneStation oneStation;
     std::string fname;
     std::ifstream in_file;
@@ -138,13 +139,20 @@ int StationData::GetStations ()
     {
         oneStation.ID = INT_MIN;
         if (_city == "oysterRail")
+        {
+            tube = false;
             fname = dir + "London-rail-stations.txt";
+        }
         else
+        {
+            tube = true;
             fname = dir + "London-tube-stations.txt";
+        }
         in_file.open (fname.c_str (), std::ifstream::in);
         assert (!in_file.fail ());
         in_file.clear ();
         in_file.seekg (0); 
+        getline (in_file, linetxt,'\n');
         while (!in_file.eof ()) 
         {
             getline (in_file, linetxt,'\n');
@@ -152,6 +160,9 @@ int StationData::GetStations ()
             {
                 ipos = linetxt.find(',',0);
                 oneStation.name = standardise (linetxt.substr (0, ipos).c_str());
+                oneStation.name = substituteNames (tube, oneStation.name);
+                if (oneStation.name == "south harrow")
+                    std::cout << "***SOUTH HARROW IS IN!***" << std::endl;
                 linetxt = linetxt.substr (ipos + 1, linetxt.length () - ipos - 1);
                 ipos = linetxt.find (',', 0);
                 oneStation.lat = atof (linetxt.substr (0, ipos).c_str());
@@ -161,6 +172,8 @@ int StationData::GetStations ()
             }
         }
         in_file.close();
+        std::cout << "***READ " << StationList.size () << " stations" <<
+            std::endl;
     }
 
     return count;

@@ -55,6 +55,7 @@ struct RegrResults {
     double r2, cov, slope, intercept, SS, tval;      };
 
 std::string standardise (std::string sin);
+std::string substituteNames (bool tube, std::string str);
 double calc_angle (double x, double y);
 DistStruct getdists (double xa, double ya, double xb, double yb);
 DistStruct convert_distance (double dist, double midx, double midy);

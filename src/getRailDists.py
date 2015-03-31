@@ -18,6 +18,10 @@ class LondonRailStations (object):
 
         if tube:
 
+            '''
+            Dougal claims to be a full list, yet misses some such as
+            Acton Main Line.
+            '''
             latlon_file = 'http://www.doogal.co.uk/LondonStationsCSV.php'
             content = urllib2.urlopen (latlon_file).read ()
             soup = BeautifulSoup (content)
@@ -33,7 +37,7 @@ class LondonRailStations (object):
                 dat = {'name':name, 'lat':lat, 'lon':lon}
                 self.latlons = self.latlons.append (dat, ignore_index=True)
 
-            network_file = '../data/London tube lines.csv'
+            network_file = '../data/London-tube-lines.csv'
             self.lines = pd.read_csv (network_file, header=0,
                     names=['line','from','to'],
                     usecols=['from','to'])
@@ -48,6 +52,7 @@ class LondonRailStations (object):
             self.latlons = pd.DataFrame()
 
             for ri in rows:
+
                 cols = ri.findAll ('td')
                 name = cols [0].find(text=True).encode('utf-8').strip()
                 lat = cols [-1].findAll("span", {"class": "latitude"})
@@ -63,6 +68,7 @@ class LondonRailStations (object):
                 sec = lon.split ('\xb2')[1].split ('\xe2')[0]
                 ew = lon.split ('\xb3')[1]
                 lon = float (deg) + float (min) / 60.0 + float (sec) / 3600.0
+
                 if (ew == 'W'):
                     lon = -lon
                 if (name != 'Stratford International'):
@@ -80,6 +86,7 @@ class LondonRailStations (object):
             self.lines['to'][index] = normalise (row ['to'])
 
         if tube:
+            
             # These latlons include all stations, so the self.latlons df is made
             # by appending only actual tube stations
 
@@ -102,6 +109,7 @@ class LondonRailStations (object):
                                     'd': pd.Series (None,range(n))})
 
         for index, row in self.lines.iterrows():
+
             st = row["from"]
             fromlon = float (self.latlons [self.latlons["name"] == st]["lon"])
             fromlat = float (self.latlons [self.latlons["name"] == st]["lat"])

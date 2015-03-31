@@ -20,66 +20,6 @@ std::string standardise (std::string str)
 
     std::transform (str.begin(), str.end(), str.begin(), ::tolower);
 
-    subs.resize (0);
-    // First check all single-instance substitutions
-    // These ones are NR stations
-    if (str == "kensington olympia")
-        return ("kensington (olympia)");
-    else if (str == "caledonian roadandb'sby" || str == "caledonian rd&b'sby")
-        return ("caledonian road and barnsbury");
-    else if (str == "liverpool st wagn toc gates")
-        return ("liverpool street");
-    else if (str == "rainham essex")
-        return ("rainham");
-    else if (str == "sudburyandharrow road" || str == "sudbury&harrow rd")
-        return ("sudbury and harrow road");
-    else if (str == "sutton surrey")
-        return ("sutton");
-    else if (str == "victoria tocs")
-        return ("victoria");
-    else if (str == "west hampst'd nl")
-        return ("west hampstead");
-    else if (str == "heathrow terms 123")
-        return ("heathrow terminals 1 2 3");
-    else if (str == "heathrow term 4")
-        return ("heathrow terminal 4");
-    else if (str == "heathrow term 5")
-        return ("heathrow terminal 5");
-    else if (str == "kings cross t" || str == "king's cross")
-        return ("kings cross");
-    else if (str == "queens park")
-        return ("queens park");
-    else if (str == "acton main line")
-        return ("acton central"); // just a guess there!
-    else if (str == "canary wharf e2") // And from here on are tube (LUL) stations
-        return ("canary wharf"); // just a guess there!
-    else if (str == "shepherd's bush mkt")
-        return ("shepherds bush market");
-    else if (str == "shepherd's bush und")
-        return ("shepherds bush");
-    else if (str == "hammersmith (district)")
-        return ("hammersmith"); 
-    else if (str == "edgware road (bakerloo)")
-        return ("edgware road");
-    else if (str == "harrow wealdstone")
-        return ("harrow and wealdstone");
-    else if (str == "high street kens")
-        return ("high street kensington");
-    else if (str == "highbury and islington")
-        return ("highbury");
-    else if (str == "totteridge and whetstone")
-        return ("totteridge");
-    else if (str == "waterloo jle")
-        return ("waterloo");
-    else if (str == "watford met")
-        return ("watford"); // just a guess
-
-    /* NOTE that these single substitutions for hammersmith and edgware road
-     * name the single stations as the ones specified, ignoring the respective
-     * other stations on the Metropolitan and Circle/District/Hammersmith and
-     * City lines.
-     */
-
     // nr and st have to be handled individually because their main
     // identification is that they come at the end of names. There are also
     // similar instances of "sr", "scl",
@@ -98,20 +38,15 @@ std::string standardise (std::string str)
     // and international has to be removed from st pancras
     if ((ipos = str.find (" international")) == (str.length() - 14))
         str = str.substr (0, str.length () - 14);
-    // Tube stations often have the line as a single letter at the end
-    if ((ipos = str.find (" b")) == (str.length() - 2))
-        str = str.substr (0, str.length () - 2);
-    if ((ipos = str.find (" m")) == (str.length() - 2))
-        str = str.substr (0, str.length () - 2);
-    if ((ipos = str.find (" d")) == (str.length() - 2))
-        str = str.substr (0, str.length () - 2);
 
+    subs.resize (0);
     subs.push_back ({"&", "and"});
     subs.push_back ({"-", " "});
     subs.push_back ({" pk", " park"});
     subs.push_back ({" rd", " road"});
-    subs.push_back ({"king's", "kings"});
-    subs.push_back ({"queen's", "queens"});
+    //subs.push_back ({"king's", "kings"});
+    //subs.push_back ({"queen's", "queens"});
+    subs.push_back ({"'s", "s"});
 
     for (std::vector <oneSub>::iterator itr = subs.begin();
             itr != subs.end(); itr++)
@@ -121,6 +56,115 @@ std::string standardise (std::string str)
                     (*itr).second);
     }
     subs.resize (0);
+
+    return str;
+}
+
+/************************************************************************
+ ************************************************************************
+ **                                                                    **
+ **                           SUBSTITUTENAMES                          **
+ **                                                                    **
+ ************************************************************************
+ ************************************************************************/
+
+std::string substituteNames (bool tube, std::string str)
+{
+    if (tube)
+    {
+        // Tube stations often have the line as a single letter at the end
+        /*
+        if ((ipos = str.find (" b")) == (str.length() - 2))
+            str = str.substr (0, str.length () - 2);
+        if ((ipos = str.find (" m")) == (str.length() - 2))
+            str = str.substr (0, str.length () - 2);
+        if ((ipos = str.find (" d")) == (str.length() - 2))
+            str = str.substr (0, str.length () - 2);
+        */
+        if (str.substr (0, 11) == "kings cross")
+            return ("kings cross st pancras");
+        else if (str.substr (0, 12) == "edgware road")
+            return ("edgware road");
+        else if (str.substr (0, 11) == "hammersmith")
+            return ("hammersmith"); 
+        else if (str.substr (0, 14) == "shepherds bush")
+            return ("shepherds bush");
+        else if (str == "highbury and islington")
+            return ("highbury");
+        else if (str.substr (0, 16) == "high street kens")
+            return ("high street kensington");
+        else if (str == "harrow wealdstone")
+            return ("harrow and wealdstone");
+        else if (str.substr (0, 8) == "waterloo")
+            return ("waterloo");
+        else if (str.substr (0, 12) == "canary wharf") 
+            return ("canary wharf"); // just a guess there!
+        else if (str == "heathrow terms 123")
+            return ("heathrow terminals 1 2 3");
+        else if (str == "heathrow term 4")
+            return ("heathrow terminal 4");
+        else if (str == "heathrow term 5")
+            return ("heathrow terminal 5");
+        else if (str == "harrow on the hill")
+            return ("harrowonthehill");
+        else if (str.substr (0, 7) == "bromley")
+            return ("bromleybybow");
+        else if (str.substr (0, 10) == "totteridge")
+            return ("totteridge and whetstone");
+        else if (str == "watford met")
+            return ("watford"); // just a guess
+    }
+    else
+    {
+        if (str == "kensington olympia")
+            return ("kensington (olympia)");
+        else if (str == "caledonian roadandb'sby" || str == "caledonian rd&b'sby")
+            return ("caledonian road and barnsbury");
+        else if (str == "liverpool st wagn toc gates")
+            return ("liverpool street");
+        else if (str == "rainham essex")
+            return ("rainham");
+        else if (str == "sudburyandharrow road" || str == "sudbury&harrow rd")
+            return ("sudbury and harrow road");
+        else if (str == "sutton surrey")
+            return ("sutton");
+        else if (str == "victoria tocs")
+            return ("victoria");
+        else if (str == "west hampst'd nl")
+            return ("west hampstead");
+        else if (str == "heathrow terms 123")
+            return ("heathrow terminals 1 2 3");
+        else if (str == "heathrow term 4")
+            return ("heathrow terminal 4");
+        else if (str == "heathrow term 5")
+            return ("heathrow terminal 5");
+        else if (str == "kings cross t" || str == "king's cross")
+            return ("kings cross");
+        else if (str == "queens park")
+            return ("queens park");
+        else if (str == "acton main line")
+            return ("acton central"); // just a guess there!
+    } // end else NR
+
+    return str;
+}
+
+/************************************************************************
+ ************************************************************************
+ **                                                                    **
+ **                       SUBSTITUTETUBE                               **
+ **                                                                    **
+ ************************************************************************
+ ************************************************************************/
+
+std::string substituteTube (std::string str)
+{
+
+    /* NOTE that these single substitutions for hammersmith and edgware road
+     * name the single stations as the ones specified, ignoring the respective
+     * other stations on the Metropolitan and Circle/District/Hammersmith and
+     * City lines.
+     */
 
     return str;
 }

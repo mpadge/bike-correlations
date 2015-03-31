@@ -27,6 +27,10 @@ int TrainData::readOysterData ()
     std::string modeTxt, mode, start, stop, linetxt;
     bool startIn, stopIn; // TODO: DELETE THESE!
 
+    for (std::vector <OneStation>::iterator itr = StationList.begin();
+            itr != StationList.end(); itr++)
+        std::cout << "->" << (*itr).name << "<-" << std::endl;
+
     if (_tube)
         modeTxt = "tube";
     else
@@ -109,9 +113,11 @@ int TrainData::readOysterData ()
             linetxt = linetxt.substr (ipos + 3, linetxt.length () - ipos - 1);
             ipos = linetxt.find("\",\"",0);
             start = standardise (linetxt.substr (0, ipos));
+            start = substituteNames (_tube, start);
             linetxt = linetxt.substr (ipos + 3, linetxt.length () - ipos - 1);
             ipos = linetxt.find("\",\"",0);
             stop = standardise (linetxt.substr (0, ipos));
+            stop = substituteNames (_tube, stop);
 
 
             if (((_tube && mode == "LUL") || (!_tube && mode == "NR")) &&
@@ -144,8 +150,10 @@ int TrainData::readOysterData ()
                         count++;
                     }
                     if (tempi [0] == INT_MIN)
+                    {
                         std::cout << "WARNING: <" << start <<
                             "> not in StationList" << std::endl;
+                    }
                     else
                         Oyster2StnIndex.push_back ({start, tempi [0]});
                 }
@@ -161,8 +169,10 @@ int TrainData::readOysterData ()
                         count++;
                     }
                     if (tempi [1] == INT_MIN)
-                        std::cout << "WARNING: <" << start <<
-                            "> not in StationList" << std::endl;
+                    {
+                        //std::cout << "WARNING: <" << start <<
+                        //    "> not in StationList" << std::endl;
+                    }
                     else
                         Oyster2StnIndex.push_back ({stop, tempi [1]});
                 }
@@ -179,8 +189,8 @@ int TrainData::readOysterData ()
             std::cout.flush ();
             progress [1]++;
         }
-        //if (progress [1] > 2)
-        //    break;
+        if (progress [1] > 2)
+            break;
     } // end while getline
     in_file.close();
     remove (fname_csv.c_str ());

@@ -3,7 +3,7 @@
 int main(int argc, char *argv[]) {
     int nfiles, count, tempi [2];
     std::vector <std::string> tempstr;
-    std::string city, nfext;
+    std::string city, nfext, fname;
 
     std::cout << std::endl << "_____________________________________________" << 
         "____________________________________________" << std::endl;
@@ -113,7 +113,8 @@ int main(int argc, char *argv[]) {
             }
             rideData.dumpMissingStations ();
             std::cout << "Total Number of Trips = " << count << std::endl;
-        }
+        } // end for i
+        fname = "NumTrips_london.csv";
     } else { // city = NYC
         for (int i=16; i<rideData.getNumFiles(); i++)
         {
@@ -126,11 +127,13 @@ int main(int argc, char *argv[]) {
         std::cout << "Total number of trips = " << count << std::endl;
         rideData.summaryStatsNYC ();
         tempi [0] = rideData.aggregateTrips ();
+        fname = "NumTrips_nyc_" + std::to_string (rideData.getSubscriber()) +
+            std::to_string (rideData.getGender ()) + ".csv";
     } // end else city == NYC
 
     rideData.readDMat ();
     rideData.writeDMat (); 
-    rideData.writeNumTrips ();
+    rideData.writeNumTrips (fname);
 
     // Then loop over (all, near, far) data
     for (int i=0; i<3; i++)

@@ -364,3 +364,36 @@ int StationData::writeDMat ()
 
     return 0;
 }
+
+
+/************************************************************************
+ ************************************************************************
+ **                                                                    **
+ **                           WRITENUMTRIPS                            **
+ **                                                                    **
+ ************************************************************************
+ ************************************************************************/
+
+int StationData::writeNumTrips (std::string fname)
+{
+    int numStations = ntrips.size1 (); // < _numStations for rail data
+
+    std::ofstream out_file;
+    out_file.open (fname.c_str (), std::ofstream::out);
+    for (int i=0; i<numStations; i++)
+    {
+        for (int j=0; j<numStations; j++)
+        {
+            out_file << ntrips (i, j);
+            if (j == (numStations - 1))
+                out_file << std::endl;
+            else
+                out_file << ", ";
+        }
+    }
+    out_file.close ();
+    std::cout << "Numbers of trips written to " << fname.c_str () << std::endl;
+
+    return 0;
+}
+

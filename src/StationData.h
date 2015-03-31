@@ -100,6 +100,7 @@ class StationData : public Stations
 
         int readDMat ();
         int writeDMat ();
+        int writeNumTrips (std::string fname);
 
         void InitialiseArrays ()
         {

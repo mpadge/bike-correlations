@@ -88,7 +88,6 @@ class RideData: public StationData
         void summaryStatsNYC ();
         int aggregateTrips ();
 
-        int writeNumTrips ();
         int calcR2 (bool from);
         int writeR2Mat (bool from);
         int writeCovMat (bool from);

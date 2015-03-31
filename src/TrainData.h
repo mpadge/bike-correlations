@@ -17,7 +17,7 @@ class TrainData: public StationData
         std::vector <bool> hasData;
     public:
         int count, nearfar;
-        std::string txtnf;
+        std::string fname, txtnf;
         std::vector <std::string> txtnflist;
 
         struct OysterIndx
@@ -32,15 +32,21 @@ class TrainData: public StationData
         {
             hasData.resize (0);
             Oyster2StnIndex.resize (0);
+            count = readDMat ();
             count = readOysterData ();
             count = CountTrips ();
             numStnsWithData = fillHasData ();
             count = resizeNtrips ();
             count = writeDMat ();
             if (numStnsWithData != Oyster2StnIndex.size ())
-                std::cout << "ERROR: hasData has " << count << 
+                std::cout << "ERROR: hasData has " << hasData.size() << 
                     " stations and Oyster2StnIndex has " << 
                     Oyster2StnIndex.size () << std::endl;
+            if (_city == "oysterTube")
+                fname = "NumTrips_london_tube.csv";
+            else
+                fname = "NumTrips_london_rail.csv";
+            count = writeNumTrips (fname);
 
             txtnflist.resize (0);
             txtnflist.push_back ("all");
@@ -57,8 +63,6 @@ class TrainData: public StationData
         int readOysterData ();
         int fillHasData ();
         int resizeNtrips ();
-
-        int writeNumTrips ();
 };
 
 #endif

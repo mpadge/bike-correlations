@@ -135,7 +135,38 @@ int StationData::GetStations ()
             }
         }
         in_file.close();
-    } else if (_city == "oysterRail" || _city == "oysterTube")
+    } 
+    else if (_city == "boston")
+    {
+        fname = dir + "hubway_stations.csv";
+        in_file.open (fname.c_str (), std::ifstream::in);
+        assert (!in_file.fail ());
+        in_file.clear ();
+        in_file.seekg (0); 
+        getline (in_file, linetxt, '\n'); // header
+        while (getline (in_file, linetxt,'\n'))
+        {
+            ipos = linetxt.find(',',0);
+            tempi = atoi (linetxt.substr (0, ipos).c_str());
+            if (tempi > count) 
+                count = tempi;
+            oneStation.ID = tempi;
+            linetxt = linetxt.substr (ipos + 1, linetxt.length () - ipos - 1);
+            for (int i=0; i<3; i++)
+            {
+                ipos = linetxt.find (',', 0);
+                linetxt = linetxt.substr (ipos + 1, linetxt.length () - ipos - 1);
+            }
+            ipos = linetxt.find (',', 0);
+            oneStation.lat = atof (linetxt.substr (0, ipos).c_str());
+            linetxt = linetxt.substr (ipos + 1, linetxt.length () - ipos - 1);
+            ipos = linetxt.find (',', 0);
+            oneStation.lon = atof (linetxt.substr (0, ipos).c_str());
+            StationList.push_back (oneStation);
+        }
+        in_file.close();
+    }
+    else if (_city == "oysterRail" || _city == "oysterTube")
     {
         oneStation.ID = INT_MIN;
         if (_city == "oysterRail")

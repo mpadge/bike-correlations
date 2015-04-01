@@ -10,9 +10,9 @@ int main(int argc, char *argv[]) {
     std::cout << "|\t\t\t\t\t\t\t\t\t\t\t|" << std::endl;
     std::cout << "|\t./bikes with the following 3 parameters " <<
         "(defaulting to first values):\t\t|" << std::endl;
-    std::cout << "|\t1. <city> for <city>=<london/nyc>\t\t\t\t\t|" << std::endl;
+    std::cout << "|\t1. <city> for <city>=<london/nyc/boston>\t\t\t\t\t|" << std::endl;
     std::cout << "|\t2. (0,1,2) for analyses of (all, subscriber, customer)" <<
-        " data (NYC only)\t\t|" << std::endl;
+        " data (NYC/Boston only)\t|" << std::endl;
     std::cout << "|\t ---or set the second parameter to >2 for analysis of" <<
         " age-class data---\t\t|" << std::endl;
     std::cout << "|\t ---in which case the 3rd parameter is the decade to"
@@ -20,7 +20,7 @@ int main(int argc, char *argv[]) {
     std::cout << "|\t ---or set to 0 for \"young\" = <40, and 1 for \"old\"" <<
         "---\t\t\t\t|" << std::endl;
     std::cout << "|\t3. (0,1,2) for analyses of (all, male, female) " <<
-        "data (NYC only)\t\t\t|" << std::endl;
+        "data (NYC & Boston only)\t\t|" << std::endl;
     std::cout << "|\t(NOTE that (male,female) can only be analysed for " <<
         "subscribers.)\t\t\t|" << std::endl;
     std::cout << "|\t\t\t\t\t\t\t\t\t\t\t|" << std::endl;
@@ -45,6 +45,8 @@ int main(int argc, char *argv[]) {
                 city = "london";
             else if (city.substr (0, 3) == "oys")
                 city = "oyster";
+            else if (city.substr (0, 3) == "bos")
+                city = "boston";
             else
                 city = "nyc";
         } else {
@@ -95,7 +97,8 @@ int main(int argc, char *argv[]) {
         rideData.getNumFiles() << " trip files." << std::endl;
 
     count = 0;
-    if (city == "london") {
+    if (city == "london") 
+    {
         for (int i=0; i<rideData.getNumFiles(); i++)
         {
             nfiles = rideData.countFilesLondon (i);
@@ -115,7 +118,9 @@ int main(int argc, char *argv[]) {
             std::cout << "Total Number of Trips = " << count << std::endl;
         } // end for i
         fname = "NumTrips_london.csv";
-    } else { // city = NYC
+    } 
+    else if (city == "nyc")
+    {
         for (int i=0; i<rideData.getNumFiles(); i++)
         {
             tempi [0] = rideData.getZipFileNameNYC (i);
@@ -129,7 +134,10 @@ int main(int argc, char *argv[]) {
         tempi [0] = rideData.aggregateTrips ();
         fname = "NumTrips_nyc_" + std::to_string (rideData.getSubscriber()) +
             std::to_string (rideData.getGender ()) + ".csv";
-    } // end else city == NYC
+    } 
+    else if (city == "boston")
+    {
+    }
 
     rideData.readDMat ();
     rideData.writeDMat (); 
@@ -141,17 +149,17 @@ int main(int argc, char *argv[]) {
         rideData.nearfar = i;
         rideData.txtnf = rideData.txtnflist [i];
 
-        if (rideData.returnCity () == "london")
+        if (city == "london")
         {
             r2name = "R2_london_from_" + rideData.txtnf + ".csv";
             covname = "Cov_london_from_" + rideData.txtnf + ".csv";
         }
-        else
+        else if (city == "nyc" || city == "boston")
         {
-            r2name = "R2_nyc_from_" + rideData.txtnf +
+            r2name = "R2_" + city + "_from_" + rideData.txtnf +
                 std::to_string (rideData.getSubscriber ()) +
                 std::to_string (rideData.getGender ()) + ".csv";
-            covname = "Cov_nyc_from_" + rideData.txtnf +
+            covname = "Cov_" + city + "_from_" + rideData.txtnf +
                 std::to_string (rideData.getSubscriber ()) +
                 std::to_string (rideData.getGender ()) + ".csv";
         }

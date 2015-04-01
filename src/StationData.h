@@ -89,7 +89,7 @@ class StationData : public Stations
             _numStations = StationList.size ();
             missingStations.resize (0);
             InitialiseArrays ();
-            if (_city == "london" || _city == "nyc")
+            if (_city.substr (0, 6) != "oyster")
                 MakeStationIndex ();
 
             txtnflist.resize (0);

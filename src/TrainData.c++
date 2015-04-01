@@ -23,15 +23,8 @@ int TrainData::readOysterData ()
     std::ifstream in_file; 
     std::ofstream out_file;
 
-    int ID, count = 0, ipos, tempi [2];
+    int count, ipos, tempi [2];
     std::string modeTxt, mode, start, stop, linetxt;
-    bool startIn, stopIn; // TODO: DELETE THESE!
-
-    /*
-    for (std::vector <OneStation>::iterator itr = StationList.begin();
-            itr != StationList.end(); itr++)
-        std::cout << "->" << (*itr).name << "<-" << std::endl;
-    */
 
     if (_tube)
         modeTxt = "tube";
@@ -94,7 +87,7 @@ int TrainData::readOysterData ()
     in_file.clear ();
     in_file.seekg (0);
     getline (in_file, linetxt, '\n');
-    int nlines = 0;
+    int nlines = 0, progress [2] = {0, 1};
     while (getline (in_file, linetxt, '\n'))
         nlines++;
     in_file.clear ();
@@ -104,7 +97,6 @@ int TrainData::readOysterData ()
     std::cout << "Reading oystercarddata for " << StationList.size () <<
         " " << modeTxt << " stations ... ";
     std::cout.flush ();
-    int progress [2] = {0, 1};
     while (getline (in_file, linetxt, '\n')) { 
         ipos = linetxt.find("\",\"",0);
         linetxt = linetxt.substr (ipos + 3, linetxt.length () - ipos - 1);
@@ -172,8 +164,8 @@ int TrainData::readOysterData ()
                     }
                     if (tempi [1] == INT_MIN)
                     {
-                        //std::cout << "WARNING: <" << start <<
-                        //    "> not in StationList" << std::endl;
+                        std::cout << "WARNING: <" << start <<
+                            "> not in StationList" << std::endl;
                     }
                     else
                         Oyster2StnIndex.push_back ({stop, tempi [1]});

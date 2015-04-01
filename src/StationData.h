@@ -144,5 +144,4 @@ class StationData : public Stations
         }
 }; // end class StationData
 
-
 #endif

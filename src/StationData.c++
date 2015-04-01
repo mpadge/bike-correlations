@@ -577,4 +577,3 @@ int StationData::writeCovMat (std::string fname)
 
     return 0;
 }
-

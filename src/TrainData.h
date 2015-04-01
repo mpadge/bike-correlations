@@ -16,7 +16,7 @@ class TrainData: public StationData
         int numStnsWithData;
         std::vector <bool> hasData;
     public:
-        int count, nearfar;
+        int count;
         std::string fname, txtnf;
         std::vector <std::string> txtnflist;
 

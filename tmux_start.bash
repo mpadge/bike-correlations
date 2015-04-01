@@ -49,7 +49,8 @@ tmux select-pane -t 0
 cd ./R/
 tmux new-window -t $SESSION:5 -n analyses
 tmux select-window -t $SESSION:5
-tmux send-keys -t $SESSION:5 'vim analyses.R' C-m
+tmux send-keys -t $SESSION:5 'vim analyses-bikes.R' C-m
+tmux send-keys -t $SESSION:5 'vim analyses-trains.R' C-m
 
 tmux select-window -t $SESSION:1
 

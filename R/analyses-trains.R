@@ -16,18 +16,22 @@ get.data <- function (from=TRUE, covar=TRUE, tube=TRUE, nearfar=0, msg=FALSE)
     dists <- as.matrix (read.csv (fname, header=FALSE))
     dims <- dim (dists)
     dists <- array (dists, dim=dims)
+    dists [dists == Inf] <- NA
 
     if (from) txt.ft <- "from"
     else txt.ft <- "to"
+    if (nearfar == 0) txt.nf <- "all"
+    else if (nearfar == 1) txt.nf <- "near"
+    else txt.nf <- "far"
     if (tube) txt.tube <- "tube"
     else txt.tube <- "rail"
 
     if (covar)
         fname <- paste (txt.dir, "Cov_london_", txt.tube, "_", txt.ft, 
-                        "_all.csv", sep="")
+                        "_", txt.nf, ".csv", sep="")
     else
         fname <- paste (txt.dir, "R2_london_", txt.tube, "_", txt.ft, 
-                        "_all.csv", sep="")
+                        "_", txt.nf, ".csv", sep="")
 
     y <- as.matrix (read.csv (fname, header=FALSE))
     y <- array (y, dim=dims)
@@ -43,30 +47,26 @@ get.data <- function (from=TRUE, covar=TRUE, tube=TRUE, nearfar=0, msg=FALSE)
 # ************************************************************ 
 # ************************************************************ 
 
-fit.decay <- function (tube=TRUE, from=TRUE, mod.type="power", covar=TRUE, 
-                       ylims=NULL, plot=TRUE)
+fit.decay <- function (tube=TRUE, from=TRUE, mod.type="Gaussian", covar=TRUE, 
+                       nearfar=0, ylims=NULL, plot=TRUE)
 {
     msg <- FALSE
     if (plot) msg <- TRUE
     # If !covar, then models are fitted to R2 values, otherwise they are fitted
     # to covariances.
-    dat <- get.data (from=from, covar=covar, tube=tube, nearfar=0, msg=msg)
+    dat <- get.data (from=from, covar=covar, tube=tube, nearfar=nearfar, msg=msg)
 
     n <- dim (dat$d)[1]
     index <- kvec <- intercept <- ss <- NULL
     if (from) ftxt <- "from"
     else ftxt <- "to"
-    # Note that the FROM data contain 2 junk cases which are readily
-    # identifiable from visual inspection. These can be quantified in each of
-    # the following three cases through:
-    # 1. "power": k > 100
-    # 2. "Gaussian": k < 0
-    # 3. "logGauss": k > 2
+
+    kout.power <- 0 # dummy counter for power law rejection of extremely low k
     for (i in 1:n)
     {
         d <- dat$d [i, ]
         y <- dat$y [i, ]
-        indx <- which (!is.na (d) & !is.na (y) & y > 0)
+        indx <- which (!is.na (d) & is.finite (d) & !is.na (y) & y > 0)
         # There are some cases for which trip data exist yet station distances
         # haven't yet been added to list. These produce NAs in the dists table.
         if (length (indx) > 10)
@@ -83,12 +83,15 @@ fit.decay <- function (tube=TRUE, from=TRUE, mod.type="power", covar=TRUE,
                 # d^k = e
                 # k log d = 1
                 # d = exp (1/k)
-                indx <- which (d > 0) # Because 0 distances do occur
+                indx <- which (d > 0)
                 d <- d [indx]
                 y <- y [indx]
                 mod <- lm (log10 (y) ~ log10 (d))
                 coeffs <- summary (mod)$coefficients
-                if (exp (-1 / coeffs[2]) < 100)
+                kval <- exp (-1 / coeffs [2])
+                # For tube data, there are 5 cases that generate extremely low
+                # k-values with obviously junk results. These are removed here.
+                if (kval > 1e-6)
                 {
                     yfit <- 10 ^ predict (mod)
                     ssi <- (yfit - y) ^ 2
@@ -97,7 +100,8 @@ fit.decay <- function (tube=TRUE, from=TRUE, mod.type="power", covar=TRUE,
                     kvec <- c (kvec, exp (-1 / coeffs [2]))
                     index <- c (index, i)
                 }
-                tstr <- "power law"
+                else 
+                    kout.power <- kout.power + 1
             } else if (mod.type == "Gaussian") {
                 if (covar)
                     a0 <- 2 * mean (y)
@@ -123,7 +127,6 @@ fit.decay <- function (tube=TRUE, from=TRUE, mod.type="power", covar=TRUE,
                         index <- c (index, i)
                     }
                 }
-                tstr <- "Gaussian"
             } else if (mod.type == "logGauss") {
                 k0 <- 0.1
                 mod <- NULL
@@ -145,18 +148,41 @@ fit.decay <- function (tube=TRUE, from=TRUE, mod.type="power", covar=TRUE,
                         index <- c (index, i)
                     }
                 }
-                tstr <- "log-Gaussian"
             }
         } # end if len (indx) > 10
     } # end for i
+    if (mod.type == "power" & msg & kout.power > 0)
+        cat (mod.type, "-", ftxt, ": Removed ", kout.power, 
+             " k-vals < 1e-6\n", sep="")
     # Any cases that generate k-values that are greater than max (d) are very
-    # likely spurious, so are removed here
-    maxd <- max (dat$d, na.rm=TRUE)
+    # likely spurious, so are removed here (does not happen for train trips!),
+    # as are 5 extremely low k-values for tube data.
+    if (tube)
+        maxd <- 50 * max (dat$d, na.rm=TRUE, finite=TRUE)
+    else
+        maxd <- 1 * max (dat$d, na.rm=TRUE, finite=TRUE)
     indx <- which (kvec > maxd)
     if (msg & length (indx) > 0)
         cat (mod.type, "-", ftxt, ": Removed ", length (indx), 
              " k-values > d = ", maxd, "km\n", sep="")
-    indx <- kvec < maxd
+    indx <- (kvec < maxd)
+    ss <- ss [indx]
+    index <- index [indx]
+    kvec <- kvec [indx]
+    intercept <- intercept [indx] 
+    # For NR, there are also a couple of extreme power-law intercepts 
+    if (covar & !tube)
+        intlim <- 0.8
+    else if (covar & mod.type == "logGauss") # and one for tube with logGauss
+        intlim <- 0.04
+    else
+        intlim <- 1e10
+    
+    indx <- which (intercept > intlim)
+    if (msg & length (indx) > 0)
+        cat (mod.type, "-", ftxt, ": Removed ", length (indx), 
+             " intercepts > ", intlim, "\n", sep="")
+    indx <- which (intercept <= intlim)
     ss <- ss [indx]
     index <- index [indx]
     kvec <- kvec [indx]
@@ -188,17 +214,27 @@ fit.decay <- function (tube=TRUE, from=TRUE, mod.type="power", covar=TRUE,
         xpos <- min (intercept) + 0.5 * diff (range (intercept))
         ypos <- ylims [1] + c(0.8, 0.6) * diff (ylims)
         par (ps=18)
+        if (tube)
+            if (from)
+                tstr <- paste ("tube: from: ", mod.type, sep="")
+            else
+                tstr <- paste ("tube: to: ", mod.type, sep="")
+        else
+            if (from)
+                tstr <- paste ("rail: from:", mod.type, sep="")
+            else
+                tstr <- paste ("rail: to:", mod.type, sep="")
         text (xpos, ypos[1], labels=tstr)
         par (ps=12)
         r2 <- sign (summary (mod)$coefficients [2]) * summary (mod)$r.squared
-        tstr2 <- paste ("R2 = ", formatC (r2, format="f", digits=4), 
+        tstr <- paste ("R2 = ", formatC (r2, format="f", digits=4), 
                     " (p=", formatC( summary (mod)$coefficients [8],
                     format="f", digits=4), ");\n mean(k) = ", 
                     formatC (mean (dat$k), format="f", digits=2),
                    "+/-", formatC (sd (dat$k), format="f", digits=2),
                    "; ss = ", formatC (mean (dat$ss), format="f", digits=2), 
                    sep="")
-        text (xpos, ypos[2], labels=tstr2)
+        text (xpos, ypos[2], labels=tstr)
         par (ps=10)
     }
     return (dat)
@@ -213,22 +249,25 @@ fit.decay <- function (tube=TRUE, from=TRUE, mod.type="power", covar=TRUE,
 # ************************************************************ 
 # ************************************************************ 
 
-fit.gaussian <- function (city="nyc", from=TRUE, covar=TRUE, std=TRUE,
-                          nearfar=0, subscriber=0, mf=0, msg=FALSE)
+fit.gaussian <- function (tube=TRUE, from=TRUE, covar=TRUE, 
+                          nearfar=0, msg=FALSE)
 {
     # Produces a data frame with [i, k, y, ss, ntrips]
     # If !covar, then models are fitted to R2 values, otherwise they are fitted
     # to covariances.
-    dat <- get.data (city=city, from=from, covar=covar, std=std,
-                     nearfar=nearfar, subscriber=subscriber,
-                     mf=mf, msg=msg)
-    rd <- "../results/";
-    if (subscriber > 2)
-        rd <- paste (rd, "age/", sep="")
-    fname <- paste (rd, "/NumTrips_", city, sep="")
-    if (city == "nyc")
-        fname <- paste (fname, "_", subscriber, mf, sep="")
-    fname <- paste (fname, ".csv", sep="")
+    dat <- get.data (tube=tube, from=from, covar=covar, 
+                     nearfar=nearfar, msg=msg)
+    rd <- "../results/trains/";
+    if (tube)
+    {
+        tstr <- "tube"
+        fname <- paste (rd, "NumTrips_london_tube.csv", sep="")
+    }
+    else
+    {
+        tstr <- "rail"
+        fname <- paste (rd, "NumTrips_london_rail.csv", sep="")
+    }
     ntrips.mat <- read.csv (fname, header=FALSE)
 
     n <- dim (dat$d)[1]
@@ -237,16 +276,12 @@ fit.gaussian <- function (city="nyc", from=TRUE, covar=TRUE, std=TRUE,
     index <- kvec <- intercept <- ss <- ntrips <- NULL
     if (from) ftxt <- "from"
     else ftxt <- "to"
-    # Note that the FROM data contain 2 junk cases with k<0!
     for (i in 1:n)
     {
         d <- dat$d [i, ]
         y <- dat$y [i, ]
-        indx <- which (!is.na (d) & !is.na (y) & y > 0)
-        # There are some cases for which trip data exist yet station distances
-        # haven't yet been added to list (because the stations do not appear in
-        # the website!) These produce NAs in the dists table.
-        if (length (indx) > 2)
+        indx <- which (!is.na (d) & is.finite (d) & !is.na (y) & y > 0)
+        if (length (indx) > 0) # because some values for "_near" have all y=0
         {
             d <- d[indx]
             y <- y[indx]
@@ -255,13 +290,13 @@ fit.gaussian <- function (city="nyc", from=TRUE, covar=TRUE, std=TRUE,
                 a0 <- 2 * mean (y)
             else
                 a0 <- 1
-            k0 <- 1
+            k0 <- 0
             mod <- NULL
-            while (is.null (mod) & k0 < 5)
+            while (is.null (mod) & k0 < 100)
             {
-                k0 <- k0 + 1
+                k0 <- k0 + 5
                 mod <- tryCatch (nls (y ~ y0 + a * exp (-d^2 / k^2), 
-                            start=list(y0=0, a=2*mean(y),k=2)),
+                            start=list(y0=0, a=2*mean(y),k=k0)),
                             error=function(e) NULL)
             }
             if (!is.null (mod))
@@ -276,31 +311,44 @@ fit.gaussian <- function (city="nyc", from=TRUE, covar=TRUE, std=TRUE,
                     ntrips <- c (ntrips, sum (ntrips.mat [,i]))
                 }
             }
-            tstr <- paste (toupper (city), "-", ftxt, sep="")
-        } # end if len (indx) > 10
+        }
     } # end for i
     # Any cases that generate k-values that are greater than max (d) are very
     # likely spurious, so are removed here (but only for nearfar == 0)
     if (nearfar == 0)
     {
-        maxd <- max (dat$d, na.rm=TRUE)
+        if (tube)
+            maxd <- 50 * max (dat$d, na.rm=TRUE, finite=TRUE)
+        else
+            maxd <- 1 * max (dat$d, na.rm=TRUE, finite=TRUE)
         indx <- which (kvec > maxd)
         if (msg & length (indx) > 0)
-            cat (city, "-", ftxt, ": Removed ", length (indx), 
+            cat (ftxt, ": Removed ", length (indx), 
                  " k-values > d = ", maxd, "km\n", sep="")
-        indx <- kvec < maxd
+        indx <- (kvec < maxd)
         ss <- ss [indx]
         index <- index [indx]
         kvec <- kvec [indx]
         intercept <- intercept [indx] 
-        ntrips <- ntrips [indx]
+        # For NR, there are also a couple of extreme power-law intercepts 
+        if (covar & !tube)
+            intlim <- 0.8
+        else
+            intlim <- 1e10
+        
+        indx <- which (intercept > intlim)
+        if (msg & length (indx) > 0)
+            cat (ftxt, ": Removed ", length (indx), 
+                 " intercepts > ", intlim, "\n", sep="")
+        indx <- which (intercept <= intlim)
+        ss <- ss [indx]
+        index <- index [indx]
+        kvec <- kvec [indx]
+        intercept <- intercept [indx] 
     }
 
-    # See note in fit.decay for these values
-    if (std)
-        ss <- ss * 1e12
-    else if (covar)
-        ss <- ss / 1e7
+    if (covar)
+        ss <- ss * 1e10
     dat <- data.frame (cbind (index, kvec, intercept, ntrips, ss)) 
     colnames (dat) <- c("i", "k", "y", "ntrips", "ss")
     return (dat)
@@ -314,7 +362,7 @@ fit.gaussian <- function (city="nyc", from=TRUE, covar=TRUE, std=TRUE,
 # ************************************************************ 
 # ************************************************************ 
 
-compare.ntrips <- function (covar=TRUE, std=TRUE)
+compare.ntrips <- function (covar=TRUE)
 {
     # These results with std=TRUE are statistical artefacts, because
     # correlations involving stations with high numbers of trips will
@@ -339,18 +387,17 @@ compare.ntrips <- function (covar=TRUE, std=TRUE)
     # other half of the resultant relationships, which are relationships between
     # numbers of trips and k-values, which are also not significant. This is the
     # major and interesting finding here.
-    cities <- c ("london", "nyc")
+    tube <- c (TRUE, FALSE)
     x11 (width=14)
     par (mfrow=c(2,4), mar=c(2.5,2.5,0.5,0.5), mgp=c(1.3,0.7,0), ps=10)
     ft <- c (TRUE, FALSE)
     ftxt <- c ("from", "to")
     if (covar) ytxt <- c ("k-value", "Covariance")
     else ytxt <- c ("k-value", "R2")
-    for (city in cities)
+    for (tt in tube)
     {
         for (i in 1:2) {
-            dat <- fit.gaussian (city=city, from=ft[i], covar=covar, std=std,
-                                 nearfar=0, subscriber=0, mf=0)
+            dat <- fit.gaussian (tube=tt, from=ft[i], covar=covar, nearfar=0)
             n <- dat$ntrips
             yvals <- list (k=dat$k, covar=dat$y)
             if (!covar)
@@ -375,7 +422,11 @@ compare.ntrips <- function (covar=TRUE, std=TRUE)
                 ylims <- range (yj, na.rm=TRUE)
                 ypos <- ylims[1] + c(0.8, 0.6, 0.4) * diff (ylims)
                 par (ps=18)
-                text (xpos, ypos[1], labels=paste (toupper (city), ftxt [i]))
+                if (tt)
+                    ltxt <- paste ("tube: ", ftxt [i], sep="")
+                else
+                    ltxt <- paste ("rail: ", ftxt [i], sep="")
+                text (xpos, ypos[1], labels=ltxt)
                 par (ps=12)
                 text (xpos, ypos[2], labels= paste ("r2 = ",
                     formatC (r2, format="f", digits=4), " (p=",
@@ -383,7 +434,7 @@ compare.ntrips <- function (covar=TRUE, std=TRUE)
                 par (ps=10)
             } # end for j
         } # end for i
-    } # end for city
+    } # end for tt in tube
 } # end compare.ntrips()
 
 # ************************************************************ 
@@ -394,15 +445,15 @@ compare.ntrips <- function (covar=TRUE, std=TRUE)
 # ************************************************************ 
 # ************************************************************ 
 
-compare.models <- function (city="nyc", from=TRUE, covar=TRUE, std=TRUE)
+compare.models <- function (tube=TRUE, from=TRUE, covar=TRUE)
 {
     mod.types <- c ("power", "Gaussian", "logGauss")
     x11 ()
     par (mfrow=c(2,2), mar=c(2.5,2.5,0.5,0.5), mgp=c(1.3,0.7,0), ps=10)
     fulldat <- list()
     for (i in 1:3)
-        fulldat [[i]] <- fit.decay(city=city, from=from, mod.type=mod.types[i],
-                                   covar=covar, std=std, plot=TRUE)
+        fulldat [[i]] <- fit.decay(tube=tube, from=from, mod.type=mod.types[i],
+                                   covar=covar, plot=TRUE)
     # matrices of correlations and t-tests between k-values
     imax <- max (sapply (fulldat, function (x) max (x$i)))
     kvals <- array (NA, dim=c(imax, 3))
@@ -463,7 +514,7 @@ compare.models <- function (city="nyc", from=TRUE, covar=TRUE, std=TRUE)
 # ************************************************************ 
 # ************************************************************ 
 
-compare.tofrom <- function (covar=TRUE, std=TRUE, paired=FALSE)
+compare.tofrom <- function (covar=TRUE, paired=FALSE)
 {
     # "paired" is fed to the t.test for differences in estimated k-values
     # between to- and from- values. If the two data sets are truly presumed to
@@ -473,13 +524,14 @@ compare.tofrom <- function (covar=TRUE, std=TRUE, paired=FALSE)
     x11 (width=13.5)
     par (mfrow=c(2,3), mar=c(2.5,2.5,0.5,0.5), mgp=c(1.3,0.7,0), ps=10)
 
-    cities <- c ("nyc", "london")
-    for (city in cities)
+    tube <- c (TRUE, FALSE)
+    ylims <- c (0, 20)
+    for (tt in tube)
     {
-        to <- fit.decay(city=city, from=FALSE, mod.type="Gaussian", covar=covar, 
-                            std=std, ylims=c(0, 10))
-        from <- fit.decay(city=city, from=TRUE, mod.type="Gaussian", covar=covar, 
-                            std=std, ylims=c(0, 10))
+        to <- fit.decay (tube=tt, from=FALSE, mod.type="Gaussian", 
+                         covar=covar, ylims=ylims)
+        from <- fit.decay (tube=tt, from=TRUE, mod.type="Gaussian", 
+                           covar=covar, ylims=ylims)
         # matrices of correlations and t-tests between k-values
         imax <- max (c (max (to$i), max (from$i)))
         x <- y <- rep (NA, imax)
@@ -517,247 +569,29 @@ compare.tofrom <- function (covar=TRUE, std=TRUE, paired=FALSE)
 # ************************************************************ 
 # ************************************************************ 
 
-compare.nearfar <- function (covar=TRUE, std=TRUE)
+compare.nearfar <- function (from=TRUE, covar=TRUE)
 {
     # nearfar == (1, 2) is (near, far)
-    cities <- c ("london", "nyc")
-    for (city in cities)
-    {
-        dat1 <- fit.gaussian (city=city, covar=covar, std=std, nearfar=1)
-        dat2 <- fit.gaussian (city=city, covar=covar, std=std, nearfar=2)
-        tt <- t.test (dat1$k, dat2$k)
-        cat (toupper (city), ": T = ",
-             formatC (tt$statistic, format="f", digits=2), "; df = ",
-             formatC (tt$parameter, format="f", digits=1), "; p = ",
-             formatC (tt$p.value, format="f", digits=4), "\n", sep="")
-        cat ("Mean +/- SD k-values for (near, far) are (",
-             formatC (mean (dat1$k), format="f", digits=2), "+/-",
-             formatC (sd (dat1$k), format="f", digits=2), ", ",
-             formatC (mean (dat2$k), format="f", digits=2), "+/-",
-             formatC (sd (dat2$k), format="f", digits=2), ")\n", sep="")
-    }
-
-    # -------------------------------------------------
-    # Then NYC comparisons of subscribers and customers
-    dat1 <- fit.gaussian (city="nyc", covar=covar, std=std, 
-                          nearfar=1, subscriber=1, mf=0)
-    dat2 <- fit.gaussian (city="nyc", covar=covar, std=std, 
-                          nearfar=2, subscriber=1, mf=0)
-    tt <- t.test (dat1$k, dat2$k)
-    cat ("\nNYC Subscribers: T = ",
-         formatC (tt$statistic, format="f", digits=2), "; df = ",
-         formatC (tt$parameter, format="f", digits=1), "; p = ",
-         formatC (tt$p.value, format="f", digits=4), "\n", sep="")
-    cat ("Mean +/- SD k-values for (near, far) are (",
-         formatC (mean (dat1$k), format="f", digits=2), "+/-",
-         formatC (sd (dat1$k), format="f", digits=2), ", ",
-         formatC (mean (dat2$k), format="f", digits=2), "+/-",
-         formatC (sd (dat2$k), format="f", digits=2), ")\n", sep="")
-    dat1 <- fit.gaussian (city="nyc", covar=covar, std=std, 
-                          nearfar=1, subscriber=2, mf=0)
-    dat2 <- fit.gaussian (city="nyc", covar=covar, std=std, 
-                          nearfar=2, subscriber=2, mf=0)
-    tt <- t.test (dat1$k, dat2$k)
-    cat ("NYC Customers: T = ",
-         formatC (tt$statistic, format="f", digits=2), "; df = ",
-         formatC (tt$parameter, format="f", digits=1), "; p = ",
-         formatC (tt$p.value, format="f", digits=4), "\n", sep="")
-    cat ("Mean +/- SD k-values for (near, far) are (",
-         formatC (mean (dat1$k), format="f", digits=2), "+/-",
-         formatC (sd (dat1$k), format="f", digits=2), ", ",
-         formatC (mean (dat2$k), format="f", digits=2), "+/-",
-         formatC (sd (dat2$k), format="f", digits=2), ")\n", sep="")
-
-    # -------------------------------------------------
-    # Then male and female, which can only be done for subscribers
-    dat1 <- fit.gaussian (city="nyc", covar=covar, std=std, 
-                          nearfar=1, subscriber=1, mf=2)
-    dat2 <- fit.gaussian (city="nyc", covar=covar, std=std, 
-                          nearfar=2, subscriber=1, mf=2)
-    tt <- t.test (dat1$k, dat2$k)
-    cat ("\nNYC Female: T = ",
-         formatC (tt$statistic, format="f", digits=2), "; df = ",
-         formatC (tt$parameter, format="f", digits=1), "; p = ",
-         formatC (tt$p.value, format="f", digits=4), "\n", sep="")
-    cat ("Mean +/- SD k-values for (near, far) are (",
-         formatC (mean (dat1$k), format="f", digits=2), "+/-",
-         formatC (sd (dat1$k), format="f", digits=2), ", ",
-         formatC (mean (dat2$k), format="f", digits=2), "+/-",
-         formatC (sd (dat2$k), format="f", digits=2), ")\n", sep="")
-
-    dat1 <- fit.gaussian (city="nyc", covar=covar, std=std, 
-                          nearfar=1, subscriber=1, mf=1)
-    dat2 <- fit.gaussian (city="nyc", covar=covar, std=std, 
-                          nearfar=2, subscriber=1, mf=1)
-    tt <- t.test (dat1$k, dat2$k)
-    cat ("NYC Male: T = ",
-         formatC (tt$statistic, format="f", digits=2), "; df = ",
-         formatC (tt$parameter, format="f", digits=1), "; p = ",
-         formatC (tt$p.value, format="f", digits=4), "\n", sep="")
-    cat ("Mean +/- SD k-values for (near, far) are (",
-         formatC (mean (dat1$k), format="f", digits=2), "+/-",
-         formatC (sd (dat1$k), format="f", digits=2), ", ",
-         formatC (mean (dat2$k), format="f", digits=2), "+/-",
-         formatC (sd (dat2$k), format="f", digits=2), ")\n", sep="")
+    from <- c (TRUE, FALSE)
+    from.txt <- c ("from", "to")
+    tube <- c (TRUE, FALSE)
+    tube.txt <- c ("tube", "rail")
+    for (i in 1:2)
+        for (j in 1:2)
+        {
+            dat1 <- fit.gaussian (tube=tube[i], from=from[j], 
+                                  covar=covar, nearfar=1)
+            dat2 <- fit.gaussian (tube=tube[i], from=from[j], 
+                                  covar=covar, nearfar=2)
+            tt <- t.test (dat1$k, dat2$k)
+            cat (tube.txt[i], "-", from.txt[j], ": T = ",
+                 formatC (tt$statistic, format="f", digits=2), "; df = ",
+                 formatC (tt$parameter, format="f", digits=1), "; p = ",
+                 formatC (tt$p.value, format="f", digits=4), "\n", sep="")
+            cat ("Mean +/- SD k-values for (near, far) are (",
+                 formatC (mean (dat1$k), format="f", digits=2), "+/-",
+                 formatC (sd (dat1$k), format="f", digits=2), ", ",
+                 formatC (mean (dat2$k), format="f", digits=2), "+/-",
+                 formatC (sd (dat2$k), format="f", digits=2), ")\n", sep="")
+        }
 } # end compare.nearfar()
-
-
-# ************************************************************ 
-# ************************************************************ 
-# *****                                                  *****
-# *****                COMPARE.SUBSCRIBERS               *****
-# *****                                                  *****
-# ************************************************************ 
-# ************************************************************ 
-
-compare.subscribers <- function (covar=TRUE, std=TRUE)
-{
-    # NYC comparisons of subscribers and customers
-    dat1 <- fit.gaussian (city="nyc", covar=covar, std=std, 
-                          nearfar=0, subscriber=1, mf=0)
-    dat2 <- fit.gaussian (city="nyc", covar=covar, std=std, 
-                          nearfar=0, subscriber=2, mf=0)
-    tt <- t.test (dat1$k, dat2$k)
-    cat ("NYC Subscribers/Non-subscribers: T = ",
-         formatC (tt$statistic, format="f", digits=2), "; df = ",
-         formatC (tt$parameter, format="f", digits=1), "; p = ",
-         formatC (tt$p.value, format="f", digits=4), "\n", sep="")
-    cat ("Mean +/- SD k-values for (subscribers, non-subscribers) are (",
-         formatC (mean (dat1$k), format="f", digits=2), "+/-",
-         formatC (sd (dat1$k), format="f", digits=2), ", ",
-         formatC (mean (dat2$k), format="f", digits=2), "+/-",
-         formatC (sd (dat2$k), format="f", digits=2), ")\n", sep="")
-
-    dat1 <- fit.gaussian (city="nyc", covar=covar, std=std, 
-                          nearfar=0, subscriber=1, mf=1) # male
-    dat2 <- fit.gaussian (city="nyc", covar=covar, std=std, 
-                          nearfar=0, subscriber=1, mf=2) # female
-    tt <- t.test (dat1$k, dat2$k)
-    cat ("NYC Male/Female: T = ",
-         formatC (tt$statistic, format="f", digits=2), "; df = ",
-         formatC (tt$parameter, format="f", digits=1), "; p = ",
-         formatC (tt$p.value, format="f", digits=4), "\n", sep="")
-    cat ("Mean +/- SD k-values for (male, female) are (",
-         formatC (mean (dat1$k), format="f", digits=2), "+/-",
-         formatC (sd (dat1$k), format="f", digits=2), ", ",
-         formatC (mean (dat2$k), format="f", digits=2), "+/-",
-         formatC (sd (dat2$k), format="f", digits=2), ")\n", sep="")
-} # end compare.subscribers()
-
-
-# ************************************************************ 
-# ************************************************************ 
-# *****                                                  *****
-# *****                    COMPARE.AGE                   *****
-# *****                                                  *****
-# ************************************************************ 
-# ************************************************************ 
-
-compare.age <- function (covar=TRUE, std=TRUE)
-{
-    years <- (192:199) * 10
-    kmn <- ksd <- rep (NA, length (years)) # Just used to get ylims
-    dat <- list ()
-    for (i in 1:length (years))
-    {
-        dat [[i]] <- fit.gaussian (city="nyc", covar=covar, std=std,
-                                   subscriber=3, mf=years [i])
-        kmn [i] <- mean (dat [[i]]$k)
-        ksd [i] <- sd (dat [[i]]$k)
-        cat (".", sep="")
-    }
-    cat ("\n")
-    age <- 2015 - years
-
-    xlims <- range (age)
-    ylims <- range (c (kmn - ksd, kmn + ksd))
-
-    # Convert to single vectors for boxplot
-    kvals <- unlist (sapply (dat, function (x) x$k))
-    ages <- NULL
-    for (i in 1:length (years))
-        ages <- c (ages, rep (age [i], dim (dat [[i]]) [1]))
-    boxplot (kvals ~ ages, notch=TRUE, ylim=ylims, col="lawngreen")
-
-    maxage <- 90
-    indx <- which (ages < maxage)
-    ages <- ages [indx]
-    kvals <- kvals [indx]
-    mod <- lm (kvals ~ ages)
-    age <- age [which (age < maxage)]
-    fit <- predict (mod, new=data.frame (ages=age))
-
-    par (new=TRUE)
-    plot (age, fit, "l", col="blue", lwd=2, xlim=xlims, ylim=ylims,
-          xaxt="n", yaxt="n", xlab="", ylab="", frame=FALSE)
-    r2 <- formatC (summary (mod)$r.squared, format="f", digits=2)
-    p <- formatC (summary (mod)$coefficients [8], format="f", digits=4)
-    title (main=paste ("R2 = ", r2, " (p = ", p, ")", sep=""))
-    
-    dat1 <- fit.gaussian (city="nyc", covar=covar, std=std, 
-                          nearfar=0, subscriber=3, mf=0) # young
-    dat2 <- fit.gaussian (city="nyc", covar=covar, std=std, 
-                          nearfar=0, subscriber=3, mf=1) # old
-    tt <- t.test (dat1$k, dat2$k)
-    cat ("NYC Young/Old: T = ",
-         formatC (tt$statistic, format="f", digits=2), "; df = ",
-         formatC (tt$parameter, format="f", digits=1), "; p = ",
-         formatC (tt$p.value, format="f", digits=4), "\n", sep="")
-    cat ("Mean +/- SD k-values for (young, old) are (",
-         formatC (mean (dat1$k), format="f", digits=2), "+/-",
-         formatC (sd (dat1$k), format="f", digits=2), ", ",
-         formatC (mean (dat2$k), format="f", digits=2), "+/-",
-         formatC (sd (dat2$k), format="f", digits=2), ")\n", sep="")
-} # end compare.age()
-
-
-# ************************************************************ 
-# ************************************************************ 
-# *****                                                  *****
-# *****                   SUMMARY.STATS                  *****
-# *****                                                  *****
-# ************************************************************ 
-# ************************************************************ 
-
-summary.stats <- function (covar=TRUE, std=TRUE)
-{
-    cat ("-----T-statistics for pairwise comparisons between k-values-----\n")
-    cat ("NOTE: Comparisons are ordered as written, so negative T-values",
-         "mean the first value is lower\n\n")
-    # Direct comparison of all T-statistics 
-    city <- c ("london", rep ("nyc", 8))
-    nearfar1 <- c (1, 1, 1, 1, 1, 1, 0, 0, 0)
-    nearfar2 <- c (2, 2, 2, 2, 2, 2, 0, 0, 0)
-    subscriber1 <- c (0, 0, 1, 2, 1, 1, 1, 1, 3)
-    subscriber2 <- c (0, 0, 1, 2, 1, 1, 2, 1, 3)
-    gender1 <- c (0, 0, 0, 0, 2, 1, 0, 2, 0)
-    gender2 <- c (0, 0, 0, 0, 2, 1, 0, 1, 1)
-
-    nftxt <- c (rep ("NEAR/FAR", 6), rep ("all\t", 3))
-    subtxt <- c (rep ("all\t", 2), "subscriber", "customer",
-                 rep ("subscriber", 2), "SUB/CUST", rep ("subscriber", 2))
-    gtxt <- c (rep ("all\t", 4), "female\t", "male\t", "all\t", "FEMALE/MALE",
-               "all\t")
-    atxt <- c (rep ("all\t", 8), "YOUNG/OLD")
-
-    cat ("|\tCity\tNear/Far\tSubscriber Status\tGender\t\tAge\t\t",
-         "T-value\tp-value\t|\n", sep="")
-    cat (rep ("-", 105), "\n", sep="")
-
-    for (i in 1:length (city))
-    {
-        cat ("|\t", city [i], "\t", nftxt [i], "\t", subtxt [i], "\t\t", 
-             gtxt [i], "\t", atxt [i], "\t", sep="")
-
-        dat1 <- fit.gaussian (city=city[i], covar=covar, std=std, 
-                              nearfar=nearfar1[i], 
-                              subscriber=subscriber1[i], mf=gender1[i])
-        dat2 <- fit.gaussian (city=city[i], covar=covar, std=std, 
-                              nearfar=nearfar2[i], 
-                              subscriber=subscriber2[i], mf=gender2[i]) 
-        tt <- t.test (dat1$k, dat2$k)
-        cat (formatC (tt$statistic, format="f", digits=2), "\t",
-         formatC (tt$p.value, format="f", digits=4), "\t|\n", sep="")
-    }
-    cat (rep ("-", 105), "\n", sep="")
-}

@@ -135,7 +135,7 @@ fit.decay <- function (city="nyc", from=TRUE, mod.type="power", covar=TRUE,
                 {
                     k0 <- k0 + 1
                     mod <- tryCatch (nls (y ~ y0 + a * exp (-d^2 / k^2), 
-                                start=list(y0=0, a=2*mean(y),k=2)),
+                                start=list(y0=0, a=2*mean(y),k=k0)),
                                 error=function(e) NULL)
                 }
                 if (!is.null (mod))
@@ -547,14 +547,16 @@ compare.tofrom <- function (covar=TRUE, std=TRUE, paired=FALSE)
 # ************************************************************ 
 # ************************************************************ 
 
-compare.nearfar <- function (covar=TRUE, std=TRUE)
+compare.nearfar <- function (from=TRUE, covar=TRUE, std=TRUE)
 {
     # nearfar == (1, 2) is (near, far)
     cities <- c ("london", "nyc")
     for (city in cities)
     {
-        dat1 <- fit.gaussian (city=city, covar=covar, std=std, nearfar=1)
-        dat2 <- fit.gaussian (city=city, covar=covar, std=std, nearfar=2)
+        dat1 <- fit.gaussian (city=city, from=from, covar=covar, 
+                              std=std, nearfar=1)
+        dat2 <- fit.gaussian (city=city, from=from, covar=covar, 
+                              std=std, nearfar=2)
         tt <- t.test (dat1$k, dat2$k)
         cat (toupper (city), ": T = ",
              formatC (tt$statistic, format="f", digits=2), "; df = ",
@@ -569,9 +571,9 @@ compare.nearfar <- function (covar=TRUE, std=TRUE)
 
     # -------------------------------------------------
     # Then NYC comparisons of subscribers and customers
-    dat1 <- fit.gaussian (city="nyc", covar=covar, std=std, 
+    dat1 <- fit.gaussian (city="nyc", from=from, covar=covar, std=std, 
                           nearfar=1, subscriber=1, mf=0)
-    dat2 <- fit.gaussian (city="nyc", covar=covar, std=std, 
+    dat2 <- fit.gaussian (city="nyc", from=from, covar=covar, std=std, 
                           nearfar=2, subscriber=1, mf=0)
     tt <- t.test (dat1$k, dat2$k)
     cat ("\nNYC Subscribers: T = ",
@@ -583,9 +585,9 @@ compare.nearfar <- function (covar=TRUE, std=TRUE)
          formatC (sd (dat1$k), format="f", digits=2), ", ",
          formatC (mean (dat2$k), format="f", digits=2), "+/-",
          formatC (sd (dat2$k), format="f", digits=2), ")\n", sep="")
-    dat1 <- fit.gaussian (city="nyc", covar=covar, std=std, 
+    dat1 <- fit.gaussian (city="nyc", from=from, covar=covar, std=std, 
                           nearfar=1, subscriber=2, mf=0)
-    dat2 <- fit.gaussian (city="nyc", covar=covar, std=std, 
+    dat2 <- fit.gaussian (city="nyc", from=from, covar=covar, std=std, 
                           nearfar=2, subscriber=2, mf=0)
     tt <- t.test (dat1$k, dat2$k)
     cat ("NYC Customers: T = ",
@@ -600,9 +602,9 @@ compare.nearfar <- function (covar=TRUE, std=TRUE)
 
     # -------------------------------------------------
     # Then male and female, which can only be done for subscribers
-    dat1 <- fit.gaussian (city="nyc", covar=covar, std=std, 
+    dat1 <- fit.gaussian (city="nyc", from=from, covar=covar, std=std, 
                           nearfar=1, subscriber=1, mf=2)
-    dat2 <- fit.gaussian (city="nyc", covar=covar, std=std, 
+    dat2 <- fit.gaussian (city="nyc", from=from, covar=covar, std=std, 
                           nearfar=2, subscriber=1, mf=2)
     tt <- t.test (dat1$k, dat2$k)
     cat ("\nNYC Female: T = ",
@@ -615,9 +617,9 @@ compare.nearfar <- function (covar=TRUE, std=TRUE)
          formatC (mean (dat2$k), format="f", digits=2), "+/-",
          formatC (sd (dat2$k), format="f", digits=2), ")\n", sep="")
 
-    dat1 <- fit.gaussian (city="nyc", covar=covar, std=std, 
+    dat1 <- fit.gaussian (city="nyc", from=from, covar=covar, std=std, 
                           nearfar=1, subscriber=1, mf=1)
-    dat2 <- fit.gaussian (city="nyc", covar=covar, std=std, 
+    dat2 <- fit.gaussian (city="nyc", from=from, covar=covar, std=std, 
                           nearfar=2, subscriber=1, mf=1)
     tt <- t.test (dat1$k, dat2$k)
     cat ("NYC Male: T = ",

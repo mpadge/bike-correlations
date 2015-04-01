@@ -3,42 +3,47 @@
 int main (int argc, char *argv[]) {
     std::string r2name, covname;
 
-    // **********   RAIL DATA   **********
-    TrainData railData ("oysterRail", false);
-    std::cout << "There are " << railData.CountTrips () <<
-        " trips between " << railData.Oyster2StnIndex.size () << " stations." <<
-        std::endl;
-    railData.nearfar = 0; // important! Uses all data
+    std::cout << std::endl << "_____________________________________________" << 
+        "____________________________________________" << std::endl;
+    std::cout << "|\t\t\t\t\t\t\t\t\t\t\t|" << std::endl;
+    std::cout << "|\t./trains\t\t\t\t\t\t\t\t\t|" << std::endl;
+    std::cout << "|\t\t\t\t\t\t\t\t\t\t\t|" << std::endl;
+    std::cout << "|\tCalculations loop over analyses of " <<
+        "(all, near, far) data\t\t\t|" << std::endl;
+    std::cout << "|\t\t\t\t\t\t\t\t\t\t\t|" << std::endl;
+    std::cout << "_____________________________________________" << 
+        "____________________________________________" << std::endl << std::endl;
 
-    r2name = "R2_london_rail_from_all.csv";
-    covname = "Cov_london_rail_from_all.csv";
-    railData.calcR2 (true);
-    railData.writeR2Mat (r2name);
-    railData.writeCovMat (covname);
+    std::vector <std::string> mode = {"oysterRail", "oysterTube"};
+    std::vector <std::string> tubetxt = {"rail", "tube"};
+    std::vector <bool> tube = {false, true};
 
-    r2name = "R2_london_rail_to_all.csv";
-    covname = "Cov_london_rail_to_all.csv";
-    railData.calcR2 (false);
-    railData.writeR2Mat (r2name);
-    railData.writeCovMat (covname);
+    for (int t=0; t<2; t++)
+    {
+        TrainData * trainData = new TrainData (mode [t], tube [t]);
+        std::cout << "There are " << trainData->CountTrips () <<
+            " trips between " << trainData->Oyster2StnIndex.size () << 
+            " " << mode [t] << " stations." << std::endl;
+        for (int i=0; i<3; i++)
+        {
+            trainData->nearfar = i;
+            trainData->txtnf = trainData->txtnflist [i];
 
-    // **********   TUBE DATA   **********
-    TrainData tubeData ("oysterTube", true);
-    std::cout << "There are " << tubeData.CountTrips () <<
-        " trips between " << tubeData.Oyster2StnIndex.size () << " stations." <<
-        std::endl;
+            r2name = "R2_london_" + tubetxt [t] + "_from_" + 
+                trainData->txtnf + ".csv";
+            covname = "Cov_london_" + tubetxt [t] + "_from_" + 
+                trainData->txtnf + ".csv";
+            trainData->calcR2 (true);
+            trainData->writeR2Mat (r2name);
+            trainData->writeCovMat (covname);
 
-    tubeData.nearfar = 0; // important! Uses all data
-
-    r2name = "R2_london_tube_from_all.csv";
-    covname = "Cov_london_tube_from_all.csv";
-    tubeData.calcR2 (true);
-    tubeData.writeR2Mat (r2name);
-    tubeData.writeCovMat (covname);
-
-    r2name = "R2_london_tube_to_all.csv";
-    covname = "Cov_london_tube_to_all.csv";
-    tubeData.calcR2 (false);
-    tubeData.writeR2Mat (r2name);
-    tubeData.writeCovMat (covname);
+            r2name = "R2_london_" + tubetxt [t] + "_to_" + 
+                trainData->txtnf + ".csv";
+            covname = "Cov_london_" + tubetxt [t] + "_to_" + 
+                trainData->txtnf + ".csv";
+            trainData->calcR2 (false);
+            trainData->writeR2Mat (r2name);
+            trainData->writeCovMat (covname);
+        }
+    }
 }

@@ -4,6 +4,7 @@ LIBS=-lzip
 VPATH=./src
 OBJECTS_BIKES = mainBikes.o StationData.o RideData.o Utils.o
 OBJECTS_TRAINS = mainTrains.o StationData.o TrainData.o Utils.o
+OBJECTS_DISTS = mainStnDists.o Utils.o
 
 bikes: mainBikes
 
@@ -14,6 +15,11 @@ trains: mainTrains
 
 mainTrains: $(OBJECTS_TRAINS)
 	$(CC) $(OBJECTS_TRAINS) -o trains $(LIBS) 
+
+dists: mainStnDists
+
+mainStnDists: $(OBJECTS_DISTS)
+	$(CC) $(OBJECTS_DISTS) -o dists $(LIBS) 
 
 %.o: %.c++
 	$(CC) $(CFLAGS) $<

@@ -6,6 +6,8 @@ OBJECTS_BIKES = mainBikes.o StationData.o RideData.o Utils.o
 OBJECTS_TRAINS = mainTrains.o StationData.o TrainData.o Utils.o
 OBJECTS_DISTS = mainStnDists.o Utils.o
 
+all: mainBikes mainTrains mainStnDists
+
 bikes: mainBikes
 
 mainBikes: $(OBJECTS_BIKES)

@@ -13,6 +13,8 @@
 #include <iomanip> // for setfill
 #include <sys/ioctl.h> // for console width: Linux only!
 #include <ctype.h>
+#include <fstream>
+#include <assert.h>
 
 #include <boost/numeric/ublas/vector.hpp>
 #include <boost/numeric/ublas/matrix.hpp>

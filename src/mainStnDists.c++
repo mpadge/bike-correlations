@@ -10,7 +10,7 @@ int Ways::readNodes ()
 {
     int ipos [3];
     long long id;
-    double lat, lon;
+    float lat, lon;
     std::string linetxt, txt, fname = "/data/data/bikes/planet-boston.osm";
     std::ifstream in_file;
     
@@ -52,7 +52,7 @@ int Ways::readNodes ()
 int Ways::readTerminalNodes ()
 {
     bool inway = false, highway = false, inList;
-    int ipos;
+    int ipos, nodeCount = 0;
     long long startNode, endNode;
     std::string linetxt, fname = "/data/data/bikes/planet-boston.osm";
     std::ifstream in_file;
@@ -77,11 +77,20 @@ int Ways::readTerminalNodes ()
             if (highway && startNode != endNode)
             {
                 if (terminalNodeIDs.find (startNode) == terminalNodeIDs.end())
+                {
                     terminalNodeIDs.insert (startNode);
+                    nodeNames [startNode] = nodeCount;
+                    nodeCount++;
+                }
                 if (terminalNodeIDs.find (endNode) == terminalNodeIDs.end())
+                {
                     terminalNodeIDs.insert (endNode);
+                    nodeNames [endNode] = nodeCount;
+                    nodeCount++;
+                }
             } // end if highway
             highway = false;
+            startNode = INT_MIN;
         } // end else if end way
         else if (inway)
         {
@@ -101,7 +110,8 @@ int Ways::readTerminalNodes ()
     } // end while getline
     in_file.close ();
 
-    std::cout << "\rRead " << terminalNodeIDs.size () <<
+    std::cout << "\rRead " << terminalNodeIDs.size () << " or " <<
+        nodeNames.size () << 
         " terminal nodes of ways." << std::endl;
 
     return terminalNodeIDs.size ();
@@ -110,27 +120,29 @@ int Ways::readTerminalNodes ()
 int Ways::readWays ()
 {
     bool inway = false, highway = false;
-    int ipos, nnodes = 0, nways = 0;
-    double dist;
+    int ipos;
+    float dist;
     long long node; 
     uset_Itr usetitr;
     umapPair_Itr umapitr;
+    segment seg;
     std::vector <long long> waynodes, ids;
-    std::vector <double> lats, lons;
+    std::vector <float> lats, lons;
     std::string linetxt, tempstr,
-        fname = "/data/data/bikes/planet-boston.osm",
-        fout_ways = "boston-ways.csv";
+        fname = "/data/data/bikes/planet-boston.osm";
     std::ifstream in_file;
-    std::ofstream out_file;
     
     in_file.open (fname.c_str (), std::ifstream::in);
     assert (!in_file.fail ());
     in_file.clear ();
     in_file.seekg (0); 
-    out_file.open (fout_ways.c_str (), std::ofstream::out);
+
+    wayList.resize (0);
 
     std::cout << "Reading ways ...";
     std::cout.flush ();
+
+    int nways = 0; // TODO: DELETE!
 
     while (getline (in_file, linetxt, '\n'))
     {
@@ -166,23 +178,21 @@ int Ways::readWays ()
                             terminalNodeIDs.end())
                     {
                         dist = calcDist (lons, lats);
-                        out_file << std::to_string (ids [0]) << "," << 
-                            std::to_string (*itr) << ", " <<
-                            std::to_string (dist) << std::endl;
+                        seg.from = (*nodeNames.find (ids [0])).second;
+                        seg.to = (*nodeNames.find(*itr)).second;
+                        seg.d = dist;
+                        wayList.push_back (seg);
                         ids.resize (0);
                         ids.push_back (*itr);
                         lats.resize (0);
                         lons.resize (0);
                         lats.push_back (((*umapitr).second).first);
                         lons.push_back (((*umapitr).second).second);
+                        nways++;
                     }
                 }
                 //assert (lats.size () == waynodes.size ());
-                // Then scan waynodes again, and dump all terminal node pairs
-                // and intermediate distances
-                // ***distance calculation goes here
                 highway = false;
-                nways++;
             } // end if highway
             highway = false;
         } // end else if end way
@@ -201,25 +211,22 @@ int Ways::readWays ()
                 node = atoll (linetxt.c_str ());
                 waynodes.push_back (node);
                 ids.push_back (node);
-                nnodes++;
             }
             else if (linetxt.find ("k=\"highway\"") != std::string::npos)
                 highway = true;
         } // end else if inway
     } // end while getline
     in_file.close ();
-    out_file.close();
 
-    std::cout << "\rRead " << nways << " ways comprising " << 
-        nnodes << " nodes." << std::endl;
+    std::cout << "\rRead " << wayList.size() << " ways" << std::endl;
 
-    return nways;
+    return 0;
 } // end function readWays
 
 
-double Ways::calcDist (std::vector <double> x, std::vector <double> y)
+float Ways::calcDist (std::vector <float> x, std::vector <float> y)
 {
-    double d, dsum = 0.0, x0, y0, x1 = x[0], y1 = y[0], xd, yd;
+    float d, dsum = 0.0, x0, y0, x1 = x[0], y1 = y[0], xd, yd;
     assert (x.size () == y.size ());
 
     for (int i=1; i<x.size (); i++)
@@ -238,3 +245,176 @@ double Ways::calcDist (std::vector <double> x, std::vector <double> y)
 
     return dsum; // in kilometres!
 } // end function calcDist
+
+
+float Ways::sp (long long fromNode)
+{
+    std::cout << "fromNode = " << fromNode << std::endl;
+    std::cout << "wayList[0]: (" << wayList[0].from << "->" <<
+        wayList[0].to << ") = " << wayList[0].d << std::endl;
+
+    // Largely adapted from the boost example and:
+    // http://programmingexamples.net/wiki/Boost/BGL/DijkstraComputePath
+    typedef float Weight;
+    typedef boost::property <boost::edge_weight_t, Weight> WeightProperty;
+    typedef boost::property <boost::vertex_name_t, std::string> NameProperty;
+
+    typedef boost::adjacency_list < boost::listS, boost::vecS, boost::directedS,
+            NameProperty, WeightProperty > Graph;
+
+    typedef boost::graph_traits < Graph >::vertex_descriptor Vertex;
+
+    typedef boost::property_map < Graph, boost::vertex_index_t >::type IndexMap;
+    typedef boost::property_map < Graph, boost::vertex_name_t >::type NameMap;
+
+    typedef boost::iterator_property_map 
+                        < Vertex*, IndexMap, Vertex, Vertex& > PredecessorMap;
+    typedef boost::iterator_property_map 
+                        < Weight*, IndexMap, Weight, Weight& > DistanceMap;
+
+    typedef std::pair<std::string, std::string> Edge;
+
+    Graph g;
+
+    boost::add_vertex (std::to_string (0), g);
+    boost::add_vertex (std::to_string (1), g);
+    boost::add_vertex (std::to_string (2), g);
+    boost::add_vertex (std::to_string (3), g);
+    boost::add_vertex (std::to_string (4), g);
+    boost::add_edge (0, 2, 1.1, g);
+    boost::add_edge (1, 1, 2.2, g);
+    boost::add_edge (1, 2, 1.1, g);
+    boost::add_edge (1, 3, 2.2, g);
+    boost::add_edge (2, 1, 7.7, g);
+    boost::add_edge (2, 3, 4.4, g);
+    boost::add_edge (3, 2, 3.3, g);
+    boost::add_edge (3, 4, 1.1, g);
+    boost::add_edge (4, 0, 1.1, g);
+    boost::add_edge (4, 1, 1.1, g);
+
+    std::vector<Vertex> predecessors (boost::num_vertices(g)); 
+    std::vector<Weight> distances (boost::num_vertices(g)); 
+
+    IndexMap indexMap = boost::get (boost::vertex_index, g);
+    PredecessorMap predecessorMap (&predecessors[0], indexMap);
+    DistanceMap distanceMap (&distances[0], indexMap);
+
+    // predecessor and distance maps can be passed in any order
+    int start = vertex (0, g);
+    boost::dijkstra_shortest_paths (g, start, 
+            boost::distance_map (distanceMap).predecessor_map (predecessorMap));
+
+    // Trace back from end node
+    typedef std::vector<Graph::edge_descriptor> PathType;
+    PathType path;
+
+    Vertex v0 = 4; // Node from which to start traceback
+    Vertex v = v0;
+    for (Vertex u = predecessorMap[v]; u != v; v = u, u = predecessorMap[v]) 
+    {
+        std::pair<Graph::edge_descriptor, bool> edgePair = boost::edge(u, v, g);
+        Graph::edge_descriptor edge = edgePair.first;
+        path.push_back ( edge );
+    }
+
+    // Write shortest path
+    std::cout << "Shortest path from " << start << " to " << v0 << ":" << std::endl;
+    NameMap nameMap = boost::get (boost::vertex_name, g);
+    float totalDistance = 0;
+    for (PathType::reverse_iterator pathIterator = path.rbegin(); 
+            pathIterator != path.rend(); ++pathIterator)
+    {
+        std::cout << "v" << nameMap [boost::source (*pathIterator, g)] << 
+            " -> v" << nameMap [boost::target (*pathIterator, g)] <<
+            " = " << boost::get (boost::edge_weight, g, *pathIterator) << 
+            std::endl;
+
+    }
+    std::cout << "Distance: " << distanceMap[v0] << std::endl;
+}
+
+
+float Ways::spOld (long long fromNode)
+{
+    std::cout << "fromNode = " << fromNode << std::endl;
+
+
+    // Largely adapted from the boost example and:
+    // http://programmingexamples.net/wiki/Boost/BGL/DijkstraComputePath
+    typedef float Weight;
+    typedef boost::property <boost::edge_weight_t, Weight> WeightProperty;
+    typedef boost::property <boost::vertex_name_t, long long> NameProperty;
+
+    typedef boost::adjacency_list < boost::listS, boost::vecS, boost::directedS,
+            NameProperty, WeightProperty > Graph;
+
+    typedef boost::graph_traits < Graph >::vertex_descriptor Vertex;
+
+    typedef boost::property_map < Graph, boost::vertex_index_t >::type IndexMap;
+    typedef boost::property_map < Graph, boost::vertex_name_t >::type NameMap;
+
+    typedef boost::iterator_property_map 
+                        < Vertex*, IndexMap, Vertex, Vertex& > PredecessorMap;
+    typedef boost::iterator_property_map 
+                        < Weight*, IndexMap, Weight, Weight& > DistanceMap;
+
+    typedef std::pair<std::string, std::string> Edge;
+
+    Graph g;
+
+    boost::add_vertex (0, g);
+    boost::add_vertex (1, g);
+    boost::add_vertex (2, g);
+    boost::add_vertex (3, g);
+    boost::add_vertex (4, g);
+    boost::add_edge (0, 2, 1.1, g);
+    boost::add_edge (1, 1, 2.2, g);
+    boost::add_edge (1, 2, 1.1, g);
+    boost::add_edge (1, 3, 2.2, g);
+    boost::add_edge (2, 1, 7.7, g);
+    boost::add_edge (2, 3, 4.4, g);
+    boost::add_edge (3, 2, 3.3, g);
+    boost::add_edge (3, 4, 1.1, g);
+    boost::add_edge (4, 0, 1.1, g);
+    boost::add_edge (4, 1, 1.1, g);
+
+    std::vector<Vertex> predecessors (boost::num_vertices(g)); 
+    std::vector<Weight> distances (boost::num_vertices(g)); 
+
+    IndexMap indexMap = boost::get (boost::vertex_index, g);
+    PredecessorMap predecessorMap (&predecessors[0], indexMap);
+    DistanceMap distanceMap (&distances[0], indexMap);
+
+    // predecessor and distance maps can be passed in any order
+    int start = vertex (0, g);
+    boost::dijkstra_shortest_paths (g, start, 
+            boost::distance_map (distanceMap).predecessor_map (predecessorMap));
+
+    // Trace back from end node
+    typedef std::vector<Graph::edge_descriptor> PathType;
+    PathType path;
+
+    Vertex v0 = 4; // Node from which to start traceback
+    Vertex v = v0;
+    for (Vertex u = predecessorMap[v]; u != v; v = u, u = predecessorMap[v]) 
+    {
+        std::pair<Graph::edge_descriptor, bool> edgePair = boost::edge(u, v, g);
+        Graph::edge_descriptor edge = edgePair.first;
+        path.push_back ( edge );
+    }
+
+    // Write shortest path
+    std::cout << "Shortest path from " << start << " to " << v0 << ":" << std::endl;
+    NameMap nameMap = boost::get (boost::vertex_name, g);
+    float totalDistance = 0;
+    for (PathType::reverse_iterator pathIterator = path.rbegin(); 
+            pathIterator != path.rend(); ++pathIterator)
+    {
+        std::cout << "v" << nameMap [boost::source (*pathIterator, g)] << 
+            " -> v" << nameMap [boost::target (*pathIterator, g)] <<
+            " = " << boost::get (boost::edge_weight, g, *pathIterator) << 
+            std::endl;
+
+    }
+    std::cout << "Distance: " << distanceMap[v0] << std::endl;
+}

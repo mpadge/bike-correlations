@@ -16,13 +16,14 @@
 #include <fstream>
 #include <assert.h>
 
+#include <boost/config.hpp>
 #include <boost/numeric/ublas/vector.hpp>
 #include <boost/numeric/ublas/matrix.hpp>
 
-#include <boost/random/linear_congruential.hpp>
-#include <boost/random/variate_generator.hpp>
-#include <boost/random/normal_distribution.hpp>
-#include <boost/random/uniform_real.hpp>
+#include <boost/graph/graph_traits.hpp>
+#include <boost/graph/adjacency_list.hpp>
+#include <boost/graph/dijkstra_shortest_paths.hpp>
+#include <boost/property_map/property_map.hpp>
 
 #ifndef UTILS_H
 #define UTILS_H
@@ -40,10 +41,6 @@ typedef boost::numeric::ublas::zero_matrix <int> zmat_i;
 
 const double DOUBLE_MAX = std::numeric_limits<double>::max (),
     DOUBLE_MIN = std::numeric_limits <double>::min ();
-
-// This is a typedef for a random number generator.
-// Try boost::mt19937 or boost::ecuyer1988 instead of boost::minstd_rand
-typedef boost::minstd_rand base_generator_type;
 
 struct myTime{
     int hh, mm;

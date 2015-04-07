@@ -7,8 +7,6 @@
 
 typedef std::pair <double, double> ddPair;
 
-typedef boost::unordered_set <long long> uset;
-typedef boost::unordered_set <long long>::iterator uset_Itr;
 typedef boost::unordered_map <long long, int> umapInt;
 typedef boost::unordered_map <long long, int>::iterator umapInt_Itr;
 typedef boost::unordered_map <long long, ddPair> umapPair;
@@ -53,7 +51,6 @@ class Ways
          * then only subsequently used to replace the long long OSM numbers with
          * corresponding ints when storing the boost::graph in the sp routine.
          */
-        uset terminalNodeIDs;
         umapPair allNodes;
         umapInt nodeNames;
         std::vector <segment> wayList;
@@ -63,7 +60,7 @@ class Ways
             err = readNodes();
             err = readTerminalNodes ();
             err = readWays ();
-            d = sp (*terminalNodeIDs.begin());
+            d = sp (0);
         }
         ~Ways ()
         {

@@ -76,15 +76,13 @@ int Ways::readTerminalNodes ()
             inway = false;
             if (highway && startNode != endNode)
             {
-                if (terminalNodeIDs.find (startNode) == terminalNodeIDs.end())
+                if (nodeNames.find (startNode) == nodeNames.end())
                 {
-                    terminalNodeIDs.insert (startNode);
                     nodeNames [startNode] = nodeCount;
                     nodeCount++;
                 }
-                if (terminalNodeIDs.find (endNode) == terminalNodeIDs.end())
+                if (nodeNames.find (endNode) == nodeNames.end())
                 {
-                    terminalNodeIDs.insert (endNode);
                     nodeNames [endNode] = nodeCount;
                     nodeCount++;
                 }
@@ -110,11 +108,10 @@ int Ways::readTerminalNodes ()
     } // end while getline
     in_file.close ();
 
-    std::cout << "\rRead " << terminalNodeIDs.size () << " or " <<
-        nodeNames.size () << 
+    std::cout << "\rRead " << nodeNames.size () << 
         " terminal nodes of ways." << std::endl;
 
-    return terminalNodeIDs.size ();
+    return nodeNames.size ();
 } // end Ways::readTerminalNodes
 
 int Ways::readWays ()
@@ -123,7 +120,6 @@ int Ways::readWays ()
     int ipos;
     float dist;
     long long node; 
-    uset_Itr usetitr;
     umapPair_Itr umapitr;
     segment seg;
     std::vector <long long> waynodes, ids;
@@ -141,8 +137,6 @@ int Ways::readWays ()
 
     std::cout << "Reading ways ...";
     std::cout.flush ();
-
-    int nways = 0; // TODO: DELETE!
 
     while (getline (in_file, linetxt, '\n'))
     {
@@ -174,8 +168,7 @@ int Ways::readWays ()
                      * into two separate ways either side thereof.
                      */
                     if (itr > waynodes.begin() &&
-                            (usetitr = terminalNodeIDs.find (*itr)) != 
-                            terminalNodeIDs.end())
+                            (nodeNames.find (*itr)) != nodeNames.end())
                     {
                         dist = calcDist (lons, lats);
                         seg.from = (*nodeNames.find (ids [0])).second;
@@ -188,7 +181,6 @@ int Ways::readWays ()
                         lons.resize (0);
                         lats.push_back (((*umapitr).second).first);
                         lons.push_back (((*umapitr).second).second);
-                        nways++;
                     }
                 }
                 //assert (lats.size () == waynodes.size ());
@@ -249,15 +241,11 @@ float Ways::calcDist (std::vector <float> x, std::vector <float> y)
 
 float Ways::sp (long long fromNode)
 {
-    std::cout << "fromNode = " << fromNode << std::endl;
-    std::cout << "wayList[0]: (" << wayList[0].from << "->" <<
-        wayList[0].to << ") = " << wayList[0].d << std::endl;
-
     // Largely adapted from the boost example and:
     // http://programmingexamples.net/wiki/Boost/BGL/DijkstraComputePath
     typedef float Weight;
     typedef boost::property <boost::edge_weight_t, Weight> WeightProperty;
-    typedef boost::property <boost::vertex_name_t, std::string> NameProperty;
+    typedef boost::property <boost::vertex_name_t, int> NameProperty;
 
     typedef boost::adjacency_list < boost::listS, boost::vecS, boost::directedS,
             NameProperty, WeightProperty > Graph;
@@ -272,25 +260,14 @@ float Ways::sp (long long fromNode)
     typedef boost::iterator_property_map 
                         < Weight*, IndexMap, Weight, Weight& > DistanceMap;
 
-    typedef std::pair<std::string, std::string> Edge;
-
     Graph g;
 
-    boost::add_vertex (std::to_string (0), g);
-    boost::add_vertex (std::to_string (1), g);
-    boost::add_vertex (std::to_string (2), g);
-    boost::add_vertex (std::to_string (3), g);
-    boost::add_vertex (std::to_string (4), g);
-    boost::add_edge (0, 2, 1.1, g);
-    boost::add_edge (1, 1, 2.2, g);
-    boost::add_edge (1, 2, 1.1, g);
-    boost::add_edge (1, 3, 2.2, g);
-    boost::add_edge (2, 1, 7.7, g);
-    boost::add_edge (2, 3, 4.4, g);
-    boost::add_edge (3, 2, 3.3, g);
-    boost::add_edge (3, 4, 1.1, g);
-    boost::add_edge (4, 0, 1.1, g);
-    boost::add_edge (4, 1, 1.1, g);
+    for (umapInt_Itr itr = nodeNames.begin(); itr != nodeNames.end(); itr++)
+        boost::add_vertex ((*itr).second, g);
+    int minfrom = 999999, minto = 999999;
+    for (std::vector<segment>::iterator itr = wayList.begin();
+            itr != wayList.end(); itr++)
+        boost::add_edge ((*itr).from, (*itr).to, (*itr).d, g);
 
     std::vector<Vertex> predecessors (boost::num_vertices(g)); 
     std::vector<Weight> distances (boost::num_vertices(g)); 
@@ -308,7 +285,7 @@ float Ways::sp (long long fromNode)
     typedef std::vector<Graph::edge_descriptor> PathType;
     PathType path;
 
-    Vertex v0 = 4; // Node from which to start traceback
+    Vertex v0 = 1; // Node from which to start traceback
     Vertex v = v0;
     for (Vertex u = predecessorMap[v]; u != v; v = u, u = predecessorMap[v]) 
     {

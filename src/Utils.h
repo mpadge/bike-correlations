@@ -40,7 +40,8 @@ typedef boost::numeric::ublas::zero_matrix <double> zmat_d;
 typedef boost::numeric::ublas::zero_matrix <int> zmat_i;
 
 const double DOUBLE_MAX = std::numeric_limits<double>::max (),
-    DOUBLE_MIN = std::numeric_limits <double>::min ();
+    DOUBLE_MIN = std::numeric_limits <double>::min (),
+    FLOAT_MAX = std::numeric_limits <float>::max ();
 
 struct myTime{
     int hh, mm;

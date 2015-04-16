@@ -1,10 +1,39 @@
-#include "Utils.h"
+/*
+ * Stores a planet-osm file as a boost::graph. The latter rely on property maps,
+ * which are statically-typed entities, and so data are initially read and
+ * stored as unordered_maps to be subsequently read into the graph. This initial
+ * storage as unordered_maps also speeds up mapping node IDs in ways onto
+ * lat-lon coordinates.
+ *
+ * Two main problems that need to be addressed are:
+ * 1. OSM node names are huge integers >> MAX_INT, yet the boost graphs member
+ * function id() used to reference vertices returns an int, and thus passing any
+ * values > MAX_INT causes a bad allocation. The way around this here is to
+ * index nodes with nodeNames, which renumbers all terminal nodes to consecutive
+ * ints, rather than huge long longs.
+ *
+ * 2. Routing is done exclusively on "highway"-tagged ways, yet these do not
+ * necessarily form a single connected graph. Boost offers direct extraction of
+ * connected components, but one problem is that the bike stations (or other
+ * points of interest) need to be located at the nearest node that lies within
+ * the largest connected component of the graph. Thus the graph is first built,
+ * then reduced to the largest connected component, and only then are stations
+ * mapped onto nearest connected nodes.
+ */
 
-#include <tuple>
+#include "Utils.h"
 
 #include <boost/unordered_set.hpp>
 #include <boost/unordered_map.hpp>
 #include <boost/graph/connected_components.hpp>
+
+#include <boost/graph/adjacency_list.hpp>
+#include <boost/graph/dijkstra_shortest_paths.hpp>
+#include <boost/property_map/property_map.hpp>
+
+#include <boost/graph/connected_components.hpp>
+//#include <boost/graph/filtered_graph.hpp>
+//#include <boost/graph/graph_utility.hpp>
 
 typedef std::pair <double, double> ddPair;
 
@@ -12,6 +41,9 @@ typedef boost::unordered_map <long long, int> umapInt;
 typedef boost::unordered_map <long long, int>::iterator umapInt_Itr;
 typedef boost::unordered_map <long long, ddPair> umapPair;
 typedef boost::unordered_map <long long, ddPair>::iterator umapPair_Itr;
+
+typedef std::pair <std::string, float> ProfilePair;
+typedef float Weight;
 
 struct Segment
 {
@@ -40,27 +72,63 @@ std::size_t hash_value(const ddPair &d)
     return seed;
 }
 
+// edge and vertex bundles for the boost::graph
+struct bundled_edge_type
+{ 
+    Weight weight; // weighted distance
+    float dist;
+};
+
+struct bundled_vertex_type
+{
+    long long id;
+    std::string name;
+    float lat, lon;
+    int component;
+};
+
+/*
+ * VertMap can be used to filter the largest connected component, but a filtered
+ * graph retains all vertices regardless, so there's no real advantage here to
+ * filtering.
+ */
+template <typename VertMap>
+struct in_component_0 {
+    in_component_0 () { }
+    in_component_0 (VertMap comp0) : m_comp0(comp0) { }
+    template <typename Vertex>
+        bool operator()(const Vertex& v) const {
+            return boost::get (m_comp0, v) == 0; // largest connected has id=0
+        }
+    VertMap m_comp0;
+};
 
 class Ways 
 {
+    using Graph_t = boost::adjacency_list< boost::vecS, boost::vecS, 
+          boost::directedS, bundled_vertex_type, bundled_edge_type >;
+
+    using Vertex = boost::graph_traits<Graph_t>::vertex_descriptor;
+
+    private:
+        Graph_t g;
     protected:
         std::string _dirName;
         const std::string _city;
+        const std::string osmFile = "/data/data/bikes/planet-boston-bikes.osm";
+        std::vector <ProfilePair> profile;
+
     public:
         int err;
         long long node;
         float d;
+
+
         /*
-         * OSM data are read into allNodes, with most node IDs being much bigger
-         * than MAX_INT. Boost graphs member function id() used to reference
-         * vertices returns an int, and thus passing any values > MAX_INT causes
-         * a bad allocation. The way around this here is to index nodes with
-         * nodeNames, which just renumbers all terminal nodes to consecutive
-         * ints, rather than huge long longs.
-         *
-         * The storage of nodeNames is done in readWays, while they are then
+         * The storage of nodeNames is done in readNodes, while they are then
          * only subsequently used to replace the long long OSM numbers with
-         * corresponding ints when storing the boost::graph in the sp routine.
+         * corresponding ints when storing the boost::graph in the readWays
+         * routine.
          */
         umapPair allNodes;
         umapInt nodeNames;
@@ -70,19 +138,13 @@ class Ways
         Ways (std::string str)
             : _city (str)
         {
+            setProfile ();
             err = readNodes();
             err = readWays ();
+            err = getConnected ();
             err = readStations ();
-            /*
-            for (std::vector<Station>::iterator itr = stationList.begin();
-                    itr != stationList.end(); itr++)
-            {
-                err = sp (itr->nodeIndex);
-                std::cout << "Extracted " << err << " valid distances" << std::endl;
-            }
-            */
-            err = sp (stationList.begin()->nodeIndex);
-            std::cout << "Extracted " << err << " valid distances" << std::endl;
+            d = dijkstra (stationList.begin()->nodeIndex);
+            std::cout << "Shortest path is " << d << "km long" << std::endl;
         }
         ~Ways ()
         {
@@ -94,11 +156,31 @@ class Ways
         std::string returnDirName () { return _dirName; }
         std::string returnCity () { return _city;   }
 
+        void setProfile ()
+        {
+            profile.resize (0);
+            profile.push_back (std::make_pair ("motorway", 0.0));
+            profile.push_back (std::make_pair ("trunk", 0.3));
+            profile.push_back (std::make_pair ("primary", 0.7));
+            profile.push_back (std::make_pair ("secondary", 0.8));
+            profile.push_back (std::make_pair ("tertiary", 0.9));
+            profile.push_back (std::make_pair ("unclassified", 0.9));
+            profile.push_back (std::make_pair ("residential", 0.9));
+            profile.push_back (std::make_pair ("service", 0.9));
+            profile.push_back (std::make_pair ("track", 0.9));
+            profile.push_back (std::make_pair ("cycleway", 1.0));
+            profile.push_back (std::make_pair ("path", 0.9));
+            profile.push_back (std::make_pair ("steps", 0.1));
+            profile.push_back (std::make_pair ("ferry", 0.2));
+            profile.push_back (std::make_pair ("footway", 0.5));
+        };
+
         int readNodes ();
         int readTerminalNodes ();
         int readWays ();
+        int getConnected ();
         int readStations ();
-        int sp (long long fromNode);
+        float dijkstra (long long fromNode);
 
         float calcDist (float x0, float y0, float x1, float y1);
         long long nearestNode (float lon0, float lat0);

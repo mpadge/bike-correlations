@@ -1,20 +1,37 @@
 #include "mainStnDists.h"
 
+/************************************************************************
+ ************************************************************************
+ **                                                                    **
+ **                                MAIN                                **
+ **                                                                    **
+ ************************************************************************
+ ************************************************************************/
+
 int main(int argc, char *argv[]) {
     std::string city = "boston";
 
     Ways ways(city);
 };
 
+
+/************************************************************************
+ ************************************************************************
+ **                                                                    **
+ **                              READNODES                             **
+ **                                                                    **
+ ************************************************************************
+ ************************************************************************/
+
 int Ways::readNodes ()
 {
     int ipos [3];
     long long node;
     float lat, lon;
-    std::string linetxt, txt, fname = "/data/data/bikes/planet-boston.osm";
+    std::string linetxt, txt;
     std::ifstream in_file;
     
-    in_file.open (fname.c_str (), std::ifstream::in);
+    in_file.open (osmFile.c_str (), std::ifstream::in);
     assert (!in_file.fail ());
     in_file.clear ();
     in_file.seekg (0); 
@@ -39,7 +56,7 @@ int Ways::readNodes ()
 
             allNodes [node] = std::make_pair (lat, lon);
         }
-    } // end while getline
+    } 
     in_file.close ();
 
     std::cout << "\rRead coordinates of " << allNodes.size () << " nodes." <<
@@ -47,6 +64,15 @@ int Ways::readNodes ()
 
     return (allNodes.size ());
 } // end Way::readNodes
+
+
+/************************************************************************
+ ************************************************************************
+ **                                                                    **
+ **                              READWAYS                              **
+ **                                                                    **
+ ************************************************************************
+ ************************************************************************/
 
 int Ways::readWays ()
 {
@@ -58,22 +84,26 @@ int Ways::readWays ()
     Segment seg;
     std::vector <long long> waynodes, ids;
     std::vector <float> lats, lons;
-    std::string linetxt, tempstr,
-        fname = "/data/data/bikes/planet-boston.osm";
+    std::string linetxt, tempstr;
     std::ifstream in_file;
-    std::ofstream out_file; // TODO: DELETE!
     
-    in_file.open (fname.c_str (), std::ifstream::in);
+    in_file.open (osmFile.c_str (), std::ifstream::in);
     assert (!in_file.fail ());
     in_file.clear ();
     in_file.seekg (0); 
 
     wayList.resize (0);
 
+    /*
+     * The boost::graph is only given size through the following vertex
+     * additions. Note that vertex numbers are implicit and sequential,
+     * enumeratred by nodeCount, and edges must reference these numbers.
+     */
+    bundled_vertex_type oneVert;
+    bundled_edge_type oneEdge;
+
     std::cout << "Reading ways ...";
     std::cout.flush ();
-
-    out_file.open ("map.csv");
 
     while (getline (in_file, linetxt, '\n'))
     {
@@ -98,11 +128,14 @@ int Ways::readWays ()
                     id0 = nodeCount;
                     nodeNames [node] = id0;
                     nodeCount++;
+                    oneVert.id = node;
+                    oneVert.lat = lat0;
+                    oneVert.lon = lon0;
+                    boost::add_vertex (oneVert, g);
                 }
                 else
                     id0 = (*nodeNames.find (node)).second;
-                // The following iterator uses std::next (c++11) to start loop
-                // at 1 rather than 0.
+                // Note std::next (c++11) in loop
                 for (std::vector <long long>::iterator 
                         itr=std::next (waynodes.begin());
                         itr != waynodes.end(); itr++)
@@ -116,6 +149,10 @@ int Ways::readWays ()
                         id1 = nodeCount;
                         nodeNames [node] = id1;
                         nodeCount++;
+                        oneVert.id = node;
+                        oneVert.lat = lat1;
+                        oneVert.lon = lon1;
+                        boost::add_vertex (oneVert, g);
                     }
                     else
                         id1 = (*nodeNames.find (node)).second;
@@ -123,6 +160,10 @@ int Ways::readWays ()
                     seg.to = id1;
                     seg.d = calcDist (lon0, lat0, lon1, lat1);
                     wayList.push_back (seg);
+                    oneEdge.weight = seg.d;
+                    oneEdge.dist = oneEdge.weight;
+                    boost::add_edge(id0, id1, oneEdge, g);
+                    boost::add_edge(id1, id0, oneEdge, g);
 
                     seg.from = id1;
                     seg.to = id0;
@@ -131,9 +172,6 @@ int Ways::readWays ()
                     id0 = id1;
                     lat0 = lat1;
                     lon0 = lon1;
-
-                    out_file << lon0 << "," << lat0 << "," << lon1 <<
-                        "," << lat1 << std::endl;
                 }
             } // end if highway
             inway = false;
@@ -142,21 +180,31 @@ int Ways::readWays ()
         {
             /*
              * Nodes have to first be stored, because they are only subsequently
-             * analysed if they are part of a highway and do not loop. 
+             * analysed if they are part of a highway.
              */
             if (linetxt.find ("<nd") != std::string::npos)
             {
                 ipos = linetxt.find ("<nd ref=");
                 linetxt = linetxt.substr (ipos + 9, 
                         linetxt.length () - ipos - 9);
+                node = atoll (linetxt.c_str ());
                 waynodes.push_back (atoll (linetxt.c_str ()));
             }
             else if (linetxt.find ("k=\"highway\"") != std::string::npos)
-                highway = true;
+            {
+                // highway is only true if it has one of the values listed in
+                // the profile
+                for (std::vector<ProfilePair>::iterator itr = profile.begin();
+                        itr != profile.end(); itr++)
+                {
+                    tempstr = "v=\"" + (*itr).first;
+                    if (linetxt.find (tempstr) != std::string::npos)
+                        highway = true;
+                }
+            }
         } // end else if inway
     } // end while getline
     in_file.close ();
-    out_file.close ();
 
     /*
      * nodes and corresponding indices can then be respectively obtained with
@@ -169,6 +217,15 @@ int Ways::readWays ()
 
     return 0;
 } // end function readWays
+
+
+/************************************************************************
+ ************************************************************************
+ **                                                                    **
+ **                              CALCDIST                              **
+ **                                                                    **
+ ************************************************************************
+ ************************************************************************/
 
 
 float Ways::calcDist (float x0, float y0, float x1, float y1)
@@ -184,6 +241,55 @@ float Ways::calcDist (float x0, float y0, float x1, float y1)
 
     return d; // in kilometres!
 } // end function calcDist
+
+
+/************************************************************************
+ ************************************************************************
+ **                                                                    **
+ **                            GETCONNECTED                            **
+ **                                                                    **
+ ************************************************************************
+ ************************************************************************/
+
+int Ways::getConnected ()
+{
+    std::vector<int> compvec(num_vertices(g));
+    int num = boost::connected_components(g, &compvec[0]);
+
+    // Then store component info in vertices
+    /*
+    typedef boost::graph_traits <Graph_t>::vertex_iterator viter;
+    std::pair <viter, viter> vp;
+    for (vp = vertices(g); vp.first != vp.second; ++vp.first)
+        vertex_component [*vp.first] = compvec [*vp.first];
+     */
+    // Alternative:
+    boost::property_map< Graph_t, int bundled_vertex_type::* >::type 
+        vertex_component = boost::get(&bundled_vertex_type::component, g);
+    auto vs = boost::vertices (g);
+    for (auto vit = vs.first; vit != vs.second; ++vit)
+        vertex_component [*vit] = compvec [*vit];
+
+    // Optional filtering of component = 0:
+    /*
+    in_component_0 <VertMap> filter (boost::get (&bundled_vertex_type::component, g));
+    boost::filtered_graph <Graph, in_component_0 <VertMap> > fg (g, filter);
+    // Next lines reveal filtering does not actually reduce the graph
+    auto vsfg = boost::vertices (fg);
+    for (auto vit = vsfg.first; vit != vsfg.second; ++vit)
+        std::cout << *vit << std::endl;
+     */
+    return (num);
+} // end function getConnected
+
+
+/************************************************************************
+ ************************************************************************
+ **                                                                    **
+ **                            READSTATIONS                            **
+ **                                                                    **
+ ************************************************************************
+ ************************************************************************/
 
 
 int Ways::readStations ()
@@ -210,6 +316,11 @@ int Ways::readStations ()
     std::cout << "Matching " << ipos << " stations to nearest OSM nodes ...";
     std::cout.flush ();
 
+    /*
+     * the main task of this routine is to assign stations to their nearest
+     * highway nodes. These nodes must be within the largest connected component
+     * of the OSM graph, which boost *seems* always seems to number with 0.
+     */
     while (getline (in_file, linetxt, '\n'))
     {
         for (int i=0; i<4; i++)
@@ -234,6 +345,15 @@ int Ways::readStations ()
 }
 
 
+/************************************************************************
+ ************************************************************************
+ **                                                                    **
+ **                            NEARESTNODE                             **
+ **                                                                    **
+ ************************************************************************
+ ************************************************************************/
+
+
 long long Ways::nearestNode (float lon0, float lat0)
 {
     int id;
@@ -242,31 +362,42 @@ long long Ways::nearestNode (float lon0, float lat0)
 
     /*
      * This is the only place in the whole program that requires explicit
-     * looping over nodes, and takes longer than all other bits, so distances to
-     * nearest nodes are simply calcualted as sums of the 2 abs distances in
-     * lats & lons (even though this saves only about 3.5s!).
+     * looping over vertices, and takes longer than all other bits. Calculating
+     * distances to nearest vertices as sums of the 2 abs distances in lats &
+     * lons saves only about 2.5s.
      *
-     * nodeNames lists the nodes in non-circuluar highways, which must be
-     * matched to the full list of allNodes to find corresponding lats&lons.
+     * nodeNames lists the highway vertices, which must be matched to the full
+     * list of allNodes to find corresponding lats&lons.
      */
 
-    for (umapInt_Itr itr = nodeNames.begin(); itr != nodeNames.end (); itr++)
+    boost::property_map< Graph_t, long long bundled_vertex_type::* >::type 
+        vertex_id = boost::get(&bundled_vertex_type::id, g);
+    boost::property_map< Graph_t, float bundled_vertex_type::* >::type 
+        vertex_lat = boost::get(&bundled_vertex_type::lat, g);
+    boost::property_map< Graph_t, float bundled_vertex_type::* >::type 
+        vertex_lon = boost::get(&bundled_vertex_type::lon, g);
+    boost::property_map< Graph_t, int bundled_vertex_type::* >::type 
+        vertex_component = boost::get(&bundled_vertex_type::component, g);
+
+    auto vs = boost::vertices (g);
+    for (auto vit = vs.first; vit != vs.second; ++vit)
     {
-        lat = ((*allNodes.find ((*itr).first)).second).first;
-        lon = ((*allNodes.find ((*itr).first)).second).second;
-        d = std::abs (lon - lon0) + std::abs (lat - lat0);
-        /*
-        xd = (lon - lon0) * PI / 180.0;
-        yd = (lat - lat0) * PI / 180.0;
-        d = sin (yd / 2.0) * sin (yd / 2.0) + cos (lat * PI / 180.0) *
-            cos (lat0 * PI / 180.0) * sin (xd / 2.0) * sin (xd / 2.0);
-        d = 2.0 * atan2 (sqrt (d), sqrt (1.0 - d));
-        d = d * 6371.0;
-        */
-        if (d < dmin)
+        if (vertex_component [*vit] == 0)
         {
-            dmin = d;
-            node = (*itr).first;
+            lat = vertex_lat [*vit];
+            lon = vertex_lon [*vit];
+            //d = std::abs (lon - lon0) + std::abs (lat - lat0);
+            xd = (lon - lon0) * PI / 180.0;
+            yd = (lat - lat0) * PI / 180.0;
+            d = sin (yd / 2.0) * sin (yd / 2.0) + cos (lat * PI / 180.0) *
+                cos (lat0 * PI / 180.0) * sin (xd / 2.0) * sin (xd / 2.0);
+            d = 2.0 * atan2 (sqrt (d), sqrt (1.0 - d));
+            d = d * 6371.0;
+            if (d < dmin)
+            {
+                dmin = d;
+                node = vertex_id [*vit];
+            }
         }
     }
 
@@ -274,102 +405,64 @@ long long Ways::nearestNode (float lon0, float lat0)
 } // end function calcDist
 
 
-int Ways::sp (long long fromNode)
+/************************************************************************
+ ************************************************************************
+ **                                                                    **
+ **                              DIJKSTRA                              **
+ **                                                                    **
+ ************************************************************************
+ ************************************************************************/
+
+float Ways::dijkstra (long long fromNode)
 {
-    int nvalid = 0;
-    // Largely adapted from the boost example and:
-    // http://programmingexamples.net/wiki/Boost/BGL/DijkstraComputePath
-    typedef float Weight;
-    typedef boost::property <boost::edge_weight_t, Weight> WeightProperty;
-    typedef boost::property <boost::vertex_name_t, int> NameProperty;
-
-    typedef boost::adjacency_list < boost::listS, boost::vecS, boost::directedS,
-            NameProperty, WeightProperty > Graph;
-
-    typedef boost::graph_traits < Graph >::vertex_descriptor Vertex;
-
-    typedef boost::property_map < Graph, boost::vertex_index_t >::type IndexMap;
-    typedef boost::property_map < Graph, boost::vertex_name_t >::type NameMap;
-
-    typedef boost::iterator_property_map 
-                        < Vertex*, IndexMap, Vertex, Vertex& > PredecessorMap;
-    typedef boost::iterator_property_map 
-                        < Weight*, IndexMap, Weight, Weight& > DistanceMap;
-    typedef boost::iterator_property_map 
-                        < Vertex*, IndexMap, Vertex, Vertex& > ComponentMap;
-
-    Graph g;
-
-    for (umapInt_Itr itr = nodeNames.begin(); itr != nodeNames.end(); itr++)
-        boost::add_vertex ((*itr).second, g);
-    for (std::vector<Segment>::iterator itr = wayList.begin();
-            itr != wayList.end(); itr++)
-        boost::add_edge ((*itr).from, (*itr).to, (*itr).d, g);
-
-    // Check whether graph is connected:
-    std::vector<int> component(num_vertices(g));
-    int num = boost::connected_components(g, &component[0]);
-    std::cout << "Graph has " << num << " connected components." << std::endl;
-
     std::vector<Vertex> predecessors (boost::num_vertices(g)); 
     std::vector<Weight> distances (boost::num_vertices(g)); 
 
-    IndexMap indexMap = boost::get (boost::vertex_index, g);
-    PredecessorMap predecessorMap (&predecessors[0], indexMap);
-    DistanceMap distanceMap (&distances[0], indexMap);
+    boost::property_map< Graph_t, long long bundled_vertex_type::* >::type 
+        vertex_id = boost::get(&bundled_vertex_type::id, g);
+    boost::property_map< Graph_t, float bundled_vertex_type::* >::type 
+        vertex_lat = boost::get(&bundled_vertex_type::lat, g);
+    boost::property_map< Graph_t, float bundled_vertex_type::* >::type 
+        vertex_lon = boost::get(&bundled_vertex_type::lon, g);
 
-    // predecessor and distance maps can be passed in any order
+    auto p_map = boost::make_iterator_property_map
+        (&predecessors[0], boost::get(boost::vertex_index, g));
+    auto d_map = boost::make_iterator_property_map
+        (&distances[0], boost::get(boost::vertex_index, g));
+    auto w_map = boost::get(&bundled_edge_type::weight, g); 
+    
     int start = vertex (fromNode, g);
-    boost::dijkstra_shortest_paths (g, start, 
-            boost::distance_map (distanceMap).predecessor_map (predecessorMap));
+    boost::dijkstra_shortest_paths(g, start,
+            weight_map(w_map). 
+            predecessor_map(p_map).
+            distance_map(d_map));
 
-
-    /*
-    // Trace back from end node
-    typedef std::vector<Graph::edge_descriptor> PathType;
-    PathType path;
-
-    int count = 0;
-    for (std::vector<Weight>::iterator itr=distances.begin();
-            itr != distances.end(); itr++)
-        if ((*itr) == FLOAT_MAX)
-            count++;
-    std::cout << count << " / " << distances.size () <<
-        " nodes not reachable." << std::endl;
-
-    Vertex v = toNode;
-    count = 0;
-    for (Vertex u = predecessorMap[v]; u != v; v = u, u = predecessorMap[v]) 
-    {
-        std::pair<Graph::edge_descriptor, bool> edgePair = boost::edge(u, v, g);
-        Graph::edge_descriptor edge = edgePair.first;
-        path.push_back ( edge );
-        count++;
-    }
-    */
-
-    dists.resize (0);
+    // Check that all stations have been reached
+    int nvalid = 0;
     for (std::vector <Station>::iterator itr = stationList.begin();
             itr != stationList.end (); itr++)
-    {
-        dists.push_back (distances [(*itr).nodeIndex]);
         if (distances [(*itr).nodeIndex] < FLOAT_MAX)
             nvalid++;
+    assert (nvalid == stationList.size ());
+
+    // Trace back from end node
+    typedef std::vector<Graph_t::edge_descriptor> PathType;
+    PathType path;
+
+    Vertex v0 = 6; // Node from which to start traceback
+    Vertex v = v0;
+    for (Vertex u = p_map[v]; u != v; v = u, u = p_map[v]) 
+    {
+        std::pair<Graph_t::edge_descriptor, bool> edgePair = boost::edge(u, v, g);
+        Graph_t::edge_descriptor edge = edgePair.first;
+        path.push_back ( edge );
     }
 
-    // Write shortest path
-    /*
-    std::cout << "Shortest path from " << start << " to " << v0 << ":" << std::endl;
-    NameMap nameMap = boost::get (boost::vertex_name, g);
     float totalDistance = 0;
     for (PathType::reverse_iterator pathIterator = path.rbegin(); 
             pathIterator != path.rend(); ++pathIterator)
-    {
-        std::cout << "v" << nameMap [boost::source (*pathIterator, g)] << 
-            " -> v" << nameMap [boost::target (*pathIterator, g)] <<
-            " = " << boost::get (boost::edge_weight, g, *pathIterator) << 
-            std::endl;
-    }
-    */
-    return (nvalid);
+        totalDistance += 
+            boost::get (&bundled_edge_type::dist, g, *pathIterator);
+
+    return (totalDistance);
 }

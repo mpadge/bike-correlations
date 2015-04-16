@@ -106,12 +106,13 @@ class Ways
     using Vertex = boost::graph_traits<Graph_t>::vertex_descriptor;
 
     private:
-        Graph_t g;
+        Graph_t gFull, gCompact;
     protected:
         std::string _dirName;
         const std::string _city;
         const std::string osmFile = "/data/data/bikes/planet-boston.osm";
         std::vector <ProfilePair> profile;
+        boost::unordered_set <long long> terminalNodes;
         dmat distMat;
 
     public:
@@ -135,7 +136,7 @@ class Ways
         {
             setProfile ();
             err = readNodes();
-            err = readWays ();
+            err = readAllWays ();
             err = getConnected ();
             err = readStations ();
             distMat.resize (stationList.size (), stationList.size ());
@@ -190,12 +191,13 @@ class Ways
 
         int readNodes ();
         int readTerminalNodes ();
-        int readWays ();
+        int readAllWays ();
         int getConnected ();
         int readStations ();
+        int readCompactWays ();
         int dijkstra (long long fromNode);
         int writeDMat ();
 
-        float calcDist (float x0, float y0, float x1, float y1);
+        float calcDist (std::vector <float> x, std::vector <float> y);
         long long nearestNode (float lon0, float lat0);
 };

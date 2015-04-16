@@ -69,18 +69,19 @@ int Ways::readNodes ()
 /************************************************************************
  ************************************************************************
  **                                                                    **
- **                              READWAYS                              **
+ **                            READALLWAYS                             **
  **                                                                    **
  ************************************************************************
  ************************************************************************/
 
-int Ways::readWays ()
+int Ways::readAllWays ()
 {
     bool inway = false, highway = false, oneway;
     int ipos, id0, id1, nodeCount = 0, nways = 0;
     long long node;
     float d, lat0, lon0, lat1, lon1, weight;
     umapPair_Itr umapitr;
+    boost::unordered_set <long long> nodeList;
     std::vector <long long> waynodes, ids;
     std::vector <float> lats, lons;
     std::string linetxt, tempstr, highwayType;
@@ -129,6 +130,12 @@ int Ways::readWays ()
             {
                 assert (allNodes.find (waynodes[0]) != allNodes.end());
                 node = (*waynodes.begin());
+                // Any highway nodes that appear more than once are put onto
+                // terminalNodes
+                if (nodeList.find (node) == nodeList.end())
+                    nodeList.insert (node);
+                else if (terminalNodes.find (node) == terminalNodes.end())
+                    terminalNodes.insert (node);
                 lat0 = (((*allNodes.find(node)).second).first);
                 lon0 = (((*allNodes.find(node)).second).second);
                 if (nodeNames.find (node) == nodeNames.end())
@@ -139,7 +146,7 @@ int Ways::readWays ()
                     oneVert.id = node;
                     oneVert.lat = lat0;
                     oneVert.lon = lon0;
-                    boost::add_vertex (oneVert, g);
+                    boost::add_vertex (oneVert, gFull);
                 }
                 else
                     id0 = (*nodeNames.find (node)).second;
@@ -152,6 +159,12 @@ int Ways::readWays ()
                     lat1 = ((*umapitr).second).first;
                     lon1 = ((*umapitr).second).second;
                     node = (*itr);
+
+                    if (nodeList.find (node) == nodeList.end())
+                        nodeList.insert (node);
+                    else if (terminalNodes.find (node) == terminalNodes.end())
+                        terminalNodes.insert (node);
+
                     if (nodeNames.find (node) == nodeNames.end())
                     {
                         id1 = nodeCount;
@@ -160,19 +173,19 @@ int Ways::readWays ()
                         oneVert.id = node;
                         oneVert.lat = lat1;
                         oneVert.lon = lon1;
-                        boost::add_vertex (oneVert, g);
+                        boost::add_vertex (oneVert, gFull);
                     }
                     else
                         id1 = (*nodeNames.find (node)).second;
-                    d = calcDist (lon0, lat0, lon1, lat1);
+                    d = calcDist ({lon0, lon1}, {lat0, lat1});
                     if (weight == 0.0)
                         oneEdge.weight = FLOAT_MAX;
                     else
                         oneEdge.weight = d / weight;
                     oneEdge.dist = d;
-                    boost::add_edge(id0, id1, oneEdge, g);
+                    boost::add_edge(id0, id1, oneEdge, gFull);
                     if (!oneway)
-                        boost::add_edge(id1, id0, oneEdge, g);
+                        boost::add_edge(id1, id0, oneEdge, gFull);
                     nways++;
 
                     id0 = id1;
@@ -232,7 +245,7 @@ int Ways::readWays ()
         nodeNames.size () << " unique nodes." << std::endl;
 
     return 0;
-} // end function readWays
+} // end function readAllWays
 
 
 /************************************************************************
@@ -244,18 +257,26 @@ int Ways::readWays ()
  ************************************************************************/
 
 
-float Ways::calcDist (float x0, float y0, float x1, float y1)
+float Ways::calcDist (std::vector <float> x, std::vector <float> y)
 {
-    float d, xd, yd;
+    float d, dsum = 0.0, x0, y0, x1 = x[0], y1 = y[0], xd, yd;
+    assert (x.size () == y.size ());
 
-    xd = (x1 - x0) * PI / 180.0;
-    yd = (y1 - y0) * PI / 180.0;
-    d = sin (yd / 2.0) * sin (yd / 2.0) + cos (y1 * PI / 180.0) *
-        cos (y0 * PI / 180.0) * sin (xd / 2.0) * sin (xd / 2.0);
-    d = 2.0 * atan2 (sqrt (d), sqrt (1.0 - d));
-    d = d * 6371.0;
+    for (int i=1; i<x.size (); i++)
+    {
+        x0 = x1;
+        y0 = y1;
+        x1 = x[i];
+        y1 = y[i];
+        xd = (x1 - x0) * PI / 180.0;
+        yd = (y1 - y0) * PI / 180.0;
+        d = sin (yd / 2.0) * sin (yd / 2.0) + cos (y1 * PI / 180.0) *
+            cos (y0 * PI / 180.0) * sin (xd / 2.0) * sin (xd / 2.0);
+        d = 2.0 * atan2 (sqrt (d), sqrt (1.0 - d));
+        dsum += d * 6371.0;
+    }
 
-    return d; // in kilometres!
+    return dsum; // in kilometres!
 } // end function calcDist
 
 
@@ -269,26 +290,27 @@ float Ways::calcDist (float x0, float y0, float x1, float y1)
 
 int Ways::getConnected ()
 {
-    std::vector<int> compvec(num_vertices(g));
-    int num = boost::connected_components(g, &compvec[0]);
+    std::vector<int> compvec(num_vertices(gFull));
+    int num = boost::connected_components(gFull, &compvec[0]);
 
     // Then store component info in vertices
     /*
     typedef boost::graph_traits <Graph_t>::vertex_iterator viter;
     std::pair <viter, viter> vp;
-    for (vp = vertices(g); vp.first != vp.second; ++vp.first)
+    for (vp = vertices(gFull); vp.first != vp.second; ++vp.first)
         vertex_component [*vp.first] = compvec [*vp.first];
      */
     // Alternative:
     boost::property_map< Graph_t, int bundled_vertex_type::* >::type 
-        vertex_component = boost::get(&bundled_vertex_type::component, g);
-    auto vs = boost::vertices (g);
+        vertex_component = boost::get(&bundled_vertex_type::component, gFull);
+    auto vs = boost::vertices (gFull);
     for (auto vit = vs.first; vit != vs.second; ++vit)
         vertex_component [*vit] = compvec [*vit];
 
     // Optional filtering of component = 0:
     /*
-    in_component_0 <VertMap> filter (boost::get (&bundled_vertex_type::component, g));
+    in_component_0 <VertMap> filter (boost::get 
+        (&bundled_vertex_type::component, gFull));
     boost::filtered_graph <Graph, in_component_0 <VertMap> > fg (g, filter);
     // Next lines reveal filtering does not actually reduce the graph
     auto vsfg = boost::vertices (fg);
@@ -387,15 +409,15 @@ long long Ways::nearestNode (float lon0, float lat0)
      */
 
     boost::property_map< Graph_t, long long bundled_vertex_type::* >::type 
-        vertex_id = boost::get(&bundled_vertex_type::id, g);
+        vertex_id = boost::get(&bundled_vertex_type::id, gFull);
     boost::property_map< Graph_t, float bundled_vertex_type::* >::type 
-        vertex_lat = boost::get(&bundled_vertex_type::lat, g);
+        vertex_lat = boost::get(&bundled_vertex_type::lat, gFull);
     boost::property_map< Graph_t, float bundled_vertex_type::* >::type 
-        vertex_lon = boost::get(&bundled_vertex_type::lon, g);
+        vertex_lon = boost::get(&bundled_vertex_type::lon, gFull);
     boost::property_map< Graph_t, int bundled_vertex_type::* >::type 
-        vertex_component = boost::get(&bundled_vertex_type::component, g);
+        vertex_component = boost::get(&bundled_vertex_type::component, gFull);
 
-    auto vs = boost::vertices (g);
+    auto vs = boost::vertices (gFull);
     for (auto vit = vs.first; vit != vs.second; ++vit)
     {
         if (vertex_component [*vit] == 0)
@@ -431,24 +453,24 @@ long long Ways::nearestNode (float lon0, float lat0)
 
 int Ways::dijkstra (long long fromNode)
 {
-    std::vector<Vertex> predecessors (boost::num_vertices(g)); 
-    std::vector<Weight> distances (boost::num_vertices(g)); 
+    std::vector<Vertex> predecessors (boost::num_vertices(gFull)); 
+    std::vector<Weight> distances (boost::num_vertices(gFull)); 
 
     boost::property_map< Graph_t, long long bundled_vertex_type::* >::type 
-        vertex_id = boost::get(&bundled_vertex_type::id, g);
+        vertex_id = boost::get(&bundled_vertex_type::id, gFull);
     boost::property_map< Graph_t, float bundled_vertex_type::* >::type 
-        vertex_lat = boost::get(&bundled_vertex_type::lat, g);
+        vertex_lat = boost::get(&bundled_vertex_type::lat, gFull);
     boost::property_map< Graph_t, float bundled_vertex_type::* >::type 
-        vertex_lon = boost::get(&bundled_vertex_type::lon, g);
+        vertex_lon = boost::get(&bundled_vertex_type::lon, gFull);
 
     auto p_map = boost::make_iterator_property_map
-        (&predecessors[0], boost::get(boost::vertex_index, g));
+        (&predecessors[0], boost::get(boost::vertex_index, gFull));
     auto d_map = boost::make_iterator_property_map
-        (&distances[0], boost::get(boost::vertex_index, g));
-    auto w_map = boost::get(&bundled_edge_type::weight, g); 
+        (&distances[0], boost::get(boost::vertex_index, gFull));
+    auto w_map = boost::get(&bundled_edge_type::weight, gFull); 
     
-    int start = vertex (fromNode, g);
-    boost::dijkstra_shortest_paths(g, start,
+    int start = vertex (fromNode, gFull);
+    boost::dijkstra_shortest_paths(gFull, start,
             weight_map(w_map). 
             predecessor_map(p_map).
             distance_map(d_map));
@@ -475,9 +497,9 @@ int Ways::dijkstra (long long fromNode)
         for (Vertex u = p_map[v]; u != v; v = u, u = p_map[v]) 
         {
             std::pair<Graph_t::edge_descriptor, bool> edgePair = 
-                boost::edge(u, v, g);
+                boost::edge(u, v, gFull);
             Graph_t::edge_descriptor edge = edgePair.first;
-            dist += boost::get (&bundled_edge_type::dist, g, edge);
+            dist += boost::get (&bundled_edge_type::dist, gFull, edge);
         }
         dists.push_back (dist);
     }

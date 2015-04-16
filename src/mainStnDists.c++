@@ -482,5 +482,44 @@ int Ways::dijkstra (long long fromNode)
         dists.push_back (dist);
     }
 
+    assert (dists.size () == stationList.size ());
+    // First have to match long long fromNode to index# within stationList
+    int id = -INT_MAX;
+    for (int i=0; i<stationList.size(); i++)
+    {
+        if (stationList [i].nodeIndex == fromNode)
+            id = i;
+    }
+    assert (id >= 0);
+
+    for (int i=0; i<stationList.size (); i++)
+        distMat (id, i) = dists [i];
+
     return (0);
 }
+
+
+/************************************************************************
+ ************************************************************************
+ **                                                                    **
+ **                             WRITEDMAT                              **
+ **                                                                    **
+ ************************************************************************
+ ************************************************************************/
+
+int Ways::writeDMat ()
+{
+    std::string fname = "distMat.csv";
+    std::ofstream out_file;
+
+    out_file.open (fname, std::ios::out);
+
+    for (int i=0; i<distMat.size1(); i++)
+    {
+        for (int j=0; j<(distMat.size2() - 1); j++)
+            out_file << distMat (i, j) << ", ";
+        out_file << std::endl;
+    }
+
+    out_file.close ();
+};

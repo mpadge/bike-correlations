@@ -112,6 +112,7 @@ class Ways
         const std::string _city;
         const std::string osmFile = "/data/data/bikes/planet-boston.osm";
         std::vector <ProfilePair> profile;
+        dmat distMat;
 
     public:
         int err, count;
@@ -137,6 +138,8 @@ class Ways
             err = readWays ();
             err = getConnected ();
             err = readStations ();
+            distMat.resize (stationList.size (), stationList.size ());
+
             std::cout << "Getting inter-station distances";
             std::cout.flush ();
             count = 0;
@@ -153,6 +156,7 @@ class Ways
             std::cout << "\rGetting inter-station distances " <<
                 stationList.size () << "/" << stationList.size () <<
                 " done." << std::endl;
+            writeDMat ();
         }
         ~Ways ()
         {
@@ -190,6 +194,7 @@ class Ways
         int getConnected ();
         int readStations ();
         int dijkstra (long long fromNode);
+        int writeDMat ();
 
         float calcDist (float x0, float y0, float x1, float y1);
         long long nearestNode (float lon0, float lat0);

@@ -45,11 +45,6 @@ typedef boost::unordered_map <long long, ddPair>::iterator umapPair_Itr;
 typedef std::pair <std::string, float> ProfilePair;
 typedef float Weight;
 
-struct Segment
-{
-    long long from, to;
-    float d;
-};
 struct Station
 {
     float lon, lat;
@@ -115,11 +110,11 @@ class Ways
     protected:
         std::string _dirName;
         const std::string _city;
-        const std::string osmFile = "/data/data/bikes/planet-boston-bikes.osm";
+        const std::string osmFile = "/data/data/bikes/planet-boston.osm";
         std::vector <ProfilePair> profile;
 
     public:
-        int err;
+        int err, count;
         long long node;
         float d;
 
@@ -132,7 +127,6 @@ class Ways
          */
         umapPair allNodes;
         umapInt nodeNames;
-        std::vector <Segment> wayList;
         std::vector <Station> stationList;
         std::vector <float> dists;
         Ways (std::string str)
@@ -143,12 +137,25 @@ class Ways
             err = readWays ();
             err = getConnected ();
             err = readStations ();
-            d = dijkstra (stationList.begin()->nodeIndex);
-            std::cout << "Shortest path is " << d << "km long" << std::endl;
+            std::cout << "Getting inter-station distances";
+            std::cout.flush ();
+            count = 0;
+            for (std::vector<Station>::iterator itr=stationList.begin();
+                    itr != stationList.end(); itr++)
+            {
+                err = dijkstra (itr->nodeIndex);
+                assert (dists.size () == stationList.size ());
+                std::cout << "\rGetting inter-station distances " <<
+                    count << "/" << stationList.size () << " ";
+                std::cout.flush ();
+                count++;
+            }
+            std::cout << "\rGetting inter-station distances " <<
+                stationList.size () << "/" << stationList.size () <<
+                " done." << std::endl;
         }
         ~Ways ()
         {
-            wayList.resize (0);
             stationList.resize (0);
             dists.resize (0);
         }
@@ -159,7 +166,9 @@ class Ways
         void setProfile ()
         {
             profile.resize (0);
-            profile.push_back (std::make_pair ("motorway", 0.0));
+            // Note that routino has motorway preference = 0.0, but this doesn't
+            // work if weights for preference=0.0 are set to FLOAT_MAX.
+            profile.push_back (std::make_pair ("motorway", 0.01));
             profile.push_back (std::make_pair ("trunk", 0.3));
             profile.push_back (std::make_pair ("primary", 0.7));
             profile.push_back (std::make_pair ("secondary", 0.8));
@@ -180,7 +189,7 @@ class Ways
         int readWays ();
         int getConnected ();
         int readStations ();
-        float dijkstra (long long fromNode);
+        int dijkstra (long long fromNode);
 
         float calcDist (float x0, float y0, float x1, float y1);
         long long nearestNode (float lon0, float lat0);

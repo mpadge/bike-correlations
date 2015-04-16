@@ -76,15 +76,14 @@ int Ways::readNodes ()
 
 int Ways::readWays ()
 {
-    bool inway = false, highway = false;
-    int ipos, id0, id1, nodeCount = 0;
+    bool inway = false, highway = false, oneway;
+    int ipos, id0, id1, nodeCount = 0, nways = 0;
     long long node;
-    float lat0, lon0, lat1, lon1;
+    float d, lat0, lon0, lat1, lon1, weight;
     umapPair_Itr umapitr;
-    Segment seg;
     std::vector <long long> waynodes, ids;
     std::vector <float> lats, lons;
-    std::string linetxt, tempstr;
+    std::string linetxt, tempstr, highwayType;
     std::ifstream in_file;
     
     in_file.open (osmFile.c_str (), std::ifstream::in);
@@ -92,12 +91,19 @@ int Ways::readWays ()
     in_file.clear ();
     in_file.seekg (0); 
 
-    wayList.resize (0);
+    // oneways should only be "yes", but wiki allows the other two as well
+    typedef std::vector <std::string> strvec;
+    strvec oneWayList;
+    oneWayList.push_back ("k=\"oneway\" v=\"yes");
+    oneWayList.push_back ("k=\"oneway\" v=\"0");
+    oneWayList.push_back ("k=\"oneway\" v=\"true");
+
+    //wayList.resize (0);
 
     /*
      * The boost::graph is only given size through the following vertex
-     * additions. Note that vertex numbers are implicit and sequential,
-     * enumeratred by nodeCount, and edges must reference these numbers.
+     * additions. Vertex numbers are implicit and sequential, enumeratred by
+     * nodeCount, and edges must reference these numbers.
      */
     bundled_vertex_type oneVert;
     bundled_edge_type oneEdge;
@@ -111,6 +117,8 @@ int Ways::readWays ()
         {
             inway = true;
             highway = false;
+            oneway = false;
+            weight = -9999.0;
             waynodes.resize (0);
             ids.resize (0);
         }
@@ -156,19 +164,17 @@ int Ways::readWays ()
                     }
                     else
                         id1 = (*nodeNames.find (node)).second;
-                    seg.from = id0;
-                    seg.to = id1;
-                    seg.d = calcDist (lon0, lat0, lon1, lat1);
-                    wayList.push_back (seg);
-                    oneEdge.weight = seg.d;
-                    oneEdge.dist = oneEdge.weight;
+                    d = calcDist (lon0, lat0, lon1, lat1);
+                    if (weight == 0.0)
+                        oneEdge.weight = FLOAT_MAX;
+                    else
+                        oneEdge.weight = d / weight;
+                    oneEdge.dist = d;
                     boost::add_edge(id0, id1, oneEdge, g);
-                    boost::add_edge(id1, id0, oneEdge, g);
+                    if (!oneway)
+                        boost::add_edge(id1, id0, oneEdge, g);
+                    nways++;
 
-                    seg.from = id1;
-                    seg.to = id0;
-                    wayList.push_back (seg);
-                    
                     id0 = id1;
                     lat0 = lat1;
                     lon0 = lon1;
@@ -199,12 +205,22 @@ int Ways::readWays ()
                 {
                     tempstr = "v=\"" + (*itr).first;
                     if (linetxt.find (tempstr) != std::string::npos)
+                    {
                         highway = true;
+                        highwayType = (*itr).first;
+                        weight = (*itr).second;
+                        break;
+                    }
+                    for (strvec::iterator oit = oneWayList.begin();
+                            oit != oneWayList.end(); oit++)
+                        if (linetxt.find (*oit) != std::string::npos)
+                            oneway = true;
                 }
             }
         } // end else if inway
     } // end while getline
     in_file.close ();
+    oneWayList.resize (0);
 
     /*
      * nodes and corresponding indices can then be respectively obtained with
@@ -212,7 +228,7 @@ int Ways::readWays ()
      * index = nodeNames.find (node)->second;
      */
 
-    std::cout << "\rRead " << wayList.size() << " ways with " << 
+    std::cout << "\rRead " << nways << " ways with " << 
         nodeNames.size () << " unique nodes." << std::endl;
 
     return 0;
@@ -413,7 +429,7 @@ long long Ways::nearestNode (float lon0, float lat0)
  ************************************************************************
  ************************************************************************/
 
-float Ways::dijkstra (long long fromNode)
+int Ways::dijkstra (long long fromNode)
 {
     std::vector<Vertex> predecessors (boost::num_vertices(g)); 
     std::vector<Weight> distances (boost::num_vertices(g)); 
@@ -445,24 +461,26 @@ float Ways::dijkstra (long long fromNode)
             nvalid++;
     assert (nvalid == stationList.size ());
 
-    // Trace back from end node
-    typedef std::vector<Graph_t::edge_descriptor> PathType;
-    PathType path;
+    // Trace back from each station 
+    Vertex v0, v;
+    dists.resize (0);
+    float dist;
 
-    Vertex v0 = 6; // Node from which to start traceback
-    Vertex v = v0;
-    for (Vertex u = p_map[v]; u != v; v = u, u = p_map[v]) 
+    for (std::vector <Station>::iterator itr = stationList.begin();
+            itr != stationList.end (); itr++)
     {
-        std::pair<Graph_t::edge_descriptor, bool> edgePair = boost::edge(u, v, g);
-        Graph_t::edge_descriptor edge = edgePair.first;
-        path.push_back ( edge );
+        v0 = itr->nodeIndex;
+        v = v0;
+        dist = 0.0;
+        for (Vertex u = p_map[v]; u != v; v = u, u = p_map[v]) 
+        {
+            std::pair<Graph_t::edge_descriptor, bool> edgePair = 
+                boost::edge(u, v, g);
+            Graph_t::edge_descriptor edge = edgePair.first;
+            dist += boost::get (&bundled_edge_type::dist, g, edge);
+        }
+        dists.push_back (dist);
     }
 
-    float totalDistance = 0;
-    for (PathType::reverse_iterator pathIterator = path.rbegin(); 
-            pathIterator != path.rend(); ++pathIterator)
-        totalDistance += 
-            boost::get (&bundled_edge_type::dist, g, *pathIterator);
-
-    return (totalDistance);
+    return (0);
 }

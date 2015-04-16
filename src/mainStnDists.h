@@ -140,6 +140,7 @@ class Ways
             err = getConnected ();
             err = readStations ();
             distMat.resize (stationList.size (), stationList.size ());
+            err = readCompactWays ();
 
             std::cout << "Getting inter-station distances";
             std::cout.flush ();

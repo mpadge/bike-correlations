@@ -130,11 +130,7 @@ int Ways::readAllWays ()
             {
                 assert (allNodes.find (waynodes[0]) != allNodes.end());
                 node = (*waynodes.begin());
-                // Any highway nodes that appear more than once are put onto
-                // terminalNodes
-                if (nodeList.find (node) == nodeList.end())
-                    nodeList.insert (node);
-                else if (terminalNodes.find (node) == terminalNodes.end())
+                if (terminalNodes.find (node) == terminalNodes.end())
                     terminalNodes.insert (node);
                 lat0 = (((*allNodes.find(node)).second).first);
                 lon0 = (((*allNodes.find(node)).second).second);
@@ -192,6 +188,9 @@ int Ways::readAllWays ()
                     lat0 = lat1;
                     lon0 = lon1;
                 }
+                // just in case:
+                if (terminalNodes.find (waynodes.back ()) == terminalNodes.end())
+                    terminalNodes.insert (waynodes.back ());
             } // end if highway
             inway = false;
         } // end else if end way
@@ -246,6 +245,170 @@ int Ways::readAllWays ()
 
     return 0;
 } // end function readAllWays
+
+
+
+/************************************************************************
+ ************************************************************************
+ **                                                                    **
+ **                          READCOMPACTWAYS                           **
+ **                                                                    **
+ ************************************************************************
+ ************************************************************************/
+
+int Ways::readCompactWays ()
+{
+    bool inway = false, highway = false, oneway;
+    int ipos, id0, id1, nodeCount = 0, nways = 0;
+    long long node;
+    float d, lat0, lon0, lat1, lon1, weight;
+    umapPair_Itr umapitr;
+    boost::unordered_set <long long> nodeList;
+    std::vector <long long> waynodes, ids;
+    std::vector <float> lats, lons;
+    std::string linetxt, tempstr, highwayType;
+    std::ifstream in_file;
+    
+    in_file.open (osmFile.c_str (), std::ifstream::in);
+    assert (!in_file.fail ());
+    in_file.clear ();
+    in_file.seekg (0); 
+
+    // oneways should only be "yes", but wiki allows the other two as well
+    typedef std::vector <std::string> strvec;
+    strvec oneWayList;
+    oneWayList.push_back ("k=\"oneway\" v=\"yes");
+    oneWayList.push_back ("k=\"oneway\" v=\"0");
+    oneWayList.push_back ("k=\"oneway\" v=\"true");
+
+    //wayList.resize (0);
+
+    /*
+     * The boost::graph is only given size through the following vertex
+     * additions. Vertex numbers are implicit and sequential, enumeratred by
+     * nodeCount, and edges must reference these numbers.
+     */
+    bundled_vertex_type oneVert;
+    bundled_edge_type oneEdge;
+
+    std::cout << "Reading ways ...";
+    std::cout.flush ();
+
+    while (getline (in_file, linetxt, '\n'))
+    {
+        if (linetxt.find ("<way") != std::string::npos)
+        {
+            inway = true;
+            highway = false;
+            oneway = false;
+            weight = -9999.0;
+            waynodes.resize (0);
+            ids.resize (0);
+        }
+        else if (linetxt.find ("</way>") != std::string::npos)
+        {
+            //if (highway && waynodes [0] != waynodes [waynodes.size () - 1])
+            if (highway)
+            {
+                lats.resize (0);
+                lons.resize (0);
+                node = waynodes.front ();
+                umapitr = allNodes.find (node);
+                oneVert.lat = ((*umapitr).second).first;
+                oneVert.lon = ((*umapitr).second).second;
+                oneVert.id = node;
+                id0 = nodeCount++;
+                boost::add_vertex (oneVert, gCompact);
+                for (std::vector <long long>::iterator itr=waynodes.begin();
+                        itr != waynodes.end(); itr++)
+                {
+                    assert ((umapitr = allNodes.find (*itr)) != allNodes.end());
+                    lats.push_back (((*umapitr).second).first);
+                    lons.push_back (((*umapitr).second).second);
+                    /*
+                     * If a single way crosses a terminal node, then break it
+                     * into two separate ways either side thereof.
+                     */
+                    if (itr > waynodes.begin() &&
+                            (terminalNodes.find (*itr)) != terminalNodes.end())
+                    {
+                        id1 = nodeCount++;
+                        oneVert.id = (*itr);
+                        oneVert.lat = ((*umapitr).second).first;
+                        oneVert.lon = ((*umapitr).second).second;
+                        boost::add_vertex (oneVert, gCompact);
+
+                        oneEdge.dist = calcDist (lons, lats);
+                        if (weight == 0.0)
+                            oneEdge.weight = FLOAT_MAX;
+                        else
+                            oneEdge.weight = oneEdge.dist / weight;
+                        boost::add_edge (id0, id1, oneEdge, gCompact);
+                        if (!oneway)
+                            boost::add_edge(id1, id0, oneEdge, gCompact);
+
+                        nways++;
+                        id0 = id1;
+                    }
+                }
+            } // end if highway
+            inway = false;
+        } // end else if highway
+        else if (inway)
+        {
+            /*
+             * Nodes have to first be stored, because they are only subsequently
+             * analysed if they are part of a highway.
+             */
+            if (linetxt.find ("<nd") != std::string::npos)
+            {
+                ipos = linetxt.find ("<nd ref=");
+                linetxt = linetxt.substr (ipos + 9, 
+                        linetxt.length () - ipos - 9);
+                node = atoll (linetxt.c_str ());
+                waynodes.push_back (atoll (linetxt.c_str ()));
+            }
+            else if (linetxt.find ("k=\"highway\"") != std::string::npos)
+            {
+                // highway is only true if it has one of the values listed in
+                // the profile
+                for (std::vector<ProfilePair>::iterator itr = profile.begin();
+                        itr != profile.end(); itr++)
+                {
+                    tempstr = "v=\"" + (*itr).first;
+                    if (linetxt.find (tempstr) != std::string::npos)
+                    {
+                        highway = true;
+                        highwayType = (*itr).first;
+                        weight = (*itr).second;
+                        break;
+                    }
+                    for (strvec::iterator oit = oneWayList.begin();
+                            oit != oneWayList.end(); oit++)
+                        if (linetxt.find (*oit) != std::string::npos)
+                            oneway = true;
+                }
+            }
+        } // end else if inway
+    } // end while getline
+    in_file.close ();
+    oneWayList.resize (0);
+
+    /*
+     * nodes and corresponding indices can then be respectively obtained with
+     * node = nodeNames.find (node)->first; // redundant
+     * index = nodeNames.find (node)->second;
+     */
+
+    std::cout << "\rRead " << nways << " compact ways with " << 
+        num_vertices (gCompact) << " vertices." << std::endl;
+
+    std::vector<int> compvec(num_vertices(gCompact));
+    int num = boost::connected_components(gCompact, &compvec[0]);
+    std::cout << "***Compact ways have " << num << " components***" << std::endl;
+
+    return 0;
+} // end function readCompactWays
 
 
 /************************************************************************

@@ -141,6 +141,7 @@ class Ways
             err = readStations ();
             distMat.resize (stationList.size (), stationList.size ());
             err = readCompactWays ();
+            err = remapStations ();
 
             std::cout << "Getting inter-station distances";
             std::cout.flush ();
@@ -195,6 +196,7 @@ class Ways
         int readAllWays ();
         int getConnected ();
         int readStations ();
+        int remapStations ();
         int readCompactWays ();
         int dijkstra (long long fromNode);
         int writeDMat ();

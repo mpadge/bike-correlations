@@ -1,3 +1,15 @@
+/************************************************************************
+ * This software is in the public domain, furnished "as is", without technical
+ * support, and with no warranty, express or implied, as to its usefulness for
+ * any purpose.
+ * 
+ * <mainStnDists.c++>
+ * Calculates pair-wise distances between points routed through and OSM network
+ * using internal preference weightings for highway kinds.
+ * 
+ * Author: Mark Padgham, April 2015
+ ************************************************************************/
+
 /*
  * Stores a planet-osm file as a boost::graph. The latter rely on property maps,
  * which are statically-typed entities, and so data are initially read and

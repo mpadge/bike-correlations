@@ -1,3 +1,15 @@
+/************************************************************************
+ * This software is in the public domain, furnished "as is", without technical
+ * support, and with no warranty, express or implied, as to its usefulness for
+ * any purpose.
+ * 
+ * <mainStnDists.c++>
+ * Calculates pair-wise distances between points routed through and OSM network
+ * using internal preference weightings for highway kinds.
+ * 
+ * Author: Mark Padgham, April 2015
+ ************************************************************************/
+
 #include "mainStnDists.h"
 
 /************************************************************************
@@ -76,10 +88,21 @@ int Ways::readNodes ()
 
 int Ways::readAllWays ()
 {
+    /*
+     * The sole point of this routine is to make the boost::graph "gFull", which
+     * is in turn used for the three purposes of (1) determining the largest
+     * connected component, (2) enabling bike stations to be allocated to
+     * the nearest highway vertex that is part of this connected component, and
+     * (3) making a list of terminal nodes which are any that appear in multiple
+     * ways plus the station nodes.
+     *
+     * The lat-lons of vertices are needed in gFull for matching stations, but
+     * edge distances are not relevant, so default to 1.0.
+     */
     bool inway = false, highway = false, oneway;
     int ipos, id0, id1, nodeCount = 0, nways = 0;
     long long node;
-    float d, lat0, lon0, lat1, lon1, weight;
+    float lat0, lon0, lat1, lon1;
     umapPair_Itr umapitr;
     boost::unordered_set <long long> nodeList;
     std::vector <long long> waynodes;
@@ -116,7 +139,6 @@ int Ways::readAllWays ()
             inway = true;
             highway = false;
             oneway = false;
-            weight = -FLOAT_MAX;
             waynodes.resize (0);
         }
         else if (linetxt.find ("</way>") != std::string::npos)
@@ -172,10 +194,7 @@ int Ways::readAllWays ()
                     else
                         id1 = (*nodeNames.find (node)).second;
 
-                    d = calcDist ({lon0, lon1}, {lat0, lat1});
-                    assert (weight > 0.0);
-                    oneEdge.weight = d / weight;
-                    oneEdge.dist = d;
+                    oneEdge.weight = oneEdge.dist = 1.0;
                     boost::add_edge(id0, id1, oneEdge, gFull);
                     if (!oneway)
                         boost::add_edge(id1, id0, oneEdge, gFull);
@@ -213,7 +232,6 @@ int Ways::readAllWays ()
                     if (linetxt.find (tempstr) != std::string::npos)
                     {
                         highway = true;
-                        weight = (*itr).second;
                         break;
                     }
                     for (strvec::iterator oit = oneWayList.begin();
@@ -448,11 +466,14 @@ float Ways::calcDist (std::vector <float> x, std::vector <float> y)
         y0 = y1;
         x1 = x[i];
         y1 = y[i];
+        
         xd = (x1 - x0) * PI / 180.0;
         yd = (y1 - y0) * PI / 180.0;
+
         d = sin (yd / 2.0) * sin (yd / 2.0) + cos (y1 * PI / 180.0) *
             cos (y0 * PI / 180.0) * sin (xd / 2.0) * sin (xd / 2.0);
         d = 2.0 * atan2 (sqrt (d), sqrt (1.0 - d));
+
         dsum += d * 6371.0;
     }
 
@@ -480,6 +501,7 @@ int Ways::getConnected ()
     for (vp = vertices(gFull); vp.first != vp.second; ++vp.first)
         vertex_component [*vp.first] = compvec [*vp.first];
      */
+
     // Alternative:
     boost::property_map< Graph_t, int bundled_vertex_type::* >::type 
         vertex_component = boost::get(&bundled_vertex_type::component, gFull);
@@ -497,6 +519,7 @@ int Ways::getConnected ()
     for (auto vit = vsfg.first; vit != vsfg.second; ++vit)
         std::cout << *vit << std::endl;
      */
+
     return num;
 } // end function getConnected
 
@@ -520,14 +543,16 @@ int Ways::readStations ()
     
     in_file.open (fname.c_str (), std::ifstream::in);
     assert (!in_file.fail ());
+
     in_file.clear ();
     in_file.seekg (0); 
     getline (in_file, linetxt, '\n'); // header
     while (getline (in_file, linetxt, '\n'))
         ipos++;
+
     in_file.clear ();
     in_file.seekg (0); 
-    getline (in_file, linetxt, '\n'); // header
+    getline (in_file, linetxt, '\n'); 
 
     stationList.resize (0);
     std::cout << "Matching " << ipos << " stations to nearest OSM nodes ...";
@@ -611,13 +636,16 @@ long long Ways::nearestNode (float lon0, float lat0)
         {
             lat = vertex_lat [*vit];
             lon = vertex_lon [*vit];
+            
             //d = std::abs (lon - lon0) + std::abs (lat - lat0);
+            
             xd = (lon - lon0) * PI / 180.0;
             yd = (lat - lat0) * PI / 180.0;
             d = sin (yd / 2.0) * sin (yd / 2.0) + cos (lat * PI / 180.0) *
                 cos (lat0 * PI / 180.0) * sin (xd / 2.0) * sin (xd / 2.0);
             d = 2.0 * atan2 (sqrt (d), sqrt (1.0 - d));
             d = d * 6371.0;
+
             if (d < dmin)
             {
                 dmin = d;

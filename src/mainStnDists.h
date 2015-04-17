@@ -140,6 +140,7 @@ class Ways
             err = getConnected ();
             err = readStations ();
             distMat.resize (stationList.size (), stationList.size ());
+            
             err = readCompactWays ();
             err = remapStations ();
 
@@ -149,7 +150,7 @@ class Ways
             for (std::vector<Station>::iterator itr=stationList.begin();
                     itr != stationList.end(); itr++)
             {
-                err = dijkstra (itr->nodeIndex);
+                err = dijkstra (itr->nodeIndex, true);
                 assert (dists.size () == stationList.size ());
                 std::cout << "\rGetting inter-station distances " <<
                     count << "/" << stationList.size () << " ";
@@ -198,7 +199,7 @@ class Ways
         int readStations ();
         int remapStations ();
         int readCompactWays ();
-        int dijkstra (long long fromNode);
+        int dijkstra (long long fromNode, bool compact);
         int writeDMat ();
 
         float calcDist (std::vector <float> x, std::vector <float> y);

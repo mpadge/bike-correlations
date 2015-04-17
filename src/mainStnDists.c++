@@ -62,7 +62,7 @@ int Ways::readNodes ()
     std::cout << "\rRead coordinates of " << allNodes.size () << " nodes." <<
         std::endl;
 
-    return (allNodes.size ());
+    return allNodes.size ();
 } // end Way::readNodes
 
 
@@ -83,7 +83,6 @@ int Ways::readAllWays ()
     umapPair_Itr umapitr;
     boost::unordered_set <long long> nodeList;
     std::vector <long long> waynodes, ids;
-    std::vector <float> lats, lons;
     std::string linetxt, tempstr, highwayType;
     std::ifstream in_file;
     
@@ -128,8 +127,10 @@ int Ways::readAllWays ()
             //if (highway && waynodes [0] != waynodes [waynodes.size () - 1])
             if (highway)
             {
-                assert (allNodes.find (waynodes[0]) != allNodes.end());
                 node = waynodes.front ();
+                assert ((umapitr = allNodes.find (node)) != allNodes.end());
+                lat0 = ((*umapitr).second).first;
+                lon0 = ((*umapitr).second).second;
 
                 // Presume all first nodes are terminal nodes
                 if (terminalNodes.find (node) == terminalNodes.end())
@@ -140,8 +141,8 @@ int Ways::readAllWays ()
                     id0 = nodeCount++;
                     nodeNames [node] = id0;
                     oneVert.id = node;
-                    oneVert.lat = (((*allNodes.find(node)).second).first);
-                    oneVert.lon = (((*allNodes.find(node)).second).second);
+                    oneVert.lat = lat0;
+                    oneVert.lon = lon0;
                     boost::add_vertex (oneVert, gFull);
                 }
                 else
@@ -152,10 +153,10 @@ int Ways::readAllWays ()
                         itr=std::next (waynodes.begin());
                         itr != waynodes.end(); itr++)
                 {
-                    assert ((umapitr = allNodes.find (*itr)) != allNodes.end());
+                    node = (*itr);
+                    assert ((umapitr = allNodes.find (node)) != allNodes.end());
                     lat1 = ((*umapitr).second).first;
                     lon1 = ((*umapitr).second).second;
-                    node = (*itr);
 
                     if (nodeList.find (node) == nodeList.end())
                         nodeList.insert (node);
@@ -164,9 +165,8 @@ int Ways::readAllWays ()
 
                     if (nodeNames.find (node) == nodeNames.end())
                     {
-                        id1 = nodeCount;
+                        id1 = nodeCount++;
                         nodeNames [node] = id1;
-                        nodeCount++;
                         oneVert.id = node;
                         oneVert.lat = lat1;
                         oneVert.lon = lon1;
@@ -174,17 +174,16 @@ int Ways::readAllWays ()
                     }
                     else
                         id1 = (*nodeNames.find (node)).second;
+
                     d = calcDist ({lon0, lon1}, {lat0, lat1});
-                    if (weight == 0.0)
-                        oneEdge.weight = FLOAT_MAX;
-                    else
-                        oneEdge.weight = d / weight;
+                    assert (weight > 0.0);
+                    oneEdge.weight = d / weight;
                     oneEdge.dist = d;
                     boost::add_edge(id0, id1, oneEdge, gFull);
                     if (!oneway)
                         boost::add_edge(id1, id0, oneEdge, gFull);
-                    nways++;
 
+                    nways++;
                     id0 = id1;
                     lat0 = lat1;
                     lon0 = lon1;
@@ -240,8 +239,9 @@ int Ways::readAllWays ()
 
     std::vector<int> compvec(num_vertices(gFull));
     ipos = boost::connected_components(gFull, &compvec[0]);
-    std::cout << "\rRead " << nways << " ways with " << num_vertices
-        (gFull) << << " vertices and " << ipos << " components<< std::endl;
+    std::cout << "\rRead " << nways << " ways with " << 
+        num_vertices (gFull) << " vertices and " << ipos << 
+        " components" << std::endl;
 
     return 0;
 } // end function readAllWays
@@ -364,6 +364,11 @@ int Ways::readCompactWays ()
                         if (!oneway)
                             boost::add_edge(id1, id0, oneEdge, gCompact);
 
+                        lats.resize (0);
+                        lons.resize (0);
+                        lats.push_back (((*umapitr).second).first);
+                        lons.push_back (((*umapitr).second).second);
+
                         nways++;
                         id0 = id1;
                     }
@@ -419,8 +424,9 @@ int Ways::readCompactWays ()
 
     std::vector<int> compvec(num_vertices(gCompact));
     ipos = boost::connected_components(gCompact, &compvec[0]);
-    std::cout << "\rRead " << nways << " compact ways with " << num_vertices
-        (gCompact) << " vertices and " << ipos << " components<< std::endl;
+    std::cout << "\rRead " << nways << " compact ways with " << 
+        num_vertices (gCompact) << " vertices and " << ipos << 
+        " components" << std::endl;
 
     return 0;
 } // end function readCompactWays
@@ -495,7 +501,7 @@ int Ways::getConnected ()
     for (auto vit = vsfg.first; vit != vsfg.second; ++vit)
         std::cout << *vit << std::endl;
      */
-    return (num);
+    return num;
 } // end function getConnected
 
 
@@ -673,26 +679,32 @@ int Ways::remapStations ()
  ************************************************************************
  ************************************************************************/
 
-int Ways::dijkstra (long long fromNode)
+int Ways::dijkstra (long long fromNode, bool compact)
 {
-    std::vector<Vertex> predecessors (boost::num_vertices(gCompact)); 
-    std::vector<Weight> distances (boost::num_vertices(gCompact)); 
+    Graph_t gRoute;
+    if (compact)
+        gRoute = gCompact;
+    else
+        gRoute = gFull;
+
+    std::vector<Vertex> predecessors (boost::num_vertices(gRoute)); 
+    std::vector<Weight> distances (boost::num_vertices(gRoute)); 
 
     boost::property_map< Graph_t, long long bundled_vertex_type::* >::type 
-        vertex_id = boost::get(&bundled_vertex_type::id, gCompact);
+        vertex_id = boost::get(&bundled_vertex_type::id, gRoute);
     boost::property_map< Graph_t, float bundled_vertex_type::* >::type 
-        vertex_lat = boost::get(&bundled_vertex_type::lat, gCompact);
+        vertex_lat = boost::get(&bundled_vertex_type::lat, gRoute);
     boost::property_map< Graph_t, float bundled_vertex_type::* >::type 
-        vertex_lon = boost::get(&bundled_vertex_type::lon, gCompact);
+        vertex_lon = boost::get(&bundled_vertex_type::lon, gRoute);
 
     auto p_map = boost::make_iterator_property_map
-        (&predecessors[0], boost::get(boost::vertex_index, gCompact));
+        (&predecessors[0], boost::get(boost::vertex_index, gRoute));
     auto d_map = boost::make_iterator_property_map
-        (&distances[0], boost::get(boost::vertex_index, gCompact));
-    auto w_map = boost::get(&bundled_edge_type::weight, gCompact); 
+        (&distances[0], boost::get(boost::vertex_index, gRoute));
+    auto w_map = boost::get(&bundled_edge_type::weight, gRoute); 
     
-    int start = vertex (fromNode, gCompact);
-    boost::dijkstra_shortest_paths(gCompact, start,
+    int start = vertex (fromNode, gRoute);
+    boost::dijkstra_shortest_paths(gRoute, start,
             weight_map(w_map). 
             predecessor_map(p_map).
             distance_map(d_map));
@@ -719,9 +731,9 @@ int Ways::dijkstra (long long fromNode)
         for (Vertex u = p_map[v]; u != v; v = u, u = p_map[v]) 
         {
             std::pair<Graph_t::edge_descriptor, bool> edgePair = 
-                boost::edge(u, v, gCompact);
+                boost::edge(u, v, gRoute);
             Graph_t::edge_descriptor edge = edgePair.first;
-            dist += boost::get (&bundled_edge_type::dist, gCompact, edge);
+            dist += boost::get (&bundled_edge_type::dist, gRoute, edge);
         }
         dists.push_back (dist);
     }
@@ -739,7 +751,7 @@ int Ways::dijkstra (long long fromNode)
     for (int i=0; i<stationList.size (); i++)
         distMat (id, i) = dists [i];
 
-    return (0);
+    return 0;
 }
 
 
@@ -762,7 +774,7 @@ int Ways::writeDMat ()
     {
         for (int j=0; j<(distMat.size2() - 1); j++)
             out_file << distMat (i, j) << ", ";
-        out_file << std::endl;
+        out_file << distMat (i, distMat.size2() - 1) << std::endl;
     }
 
     out_file.close ();

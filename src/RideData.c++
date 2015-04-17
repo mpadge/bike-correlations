@@ -431,12 +431,12 @@ int RideData::readOneFileNYC (int filei)
 /************************************************************************
  ************************************************************************
  **                                                                    **
- **                          SUMMARYSTATSNYC                           **
+ **                           SUMMARYSTATS                             **
  **                                                                    **
  ************************************************************************
  ************************************************************************/
 
-void RideData::summaryStatsNYC ()
+void RideData::summaryStats ()
 {
     // Average Age
     int tempi [2] = {0,0};
@@ -462,9 +462,221 @@ void RideData::summaryStatsNYC ()
         std::cout << "Female/Male ratio = " << (double) tempi [0] /
             (double) tempi [1] << std::endl;
     }
-} // end summaryStatsNYC
+} // end summaryStats
 
 
+/************************************************************************
+ ************************************************************************
+ **                                                                    **
+ **                        GETZIPFILENAMEBOSTON                        **
+ **                                                                    **
+ ************************************************************************
+ ************************************************************************/
+
+int RideData::getZipFileNameBoston (int filei)
+{
+    const char *archive;
+    struct zip *za;
+    struct zip_file *zf;
+    struct zip_stat sb;
+    char buf[100]; 
+    int err;
+
+    std::string fname_base = StationData::GetDirName() + '/' + filelist [filei];
+    archive = fname_base.c_str ();
+    if ((za = zip_open(archive, 0, &err)) == NULL) {
+        zip_error_to_str(buf, sizeof(buf), err, errno);
+        std::cout << stderr << archive << "can't open size archive : " <<
+            buf << std::endl;
+        return 1;
+    } 
+
+    if (zip_stat_index(za, 0, 0, &sb) == 0) {
+        fileName = sb.name;
+        assert (fileName == "hubway_trips.csv");
+        zf = zip_fopen_index(za, 0, 0);
+        if (!zf) {
+            fprintf(stderr, "ERROR: zip can not be opened/n");
+            return 1;
+        }
+    }
+
+    zip_fclose(zf); 
+    if (zip_close(za) == -1) {
+        std::cout << stderr << "can't close zip archive " << archive <<
+            std::endl;
+        fprintf(stderr, "can't close zip archive `%s'/n", archive);
+        return 1;
+    }
+
+    return 0;
+}
+
+
+/************************************************************************
+ ************************************************************************
+ **                                                                    **
+ **                          READONEFILEBOSTON                         **
+ **                                                                    **
+ ************************************************************************
+ ************************************************************************/
+
+int RideData::readOneFileBoston (int filei)
+{
+    // First unzip file, for which all error checks have been done in
+    // getZipFileNameBoston above
+    std::string fname = StationData::GetDirName() + '/' + filelist [filei];
+    const char *archive;
+    struct zip *za;
+    struct zip_file *zf;
+    struct zip_stat sb;
+    char buf[100]; 
+    int err, len, fileYear = 2013, age;
+    long long sum;
+
+    archive = fname.c_str ();
+    za = zip_open(archive, 0, &err);
+    zf = zip_fopen_index(za, 0, 0);
+    zip_stat_index(za, 0, 0, &sb);
+    std::string fname_csv = StationData::GetDirName() + '/' + fileName;
+    assert (fileName == "hubway_trips.csv");
+    // TODO: Replace the 0 index in zip_fopen_index and zip_stat_index with
+    // appropriate numbers to avoid the above assert.
+    std::ofstream out_file (fname_csv.c_str(), std::ios::out);
+
+    sum = 0;
+    while (sum != sb.size) {
+        len = zip_fread(zf, buf, 100);
+        if (len < 0) {
+            // TODO: INSERT ERROR HANDLER
+        }
+        out_file.write (buf, len);
+        sum += len;
+    }
+    out_file.close ();
+    zip_fclose(zf); 
+
+    // Then read unzipped .csv file
+    int count = 0, ipos, tempi [4];
+    int nstations = getStnIndxLen ();
+    std::ifstream in_file;
+    std::string linetxt, usertype;
+
+    in_file.open (fname_csv.c_str (), std::ifstream::in);
+    if (in_file.fail ()) {
+        // TODO: INSERT ERROR HANDLER
+    } 
+    getline (in_file, linetxt, '\n');
+    while (getline (in_file, linetxt, '\n')) { count++;	}
+
+    std::cout << "Reading file [";
+    if (filei < 10)
+        std::cout << " ";
+    std::cout << filei << "/" << filelist.size() <<
+        "]: " << fileName.c_str() << " with " <<
+        count << " records";
+    std::cout.flush ();
+
+    in_file.clear ();
+    in_file.seekg (0); 
+    getline (in_file, linetxt, '\n');
+    count = 0;
+
+    /* Structure is:
+     * [1] seq_id, [2] hubway_id, [3] status, [4] duration, [5] start_date,
+     * [6] strt_statn, [7] end_date, [8] end_statn, [9] bike_nr, 
+     * [10] subsc_type, [11] zip_code, [12] birth_date, [13] gender
+     */
+    while (getline (in_file, linetxt,'\n')) {
+        for (int i=0; i<5; i++) {
+            ipos = linetxt.find(",",0);
+            linetxt = linetxt.substr (ipos + 1, linetxt.length () - ipos - 1);
+        }
+        ipos = linetxt.find (",", 0);
+        tempi [0] = atoi (linetxt.substr (0, ipos).c_str()); // Start Station ID
+        linetxt = linetxt.substr (ipos + 1, linetxt.length () - ipos - 1);
+        ipos = linetxt.find (",", 0);
+        linetxt = linetxt.substr (ipos + 1, linetxt.length () - ipos - 1);
+        ipos = linetxt.find (",", 0);
+        tempi [1] = atoi (linetxt.substr (0, ipos).c_str()); // End Station ID
+
+        /* NOTE: Missing stations return 0 from atoi, and there is no station#0
+         * for Boston.
+         * TODO: Check that!
+         */
+        if (tempi [0] > 0 && tempi [0] < RideData::getStnIndxLen() && 
+                tempi [1] > 0 && tempi [1] < RideData::getStnIndxLen() &&
+                tempi [0] != tempi [1])
+        {
+            tempi [0] = _StationIndex [tempi[0]];
+            tempi [1] = _StationIndex [tempi[1]];
+            if (tempi [0] < 0 || tempi [0] > nstations || tempi [1] < 0 ||
+                    tempi [1] > nstations) { // should never happen
+                std::cout << "ERROR: station [" << 
+                    tempi [0] << "->" << tempi[1] << "] not in StationIndex!" <<
+                    std::endl;
+            }
+            linetxt = linetxt.substr (ipos + 3, linetxt.length () - ipos - 1);
+            ipos = linetxt.find(",",0);
+            linetxt = linetxt.substr (ipos + 1, linetxt.length () - ipos - 1);
+            ipos = linetxt.find (",", 0);
+            usertype = linetxt.substr (0, ipos).c_str(); // User type
+            linetxt = linetxt.substr (ipos + 1, linetxt.length () - ipos - 1);
+            ipos = linetxt.find (",", 0);
+            linetxt = linetxt.substr (ipos + 1, linetxt.length () - ipos - 1);
+            ipos = linetxt.find(",",0);
+            tempi [2] = atoi (linetxt.substr (0, ipos).c_str()); // Birthyear
+            age = fileYear - tempi [2];
+            if (age > 0 && age < 99)
+                ageDistribution [age]++;
+            tempi [2] = floor (tempi [2] / 10);
+            if (RideData::getSubscriber () > 2)
+            {
+                if (age > 0 && age < 37) // Average age is 36.7
+                    ntripsYoung (tempi [0], tempi [1])++;
+                else if (age < 99)
+                    ntripsOld (tempi [0], tempi [1])++;
+                // TODO: Write this better!
+                if (tempi [2] == 192)
+                    ntrips1920 (tempi [0], tempi [1])++;
+                else if (tempi [2] == 193)
+                    ntrips1930 (tempi [0], tempi [1])++;
+                else if (tempi [2] == 194)
+                    ntrips1940 (tempi [0], tempi [1])++;
+                else if (tempi [2] == 195)
+                    ntrips1950 (tempi [0], tempi [1])++;
+                else if (tempi [2] == 196)
+                    ntrips1960 (tempi [0], tempi [1])++;
+                else if (tempi [2] == 197)
+                    ntrips1970 (tempi [0], tempi [1])++;
+                else if (tempi [2] == 198)
+                    ntrips1980 (tempi [0], tempi [1])++;
+                else if (tempi [2] == 199)
+                    ntrips1990 (tempi [0], tempi [1])++;
+                else if (tempi [2] == 200)
+                    ntrips2000 (tempi [0], tempi [1])++;
+            }
+            else
+            {
+                linetxt = linetxt.substr (ipos + 1, 1);
+                if (usertype != "Registered")
+                    ntrips_cust (tempi [0], tempi [1])++;
+                else
+                    if (linetxt == "M")
+                        ntrips_sub_m (tempi [0], tempi [1])++;
+                    else if (linetxt == "F")
+                        ntrips_sub_f (tempi [0], tempi [1])++;
+                    else
+                        ntrips_sub_n (tempi [0], tempi [1])++;
+            }
+            count++; 
+        } // end if stations in StnIndxLen
+    } // end while getline
+    in_file.close();
+    std::cout << " and " << count << " valid trips." << std::endl;
+
+    return count;
+} // end readOneFileNYC
 /************************************************************************
  ************************************************************************
  **                                                                    **

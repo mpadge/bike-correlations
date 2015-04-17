@@ -43,6 +43,15 @@ int Ways::readNodes ()
     std::string linetxt, txt;
     std::ifstream in_file;
     
+    /*
+     * Note that boost::iostreams::bzip2_decompressor could be used to unzip the
+     * .bz2, but they don't seem to compile, and it's not for lack of the
+     * appropriate libraries. The compiler suggests an internal error in the
+     * decompressor.
+     *
+     * TODO: Check this out further
+     */
+
     in_file.open (osmFile.c_str (), std::ifstream::in);
     assert (!in_file.fail ());
     in_file.clear ();
@@ -782,7 +791,7 @@ int Ways::dijkstra (long long fromNode)
 
 int Ways::writeDMat ()
 {
-    std::string fname = "distMat.csv";
+    std::string fname = "stationDistsMat-boston.csv";
     std::ofstream out_file;
 
     out_file.open (fname, std::ios::out);

@@ -462,7 +462,7 @@ int StationData::calcR2 (bool from)
      *
      * x1 is necessary to allow it to revert to x0 in each inner loop.
      * The code ensures that all vectors have the same lengths at all times, and
-     * so explicit loops are used for clarity rather than iterators.
+     * so explicit loops rather than iterators are used for clarity.
      */
     for (int i=0; i<(numStations-1); i++)
     {
@@ -538,6 +538,10 @@ int StationData::calcR2 (bool from)
                 y2.resize (0);
                 d.resize (0);
             } // end if nearfar
+            // TODO: find out why nearfar for boston does not work!
+            if (i == 0)
+                std::cout << "[" << x1.size () << ", " << y0.size () << "]" <<
+                    std::endl;
             regrResults = regression (x1, y0);
             r2 (i, j) = r2 (j, i) = regrResults.r2;
             cov (i, j) = cov (j, i) = regrResults.cov;

@@ -26,6 +26,8 @@
  * (2) A second reading of the data is used to make "gCompact" which only has
  * terminalNodes as vertices, and edge distances as traced along all
  * intermediate nodes.
+ *
+ * TODO: CGAL check that station points lie within OSM polygon
  */
 
 #include "Utils.h"
@@ -41,6 +43,11 @@
 #include <boost/graph/connected_components.hpp>
 //#include <boost/graph/filtered_graph.hpp>
 //#include <boost/graph/graph_utility.hpp>
+
+#include <boost/iostreams/filtering_streambuf.hpp>
+#include <boost/iostreams/copy.hpp>
+#include <boost/iostreams/filter/bzip2.hpp>
+
 
 typedef std::pair <double, double> ddPair;
 
@@ -117,7 +124,8 @@ class Ways
     protected:
         std::string _dirName;
         const std::string _city;
-        const std::string osmFile = "/data/data/bikes/planet-boston.osm";
+        const std::string bzFile = "/data/data/bikes/planet-boston.bz2",
+            osmFile = "/data/data/bikes/planet-boston.osm";
         std::vector <ProfilePair> profile;
         boost::unordered_set <long long> terminalNodes;
         dmat distMat;

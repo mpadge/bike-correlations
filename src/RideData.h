@@ -35,7 +35,7 @@ class RideData: public StationData
             _numTripFiles = filelist.size ();
             _stnIndxLen = _StationIndex.size ();
             missingStations.resize (0);
-            if (_city == "nyc")
+            if (_city == "nyc" || _city == "boston")
             {
                 if (_subscriber < 3)
                     subscriberMFConstruct ();
@@ -68,7 +68,11 @@ class RideData: public StationData
 
         int getZipFileNameNYC (int filei);
         int readOneFileNYC (int filei);
-        void summaryStatsNYC ();
+        void summaryStats ();
+
+        int getZipFileNameBoston (int filei);
+        int readOneFileBoston (int filei);
+        
         int aggregateTrips ();
 
         int readR2Mat (bool from);

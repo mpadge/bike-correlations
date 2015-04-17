@@ -130,13 +130,24 @@ int main(int argc, char *argv[]) {
             }
         } // end for i
         std::cout << "Total number of trips = " << count << std::endl;
-        rideData.summaryStatsNYC ();
+        rideData.summaryStats ();
         tempi [0] = rideData.aggregateTrips ();
         fname = "NumTrips_nyc_" + std::to_string (rideData.getSubscriber()) +
             std::to_string (rideData.getGender ()) + ".csv";
     } 
     else if (city == "boston")
     {
+        for (int i=0; i<rideData.getNumFiles(); i++) // Only 1 file!
+        {
+            tempi [0] = rideData.getZipFileNameBoston (i);
+            count = rideData.readOneFileBoston (i);
+            tempi [0] = rideData.removeFile ();
+        }
+        std::cout << "Total number of trips = " << count << std::endl;
+        rideData.summaryStats ();
+        tempi [0] = rideData.aggregateTrips ();
+        fname = "NumTrips_boston_" + std::to_string (rideData.getSubscriber()) +
+            std::to_string (rideData.getGender ()) + ".csv";
     }
 
     rideData.readDMat ();
@@ -144,6 +155,11 @@ int main(int argc, char *argv[]) {
     rideData.writeNumTrips (fname);
 
     // Then loop over (all, near, far) data
+    std::string stdtxt;
+    if (rideData.getStandardise ())
+        stdtxt = "std_";
+    else
+        stdtxt = "unstd_";
     for (int i=0; i<3; i++)
     {
         rideData.nearfar = i;
@@ -156,22 +172,12 @@ int main(int argc, char *argv[]) {
         }
         else if (city == "nyc" || city == "boston")
         {
-            r2name = "R2_" + city + "_from_" + rideData.txtnf +
+            r2name = "R2_" + city + "_from_" + rideData.txtnf + "_" +
                 std::to_string (rideData.getSubscriber ()) +
                 std::to_string (rideData.getGender ()) + ".csv";
-            covname = "Cov_" + city + "_from_" + rideData.txtnf +
+            covname = "Cov_" + city + "_from_" + stdtxt + rideData.txtnf + "_" +
                 std::to_string (rideData.getSubscriber ()) +
                 std::to_string (rideData.getGender ()) + ".csv";
-        }
-        if (rideData.getStandardise ())
-        {
-            r2name.replace (r2name.length () - 4, 4, "_std.csv");
-            covname.replace (covname.length () - 4, 4, "_std.csv");
-        }
-        else
-        {
-            r2name.replace (r2name.length () - 4, 4, "_unstd.csv");
-            covname.replace (covname.length () - 4, 4, "_unstd.csv");
         }
 
         rideData.calcR2 (true);

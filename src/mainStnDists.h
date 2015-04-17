@@ -5,20 +5,15 @@
  * storage as unordered_maps also speeds up mapping node IDs in ways onto
  * lat-lon coordinates.
  *
- * Two main problems that need to be addressed are:
- * 1. OSM node names are huge integers >> MAX_INT, yet the boost graphs member
- * function id() used to reference vertices returns an int, and thus passing any
- * values > MAX_INT causes a bad allocation. The way around this here is to
- * index nodes with nodeNames, which renumbers all terminal nodes to consecutive
- * ints, rather than huge long longs.
- *
- * 2. Routing is done exclusively on "highway"-tagged ways, yet these do not
- * necessarily form a single connected graph. Boost offers direct extraction of
- * connected components, but one problem is that the bike stations (or other
- * points of interest) need to be located at the nearest node that lies within
- * the largest connected component of the graph. Thus the graph is first built,
- * then reduced to the largest connected component, and only then are stations
- * mapped onto nearest connected nodes.
+ * The boost::graphs are constructed in two phases:
+ * (1) A graph "gFull" is constructed from all OSM nodes and highways, and used
+ * to identify both the largest connected component and all terminal or junction
+ * nodes (simply as those that appear in multiple different ways). The bike
+ * stations are then mapped onto the nearest vertices within this largest
+ * component, and these vertices are also added to terminalNodes.
+ * (2) A second reading of the data is used to make "gCompact" which only has
+ * terminalNodes as vertices, and edge distances as traced along all
+ * intermediate nodes.
  */
 
 #include "Utils.h"
@@ -140,6 +135,9 @@ class Ways
             err = getConnected ();
             err = readStations ();
             distMat.resize (stationList.size (), stationList.size ());
+
+            // gFull is no longer needed, so can be destroyed
+            gFull.clear ();
             
             err = readCompactWays ();
             err = remapStations ();
@@ -150,7 +148,7 @@ class Ways
             for (std::vector<Station>::iterator itr=stationList.begin();
                     itr != stationList.end(); itr++)
             {
-                err = dijkstra (itr->nodeIndex, true);
+                err = dijkstra (itr->nodeIndex);
                 assert (dists.size () == stationList.size ());
                 std::cout << "\rGetting inter-station distances " <<
                     count << "/" << stationList.size () << " ";
@@ -199,7 +197,7 @@ class Ways
         int readStations ();
         int remapStations ();
         int readCompactWays ();
-        int dijkstra (long long fromNode, bool compact);
+        int dijkstra (long long fromNode);
         int writeDMat ();
 
         float calcDist (std::vector <float> x, std::vector <float> y);

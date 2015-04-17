@@ -82,8 +82,8 @@ int Ways::readAllWays ()
     float d, lat0, lon0, lat1, lon1, weight;
     umapPair_Itr umapitr;
     boost::unordered_set <long long> nodeList;
-    std::vector <long long> waynodes, ids;
-    std::string linetxt, tempstr, highwayType;
+    std::vector <long long> waynodes;
+    std::string linetxt, tempstr;
     std::ifstream in_file;
     
     in_file.open (osmFile.c_str (), std::ifstream::in);
@@ -91,14 +91,12 @@ int Ways::readAllWays ()
     in_file.clear ();
     in_file.seekg (0); 
 
-    // oneways should only be "yes", but wiki allows the other two as well
+    // oneways should only be v="yes", but wiki allows the other two as well
     typedef std::vector <std::string> strvec;
     strvec oneWayList;
     oneWayList.push_back ("k=\"oneway\" v=\"yes");
     oneWayList.push_back ("k=\"oneway\" v=\"0");
     oneWayList.push_back ("k=\"oneway\" v=\"true");
-
-    //wayList.resize (0);
 
     /*
      * The boost::graph is only given size through the following vertex
@@ -118,9 +116,8 @@ int Ways::readAllWays ()
             inway = true;
             highway = false;
             oneway = false;
-            weight = -9999.0;
+            weight = -FLOAT_MAX;
             waynodes.resize (0);
-            ids.resize (0);
         }
         else if (linetxt.find ("</way>") != std::string::npos)
         {
@@ -216,7 +213,6 @@ int Ways::readAllWays ()
                     if (linetxt.find (tempstr) != std::string::npos)
                     {
                         highway = true;
-                        highwayType = (*itr).first;
                         weight = (*itr).second;
                         break;
                     }
@@ -261,10 +257,10 @@ int Ways::readCompactWays ()
     bool inway = false, highway = false, oneway;
     int ipos, id0, id1, nodeCount = 0, nways = 0;
     long long node;
-    float d, lat0, lon0, lat1, lon1, weight;
+    float d, weight;
     umapPair_Itr umapitr;
     boost::unordered_set <long long> nodeList;
-    std::vector <long long> waynodes, ids;
+    std::vector <long long> waynodes;
     std::vector <float> lats, lons;
     std::string linetxt, tempstr, highwayType;
     std::ifstream in_file;
@@ -290,6 +286,7 @@ int Ways::readCompactWays ()
      */
     bundled_vertex_type oneVert;
     bundled_edge_type oneEdge;
+
     nodeNames.clear ();
 
     std::cout << "Reading ways ...";
@@ -304,7 +301,6 @@ int Ways::readCompactWays ()
             oneway = false;
             weight = -9999.0;
             waynodes.resize (0);
-            ids.resize (0);
         }
         else if (linetxt.find ("</way>") != std::string::npos)
         {
@@ -517,7 +513,6 @@ int Ways::getConnected ()
 int Ways::readStations ()
 {
     int ipos = 0;
-    float lat, lon;
     // hubway_stations is extracted directly from the zip file of hubway data
     std::string linetxt, txt, fname = "data/hubway_stations.csv";
     std::ifstream in_file;
@@ -587,7 +582,7 @@ int Ways::readStations ()
 long long Ways::nearestNode (float lon0, float lat0)
 {
     int id;
-    long long node = -9999;
+    long long node = -INT_MAX;
     float d, lon, lat, xd, yd, dmin = FLOAT_MAX;
 
     /*
@@ -679,32 +674,26 @@ int Ways::remapStations ()
  ************************************************************************
  ************************************************************************/
 
-int Ways::dijkstra (long long fromNode, bool compact)
+int Ways::dijkstra (long long fromNode)
 {
-    Graph_t gRoute;
-    if (compact)
-        gRoute = gCompact;
-    else
-        gRoute = gFull;
-
-    std::vector<Vertex> predecessors (boost::num_vertices(gRoute)); 
-    std::vector<Weight> distances (boost::num_vertices(gRoute)); 
+    std::vector<Vertex> predecessors (boost::num_vertices(gCompact)); 
+    std::vector<Weight> distances (boost::num_vertices(gCompact)); 
 
     boost::property_map< Graph_t, long long bundled_vertex_type::* >::type 
-        vertex_id = boost::get(&bundled_vertex_type::id, gRoute);
+        vertex_id = boost::get(&bundled_vertex_type::id, gCompact);
     boost::property_map< Graph_t, float bundled_vertex_type::* >::type 
-        vertex_lat = boost::get(&bundled_vertex_type::lat, gRoute);
+        vertex_lat = boost::get(&bundled_vertex_type::lat, gCompact);
     boost::property_map< Graph_t, float bundled_vertex_type::* >::type 
-        vertex_lon = boost::get(&bundled_vertex_type::lon, gRoute);
+        vertex_lon = boost::get(&bundled_vertex_type::lon, gCompact);
 
     auto p_map = boost::make_iterator_property_map
-        (&predecessors[0], boost::get(boost::vertex_index, gRoute));
+        (&predecessors[0], boost::get(boost::vertex_index, gCompact));
     auto d_map = boost::make_iterator_property_map
-        (&distances[0], boost::get(boost::vertex_index, gRoute));
-    auto w_map = boost::get(&bundled_edge_type::weight, gRoute); 
+        (&distances[0], boost::get(boost::vertex_index, gCompact));
+    auto w_map = boost::get(&bundled_edge_type::weight, gCompact); 
     
-    int start = vertex (fromNode, gRoute);
-    boost::dijkstra_shortest_paths(gRoute, start,
+    int start = vertex (fromNode, gCompact);
+    boost::dijkstra_shortest_paths(gCompact, start,
             weight_map(w_map). 
             predecessor_map(p_map).
             distance_map(d_map));
@@ -715,7 +704,7 @@ int Ways::dijkstra (long long fromNode, bool compact)
             itr != stationList.end (); itr++)
         if (distances [(*itr).nodeIndex] < FLOAT_MAX)
             nvalid++;
-    //assert (nvalid == stationList.size ());
+    assert (nvalid == stationList.size ());
 
     // Trace back from each station 
     Vertex v0, v;
@@ -731,9 +720,9 @@ int Ways::dijkstra (long long fromNode, bool compact)
         for (Vertex u = p_map[v]; u != v; v = u, u = p_map[v]) 
         {
             std::pair<Graph_t::edge_descriptor, bool> edgePair = 
-                boost::edge(u, v, gRoute);
+                boost::edge(u, v, gCompact);
             Graph_t::edge_descriptor edge = edgePair.first;
-            dist += boost::get (&bundled_edge_type::dist, gRoute, edge);
+            dist += boost::get (&bundled_edge_type::dist, gCompact, edge);
         }
         dists.push_back (dist);
     }

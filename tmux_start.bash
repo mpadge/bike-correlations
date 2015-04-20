@@ -27,11 +27,10 @@ tmux split-window -h
 tmux send-keys -t $SESSION:2 'cd ..' C-m
 tmux select-pane -t 0
 
-tmux new-window -t $SESSION:3 -n python
+tmux new-window -t $SESSION:3 -n distances
 tmux select-window -t $SESSION:3
-tmux send-keys -t $SESSION:3 'vim router.py' C-m
-tmux send-keys -t $SESSION:3 ':' 'tabe getStDists.py' C-m
-tmux send-keys -t $SESSION:3 ':' 'tabe Utils.py' C-m
+tmux send-keys -t $SESSION:3 'vim mainStnDists.h' C-m
+tmux send-keys -t $SESSION:3 ':' 'tabe mainStnDists.c++' C-m
 tmux split-window -h
 tmux select-pane -t 0
 

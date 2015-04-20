@@ -22,8 +22,15 @@
 
 int main(int argc, char *argv[]) {
     std::string city = "boston";
+    while (*++argv != NULL)
+        city = *argv;
+    std::transform (city.begin(), city.end(), city.begin(), ::tolower);
+    if (city.substr (0, 2) == "bo")
+        city = "boston";
+    else if (city.substr (0, 2) == "ch")
+        city = "chicago";
 
-    Ways ways(city);
+    Ways ways (city);
 };
 
 
@@ -544,9 +551,21 @@ int Ways::getConnected ()
 
 int Ways::readStations ()
 {
-    int ipos = 0;
+    int nskips, ipos = 0;
     // hubway_stations is extracted directly from the zip file of hubway data
     std::string linetxt, txt, fname = "data/hubway_stations.csv";
+    if (getCity () == "boston")
+    {
+        fname = "data/hubway_stations.csv";
+        nskips = 4;
+    }
+    else if (getCity () == "chicago")
+    {
+        fname = "data/Divvy_Stations_2014-Q3Q4.csv";
+        nskips = 2;
+    }
+    // Note chicago stations move a little between the years, but this is
+    // ignored here.
     std::ifstream in_file;
     Station station;
     
@@ -578,7 +597,7 @@ int Ways::readStations ()
      */
     while (getline (in_file, linetxt, '\n'))
     {
-        for (int i=0; i<4; i++)
+        for (int i=0; i<nskips; i++)
         {
             ipos = linetxt.find (",");
             linetxt = linetxt.substr (ipos + 1, linetxt.length () - ipos - 1);
@@ -791,7 +810,12 @@ int Ways::dijkstra (long long fromNode)
 
 int Ways::writeDMat ()
 {
-    std::string fname = "stationDistsMat-boston.csv";
+    std::string fname;
+    if (getCity() == "boston")
+        fname = "stationDistsMat-boston.csv";
+    else if (getCity() == "chicago")
+        fname = "stationDistsMat-chicago.csv";
+
     std::ofstream out_file;
 
     out_file.open (fname, std::ios::out);

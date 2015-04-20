@@ -124,8 +124,8 @@ class Ways
     protected:
         std::string _dirName;
         const std::string _city;
-        const std::string bzFile = "/data/data/bikes/planet-boston.bz2",
-            osmFile = "/data/data/bikes/planet-boston.osm";
+        const std::string osmDir = "/data/data/bikes/";
+        std::string osmFile;
         std::vector <ProfilePair> profile;
         boost::unordered_set <long long> terminalNodes;
         dmat distMat;
@@ -134,6 +134,7 @@ class Ways
         int err, count;
         long long node;
         float d;
+        std::string tempstr;
 
 
         /*
@@ -149,6 +150,11 @@ class Ways
         Ways (std::string str)
             : _city (str)
         {
+            tempstr = _city;
+            std::transform (tempstr.begin(), tempstr.end(), 
+                    tempstr.begin(), ::toupper);
+            std::cout << "---" << tempstr << "---" << std::endl;
+            osmFile = osmDir + "planet-" + _city + ".osm";
             setProfile ();
             err = readNodes();
             err = readAllWays ();
@@ -222,4 +228,5 @@ class Ways
 
         float calcDist (std::vector <float> x, std::vector <float> y);
         long long nearestNode (float lon0, float lat0);
+        std::string getCity () { return _city;  }
 };

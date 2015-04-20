@@ -269,6 +269,8 @@ int StationData::readDMat ()
         distFile = "data/station_dists_london.txt";
     else if (_city == "nyc")
         distFile = "data/station_dists_nyc.txt";
+    else if (_city == "boston")
+        distFile = "results/stationDistsMat_boston.csv";
     else if (_city == "oysterTube")
         distFile = "data/London-tube-station-dists.txt";
     else if (_city == "oysterRail")
@@ -307,7 +309,7 @@ int StationData::readDMat ()
             count++;
         }
     }
-    else // Distances between train stations, read direct from matrix
+    else // Distances between train stations and boston, read direct from matrix
     {
         while (getline (in_file, linetxt, '\n'))
             count++;
@@ -539,9 +541,9 @@ int StationData::calcR2 (bool from)
                 d.resize (0);
             } // end if nearfar
             // TODO: find out why nearfar for boston does not work!
-            if (i == 0)
-                std::cout << "[" << x1.size () << ", " << y0.size () << "]" <<
-                    std::endl;
+            //if (i == 0)
+            //    std::cout << "[" << x1.size () << ", " << y0.size () << "]" <<
+            //        std::endl;
             regrResults = regression (x1, y0);
             r2 (i, j) = r2 (j, i) = regrResults.r2;
             cov (i, j) = cov (j, i) = regrResults.cov;

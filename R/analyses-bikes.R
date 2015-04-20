@@ -579,7 +579,7 @@ compare.nearfar <- function (from=TRUE, covar=TRUE, std=TRUE)
         dat2 <- fit.gaussian (city=city, from=from, covar=covar, std=std, 
                               nearfar=2, subscriber=1, mf=0)
         tt <- t.test (dat1$k, dat2$k)
-        cat ("\nNYC Subscribers: T = ",
+        cat ("\n", toupper (city), " Subscribers: T = ",
              formatC (tt$statistic, format="f", digits=2), "; df = ",
              formatC (tt$parameter, format="f", digits=1), "; p = ",
              formatC (tt$p.value, format="f", digits=4), "\n", sep="")
@@ -593,7 +593,7 @@ compare.nearfar <- function (from=TRUE, covar=TRUE, std=TRUE)
         dat2 <- fit.gaussian (city=city, from=from, covar=covar, std=std, 
                               nearfar=2, subscriber=2, mf=0)
         tt <- t.test (dat1$k, dat2$k)
-        cat ("NYC Customers: T = ",
+        cat (toupper (city), " Customers: T = ",
              formatC (tt$statistic, format="f", digits=2), "; df = ",
              formatC (tt$parameter, format="f", digits=1), "; p = ",
              formatC (tt$p.value, format="f", digits=4), "\n", sep="")
@@ -610,7 +610,7 @@ compare.nearfar <- function (from=TRUE, covar=TRUE, std=TRUE)
         dat2 <- fit.gaussian (city=city, from=from, covar=covar, std=std, 
                               nearfar=2, subscriber=1, mf=2)
         tt <- t.test (dat1$k, dat2$k)
-        cat ("\nNYC Female: T = ",
+        cat ("\n", toupper (city), " Female: T = ",
              formatC (tt$statistic, format="f", digits=2), "; df = ",
              formatC (tt$parameter, format="f", digits=1), "; p = ",
              formatC (tt$p.value, format="f", digits=4), "\n", sep="")
@@ -625,7 +625,7 @@ compare.nearfar <- function (from=TRUE, covar=TRUE, std=TRUE)
         dat2 <- fit.gaussian (city=city, from=from, covar=covar, std=std, 
                               nearfar=2, subscriber=1, mf=1)
         tt <- t.test (dat1$k, dat2$k)
-        cat ("NYC Male: T = ",
+        cat (toupper (city), " Male: T = ",
              formatC (tt$statistic, format="f", digits=2), "; df = ",
              formatC (tt$parameter, format="f", digits=1), "; p = ",
              formatC (tt$p.value, format="f", digits=4), "\n", sep="")
@@ -646,15 +646,15 @@ compare.nearfar <- function (from=TRUE, covar=TRUE, std=TRUE)
 # ************************************************************ 
 # ************************************************************ 
 
-compare.subscribers <- function (covar=TRUE, std=TRUE)
+compare.subscribers <- function (city="nyc", covar=TRUE, std=TRUE)
 {
-    # NYC comparisons of subscribers and customers
-    dat1 <- fit.gaussian (city="nyc", covar=covar, std=std, 
+    # comparisons of subscribers and customers
+    dat1 <- fit.gaussian (city=city, covar=covar, std=std, 
                           nearfar=0, subscriber=1, mf=0)
-    dat2 <- fit.gaussian (city="nyc", covar=covar, std=std, 
+    dat2 <- fit.gaussian (city=city, covar=covar, std=std, 
                           nearfar=0, subscriber=2, mf=0)
     tt <- t.test (dat1$k, dat2$k)
-    cat ("NYC Subscribers/Non-subscribers: T = ",
+    cat (toupper (city), " Subscribers/Non-subscribers: T = ",
          formatC (tt$statistic, format="f", digits=2), "; df = ",
          formatC (tt$parameter, format="f", digits=1), "; p = ",
          formatC (tt$p.value, format="f", digits=4), "\n", sep="")
@@ -664,12 +664,12 @@ compare.subscribers <- function (covar=TRUE, std=TRUE)
          formatC (mean (dat2$k), format="f", digits=2), "+/-",
          formatC (sd (dat2$k), format="f", digits=2), ")\n", sep="")
 
-    dat1 <- fit.gaussian (city="nyc", covar=covar, std=std, 
+    dat1 <- fit.gaussian (city=city, covar=covar, std=std, 
                           nearfar=0, subscriber=1, mf=1) # male
-    dat2 <- fit.gaussian (city="nyc", covar=covar, std=std, 
+    dat2 <- fit.gaussian (city=city, covar=covar, std=std, 
                           nearfar=0, subscriber=1, mf=2) # female
     tt <- t.test (dat1$k, dat2$k)
-    cat ("NYC Male/Female: T = ",
+    cat (city, " Male/Female: T = ",
          formatC (tt$statistic, format="f", digits=2), "; df = ",
          formatC (tt$parameter, format="f", digits=1), "; p = ",
          formatC (tt$p.value, format="f", digits=4), "\n", sep="")
@@ -761,20 +761,24 @@ summary.stats <- function (covar=TRUE, std=TRUE)
     cat ("NOTE: Comparisons are ordered as written, so negative T-values",
          "mean the first value is lower\n\n")
     # Direct comparison of all T-statistics 
-    city <- c ("london", rep ("nyc", 8))
-    nearfar1 <- c (1, 1, 1, 1, 1, 1, 0, 0, 0)
-    nearfar2 <- c (2, 2, 2, 2, 2, 2, 0, 0, 0)
-    subscriber1 <- c (0, 0, 1, 2, 1, 1, 1, 1, 3)
-    subscriber2 <- c (0, 0, 1, 2, 1, 1, 2, 1, 3)
-    gender1 <- c (0, 0, 0, 0, 2, 1, 0, 2, 0)
-    gender2 <- c (0, 0, 0, 0, 2, 1, 0, 1, 1)
+    city <- c ("london", rep ("nyc", 8), rep ("boston", 8))
+    nearfar1 <- c (1, rep (c (1, 1, 1, 1, 1, 0, 0, 0), 2))
+    nearfar2 <- c (2, rep (c (2, 2, 2, 2, 2, 0, 0, 0), 2))
+    subscriber1 <- c (0, rep (c (0, 1, 2, 1, 1, 1, 1, 3), 2))
+    subscriber2 <- c (0, rep (c (0, 1, 2, 1, 1, 2, 1, 3), 2))
+    gender1 <- c (0, rep (c (0, 0, 0, 2, 1, 0, 2, 0), 2))
+    gender2 <- c (0, rep (c (0, 0, 0, 2, 1, 0, 1, 1), 2))
 
     nftxt <- c (rep ("NEAR/FAR", 6), rep ("all\t", 3))
+    nftxt [10:17] <- nftxt [2:9]
     subtxt <- c (rep ("all\t", 2), "subscriber", "customer",
                  rep ("subscriber", 2), "SUB/CUST", rep ("subscriber", 2))
+    subtxt [10:17] <- subtxt [2:9]
     gtxt <- c (rep ("all\t", 4), "female\t", "male\t", "all\t", "FEMALE/MALE",
                "all\t")
+    gtxt [10:17] <- gtxt [2:9]
     atxt <- c (rep ("all\t", 8), "YOUNG/OLD")
+    atxt [10:17] <- atxt [2:9]
 
     cat ("|\tCity\tNear/Far\tSubscriber Status\tGender\t\tAge\t\t",
          "T-value\tp-value\t|\n", sep="")

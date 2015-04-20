@@ -677,6 +677,219 @@ int RideData::readOneFileBoston (int filei)
 
     return count;
 } // end readOneFileNYC
+
+
+/************************************************************************
+ ************************************************************************
+ **                                                                    **
+ **                       GETZIPFILENAMECHICAGO                        **
+ **                                                                    **
+ ************************************************************************
+ ************************************************************************/
+
+int RideData::getZipFileNameChicago (int filei)
+{
+    const char *archive;
+    struct zip *za;
+    struct zip_file *zf;
+    struct zip_stat sb;
+    char buf[100]; 
+    int err;
+
+    std::string fname_base = StationData::GetDirName() + '/' + filelist [filei];
+    archive = fname_base.c_str ();
+    if ((za = zip_open(archive, 0, &err)) == NULL) {
+        zip_error_to_str(buf, sizeof(buf), err, errno);
+        std::cout << stderr << archive << "can't open size archive : " <<
+            buf << std::endl;
+        return 1;
+    } 
+
+    if (zip_get_num_entries (za, 0) == 1) {
+        if (zip_stat_index(za, 0, 0, &sb) == 0) {
+            fileName = sb.name;
+            zf = zip_fopen_index(za, 0, 0);
+            if (!zf) {
+                fprintf(stderr, "ERROR: zip can not be opened/n");
+                return 1;
+            }
+        }
+    } 
+    zip_fclose(zf); 
+    if (zip_close(za) == -1) {
+        std::cout << stderr << "can't close zip archive " << archive <<
+            std::endl;
+        fprintf(stderr, "can't close zip archive `%s'/n", archive);
+        return 1;
+    }
+
+    return 0;
+}
+
+
+/************************************************************************
+ ************************************************************************
+ **                                                                    **
+ **                         READONEFILECHICAGO                         **
+ **                                                                    **
+ ************************************************************************
+ ************************************************************************/
+
+int RideData::readOneFileChicago (int filei)
+{
+    // First unzip file, for which all error checks have been done in
+    // getZipFileNameNYC above
+    std::string fname = StationData::GetDirName() + '/' + filelist [filei];
+    const char *archive;
+    struct zip *za;
+    struct zip_file *zf;
+    struct zip_stat sb;
+    char buf[100]; 
+    int err, len, fileYear, age;
+    long long sum;
+
+    archive = fname.c_str ();
+    za = zip_open(archive, 0, &err);
+    zf = zip_fopen_index(za, 0, 0);
+    zip_stat_index(za, 0, 0, &sb);
+    std::string fname_csv = StationData::GetDirName() + '/' + fileName;
+    std::ofstream out_file (fname_csv.c_str(), std::ios::out);
+
+    // Note files are presumed all to start with "Divvy_Trips_"!
+    fileYear = 2000 + atoi (fileName.substr (13, 4).c_str());
+
+    sum = 0;
+    while (sum != sb.size) {
+        len = zip_fread(zf, buf, 100);
+        if (len < 0) {
+            // TODO: INSERT ERROR HANDLER
+        }
+        out_file.write (buf, len);
+        sum += len;
+    }
+    out_file.close ();
+    zip_fclose(zf); 
+
+    // Then read unzipped .csv file
+    int count = 0, ipos, tempi [4];
+    int nstations = getStnIndxLen ();
+    std::ifstream in_file;
+    std::string linetxt, usertype, gender;
+
+    in_file.open (fname_csv.c_str (), std::ifstream::in);
+    if (in_file.fail ()) {
+        // TODO: INSERT ERROR HANDLER
+    } 
+    getline (in_file, linetxt, '\n');
+    while (getline (in_file, linetxt, '\n')) { count++;	}
+
+    std::cout << "Reading file [";
+    if (filei < 10)
+        std::cout << " ";
+    std::cout << filei << "/" << filelist.size() <<
+        "]: " << fileName.c_str() << " with " <<
+        count << " records";
+    std::cout.flush ();
+
+    in_file.clear ();
+    in_file.seekg (0); 
+    getline (in_file, linetxt, '\n');
+    count = 0;
+
+    /* Structure is:
+     *
+     * [1] trip_id, [2] starttime, [3] stoptime, [4] bikeid, [5] tripduration,
+     * [6] from_station_id, [7] from_station_name, [8] to_station_id,
+     * [9] to_station_name, [10] usertype, [11] gender, [12] birthyear
+     *
+    */
+    while (getline (in_file, linetxt,'\n')) {
+        for (int i=0; i<5; i++) {
+            ipos = linetxt.find(",",0);
+            linetxt = linetxt.substr (ipos + 1, linetxt.length () - ipos - 1);
+        }
+        ipos = linetxt.find (",", 0);
+        tempi [0] = atoi (linetxt.substr (0, ipos).c_str()); // Start Station ID
+        linetxt = linetxt.substr (ipos + 1, linetxt.length () - ipos - 1);
+        ipos = linetxt.find (",", 0);
+        linetxt = linetxt.substr (ipos + 1, linetxt.length () - ipos - 1);
+        ipos = linetxt.find (",", 0);
+        tempi [1] = atoi (linetxt.substr (0, ipos).c_str()); // End Station ID
+        if (tempi [0] >= 0 && tempi [0] < RideData::getStnIndxLen() && 
+                tempi [1] >= 0 && tempi [1] < RideData::getStnIndxLen() &&
+                tempi [0] != tempi [1])
+        {
+            tempi [0] = _StationIndex [tempi[0]];
+            tempi [1] = _StationIndex [tempi[1]];
+            if (tempi [0] < 0 || tempi [0] > nstations || tempi [1] < 0 ||
+                    tempi [1] > nstations) { // should never happen
+                std::cout << "ERROR: station not in StationIndex!" << std::endl;
+            }
+            linetxt = linetxt.substr (ipos + 1, linetxt.length () - ipos - 1);
+            // Then extract usertype, birthyear, gender
+            ipos = linetxt.find(",",0);
+            linetxt = linetxt.substr (ipos + 1, linetxt.length () - ipos - 1);
+            ipos = linetxt.find (",", 0);
+            usertype = linetxt.substr (0, ipos).c_str(); // User type
+            linetxt = linetxt.substr (ipos + 1, linetxt.length () - ipos - 1);
+            ipos = linetxt.find (",", 0);
+            gender = linetxt.substr (0, ipos).c_str ();
+
+            if (usertype != "Subscriber")
+                ntrips_cust (tempi [0], tempi [1])++;
+            else
+                if (gender.empty ())
+                    ntrips_sub_n (tempi [0], tempi [1])++;
+                else if (gender.substr (0, 1) == "M")
+                    ntrips_sub_m (tempi [0], tempi [1])++;
+                else if (gender.substr (0, 1) == "F")
+                    ntrips_sub_f (tempi [0], tempi [1])++;
+
+            linetxt = linetxt.substr (ipos + 1, linetxt.length () - ipos - 1);
+            // linetxt is then last entry of Age
+            
+            if (!linetxt.empty ())
+            {
+                tempi [2] = atoi (linetxt.c_str()); // Birthyear
+                age = fileYear - tempi [2];
+                if (age > 0 && age < 99)
+                    ageDistribution [age]++;
+                tempi [2] = floor (tempi [2] / 10);
+
+                if (age > 0 && age < 36) // Average age is 35.5
+                    ntripsYoung (tempi [0], tempi [1])++;
+                else if (age < 99)
+                    ntripsOld (tempi [0], tempi [1])++;
+                // TODO: Write this better!
+                if (tempi [2] == 192)
+                    ntrips1920 (tempi [0], tempi [1])++;
+                else if (tempi [2] == 193)
+                    ntrips1930 (tempi [0], tempi [1])++;
+                else if (tempi [2] == 194)
+                    ntrips1940 (tempi [0], tempi [1])++;
+                else if (tempi [2] == 195)
+                    ntrips1950 (tempi [0], tempi [1])++;
+                else if (tempi [2] == 196)
+                    ntrips1960 (tempi [0], tempi [1])++;
+                else if (tempi [2] == 197)
+                    ntrips1970 (tempi [0], tempi [1])++;
+                else if (tempi [2] == 198)
+                    ntrips1980 (tempi [0], tempi [1])++;
+                else if (tempi [2] == 199)
+                    ntrips1990 (tempi [0], tempi [1])++;
+                else if (tempi [2] == 200)
+                    ntrips2000 (tempi [0], tempi [1])++;
+            }
+            count++; 
+        } // end if stations in StnIndxLen
+    } // end while getline
+    in_file.close();
+    std::cout << " and " << count << " valid trips." << std::endl;
+
+    return count;
+} // end readOneFileChicago
+
+
 /************************************************************************
  ************************************************************************
  **                                                                    **

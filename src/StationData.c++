@@ -166,6 +166,34 @@ int StationData::GetStations ()
         }
         in_file.close();
     }
+    else if (_city == "chicago")
+    {
+        fname = dir + "Divvy_Stations_2014-Q3Q4.csv";
+        in_file.open (fname.c_str (), std::ifstream::in);
+        assert (!in_file.fail ());
+        in_file.clear ();
+        in_file.seekg (0); 
+        getline (in_file, linetxt, '\n'); // header
+
+        while (getline (in_file, linetxt,'\n'))
+        {
+            ipos = linetxt.find(',',0);
+            tempi = atoi (linetxt.substr (0, ipos).c_str());
+            if (tempi > count) 
+                count = tempi;
+            oneStation.ID = tempi;
+            linetxt = linetxt.substr (ipos + 1, linetxt.length () - ipos - 1);
+            ipos = linetxt.find (',', 0);
+            linetxt = linetxt.substr (ipos + 1, linetxt.length () - ipos - 1);
+            ipos = linetxt.find (',', 0);
+            oneStation.lat = atof (linetxt.substr (0, ipos).c_str());
+            linetxt = linetxt.substr (ipos + 1, linetxt.length () - ipos - 1);
+            ipos = linetxt.find (',', 0);
+            oneStation.lon = atof (linetxt.substr (0, ipos).c_str());
+            StationList.push_back (oneStation);
+        }
+        in_file.close();
+    }
     else if (_city == "oysterRail" || _city == "oysterTube")
     {
         oneStation.ID = INT_MIN;
@@ -271,6 +299,8 @@ int StationData::readDMat ()
         distFile = "data/station_dists_nyc.txt";
     else if (_city == "boston")
         distFile = "results/stationDistsMat_boston.csv";
+    else if (_city == "chicago")
+        distFile = "results/stationDistsMat_chicago.csv";
     else if (_city == "oysterTube")
         distFile = "data/London-tube-station-dists.txt";
     else if (_city == "oysterRail")
@@ -309,8 +339,10 @@ int StationData::readDMat ()
             count++;
         }
     }
-    else // Distances between train stations and boston, read direct from matrix
+    else 
     {
+        // Distances between bike stations in boston & chicago, and between
+        // train stations are read direct from matrix
         while (getline (in_file, linetxt, '\n'))
             count++;
         if (count != _numStations)

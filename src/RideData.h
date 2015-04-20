@@ -35,11 +35,11 @@ class RideData: public StationData
             _numTripFiles = filelist.size ();
             _stnIndxLen = _StationIndex.size ();
             missingStations.resize (0);
-            if (_city == "nyc" || _city == "boston")
+            if (_city == "nyc" || _city == "boston" || _city == "chicago")
             {
-                if (_subscriber < 3)
+                //if (_subscriber < 3)
                     subscriberMFConstruct ();
-                else
+                //else
                     subscriberAgeConstruct ();
                 for (int i=0; i<99; i++)
                     ageDistribution [i] = 0;
@@ -72,6 +72,9 @@ class RideData: public StationData
 
         int getZipFileNameBoston (int filei);
         int readOneFileBoston (int filei);
+
+        int getZipFileNameChicago (int filei);
+        int readOneFileChicago (int filei);
         
         int aggregateTrips ();
 

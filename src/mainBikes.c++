@@ -45,8 +45,10 @@ int main(int argc, char *argv[]) {
                 city = "london";
             else if (city.substr (0, 3) == "oys")
                 city = "oyster";
-            else if (city.substr (0, 3) == "bos")
+            else if (city.substr (0, 2) == "bo")
                 city = "boston";
+            else if (city.substr (0, 2) == "ch")
+                city = "chicago";
             else
                 city = "nyc";
         } else {
@@ -149,9 +151,26 @@ int main(int argc, char *argv[]) {
         fname = "NumTrips_boston_" + std::to_string (rideData.getSubscriber()) +
             std::to_string (rideData.getGender ()) + ".csv";
     }
+    else if (city == "chicago")
+    {
+        for (int i=0; i<rideData.getNumFiles(); i++)
+        {
+            tempi [0] = rideData.getZipFileNameChicago (i);
+            if (rideData.fileName != "") {
+                count += rideData.readOneFileChicago (i);
+                tempi [0] = rideData.removeFile ();
+            }
+        } // end for i
+        std::cout << "Total number of trips = " << count << std::endl;
+        rideData.summaryStats ();
+        tempi [0] = rideData.aggregateTrips ();
+        fname = "NumTrips_chicago_" + std::to_string (rideData.getSubscriber()) +
+            std::to_string (rideData.getGender ()) + ".csv";
+    }
 
     rideData.readDMat ();
-    rideData.writeDMat (); 
+    if (city != "boston" && city != "chicago")
+        rideData.writeDMat (); 
     rideData.writeNumTrips (fname);
 
     // Then loop over (all, near, far) data
@@ -170,7 +189,7 @@ int main(int argc, char *argv[]) {
             r2name = "R2_london_from_" + rideData.txtnf + ".csv";
             covname = "Cov_london_from_" + rideData.txtnf + ".csv";
         }
-        else if (city == "nyc" || city == "boston")
+        else if (city == "nyc" || city == "boston" || city == "chicago")
         {
             r2name = "R2_" + city + "_from_" + rideData.txtnf + "_" +
                 std::to_string (rideData.getSubscriber ()) +
@@ -181,7 +200,7 @@ int main(int argc, char *argv[]) {
         }
 
         rideData.calcR2 (true);
-        rideData.writeR2Mat (r2name);
+        //rideData.writeR2Mat (r2name);
         rideData.writeCovMat (covname);
 
         rideData.calcR2 (false);
@@ -189,7 +208,7 @@ int main(int argc, char *argv[]) {
         r2name.replace (count, 6, "_to_");
         count = covname.find ("_from_");
         covname.replace (count, 6, "_to_");
-        rideData.writeR2Mat (r2name);
+        //rideData.writeR2Mat (r2name);
         rideData.writeCovMat (covname);
     }
     //rideData.readR2Mat (false);

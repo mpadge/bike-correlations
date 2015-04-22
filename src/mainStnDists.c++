@@ -29,6 +29,10 @@ int main(int argc, char *argv[]) {
         city = "boston";
     else if (city.substr (0, 2) == "ch")
         city = "chicago";
+    else if (city.substr (0, 2) == "ny")
+        city = "nyc";
+    else if (city.substr (0, 2) == "lo")
+        city = "london";
 
     Ways ways (city);
 };
@@ -64,6 +68,11 @@ int Ways::getBBox ()
         // ignored here.
         fname = "data/Divvy_Stations_2014-Q3Q4.csv";
         nskips = 2;
+    }
+    else if (getCity () == "nyc" || getCity () == "london")
+    {
+        fname = "data/station_latlons_" + getCity () + ".txt";
+        nskips = 1;
     }
     std::ifstream in_file;
     
@@ -141,6 +150,9 @@ int Ways::readNodes ()
     std::cout << "Reading nodes ...";
     std::cout.flush ();
 
+    float nodeLonmin = FLOAT_MAX, nodeLatmin = FLOAT_MAX,
+        nodeLonmax = -FLOAT_MAX, nodeLatmax = -FLOAT_MAX;
+
     while (getline (in_file, linetxt, '\n'))
     {
         if (linetxt.find ("<node") != std::string::npos)
@@ -158,6 +170,11 @@ int Ways::readNodes ()
             ipos = linetxt.find ("\"");
             lat = atof (linetxt.substr (0, ipos).c_str());
 
+            if (lat < nodeLatmin)
+                nodeLatmin = lat;
+            else if (lat > nodeLatmax)
+                nodeLatmax = lat;
+
             if (lat >= latmin && lat <= latmax)
             {
                 ipos = linetxt.find ("lon=\"");
@@ -165,11 +182,21 @@ int Ways::readNodes ()
                 ipos = linetxt.find ("\"");
                 lon = atof (linetxt.substr (0, ipos).c_str());
 
+                // lon ranges are only calculated within BBOX of stations
+                if (lon < nodeLonmin)
+                    nodeLonmin = lon;
+                else if (lon > nodeLonmax)
+                    nodeLonmax = lon;
+
                 if (lon >= lonmin && lon <= lonmax)
                     allNodes [node] = std::make_pair (lat, lon);
             }
         }
     } 
+    assert (nodeLonmin < lonmin);
+    assert (nodeLonmax > lonmax);
+    assert (nodeLatmin < latmin);
+    assert (nodeLatmax > latmax);
 
     /*
      * Then rewind file and read any extra nodes that are part of ways with
@@ -442,8 +469,10 @@ int Ways::readAllWays ()
             }
             else if (linetxt.find ("k=\"highway\"") != std::string::npos)
             {
-                // highway is only true if it has one of the values listed in
-                // the profile
+                /* 
+                 * highway is only true if it has one of the values listed in
+                 * the profile
+                 */
                 for (std::vector<ProfilePair>::iterator itr = profile.begin();
                         itr != profile.end(); itr++)
                 {
@@ -514,19 +543,12 @@ int Ways::readCompactWays ()
     oneWayList.push_back ("k=\"oneway\" v=\"0");
     oneWayList.push_back ("k=\"oneway\" v=\"true");
 
-    //wayList.resize (0);
-
-    /*
-     * The boost::graph is only given size through the following vertex
-     * additions. Vertex numbers are implicit and sequential, enumeratred by
-     * nodeCount, and edges must reference these numbers.
-     */
     bundled_vertex_type oneVert;
     bundled_edge_type oneEdge;
 
     nodeNames.clear ();
 
-    std::cout << "Reading ways ...";
+    std::cout << "Reading compact ways ...";
     std::cout.flush ();
 
     while (getline (in_file, linetxt, '\n'))
@@ -618,10 +640,6 @@ int Ways::readCompactWays ()
         } // end else if highway
         else if (inway)
         {
-            /*
-             * Nodes have to first be stored, because they are only subsequently
-             * analysed if they are part of a highway.
-             */
             if (linetxt.find ("<nd") != std::string::npos)
             {
                 ipos = linetxt.find ("<nd ref=");
@@ -634,8 +652,6 @@ int Ways::readCompactWays ()
             }
             else if (linetxt.find ("k=\"highway\"") != std::string::npos)
             {
-                // highway is only true if it has one of the values listed in
-                // the profile
                 for (std::vector<ProfilePair>::iterator itr = profile.begin();
                         itr != profile.end(); itr++)
                 {
@@ -657,12 +673,6 @@ int Ways::readCompactWays ()
     } // end while getline
     in_file.close ();
     oneWayList.resize (0);
-
-    /*
-     * nodes and corresponding indices can then be respectively obtained with
-     * node = nodeNames.find (node)->first; // redundant
-     * index = nodeNames.find (node)->second;
-     */
 
     std::vector<int> compvec(num_vertices(gCompact));
     ipos = boost::connected_components(gCompact, &compvec[0]);
@@ -777,6 +787,11 @@ int Ways::readStations ()
         // ignored here.
         fname = "data/Divvy_Stations_2014-Q3Q4.csv";
         nskips = 2;
+    }
+    else if (getCity () == "nyc" || getCity () == "london")
+    {
+        fname = "data/station_latlons_" + getCity () + ".txt";
+        nskips = 1;
     }
     std::ifstream in_file;
     Station station;
@@ -1022,11 +1037,7 @@ int Ways::dijkstra (long long fromNode)
 
 int Ways::writeDMat ()
 {
-    std::string fname;
-    if (getCity() == "boston")
-        fname = "stationDistsMat-boston.csv";
-    else if (getCity() == "chicago")
-        fname = "stationDistsMat-chicago.csv";
+    std::string fname = "stationDistsMat-" + getCity () + ".csv";
 
     std::ofstream out_file;
 

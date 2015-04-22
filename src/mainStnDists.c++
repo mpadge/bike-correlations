@@ -37,6 +37,80 @@ int main(int argc, char *argv[]) {
 /************************************************************************
  ************************************************************************
  **                                                                    **
+ **                               GETBBOX                              **
+ **                                                                    **
+ ************************************************************************
+ ************************************************************************/
+
+int Ways::getBBox ()
+{
+    const float buffer = 0.01;
+    float lat, lon;
+    int nskips, ipos = 0;
+
+    lonmin = latmin = FLOAT_MAX;
+    lonmax = latmax = -FLOAT_MAX;
+
+    // hubway_stations is extracted directly from the zip file of hubway data
+    std::string linetxt, txt, fname;
+    if (getCity () == "boston")
+    {
+        fname = "data/hubway_stations.csv";
+        nskips = 4;
+    }
+    else if (getCity () == "chicago")
+    {
+        // Note chicago stations move a little between the years, but this is
+        // ignored here.
+        fname = "data/Divvy_Stations_2014-Q3Q4.csv";
+        nskips = 2;
+    }
+    std::ifstream in_file;
+    
+    in_file.open (fname.c_str (), std::ifstream::in);
+    assert (!in_file.fail ());
+
+    in_file.clear ();
+    in_file.seekg (0); 
+    getline (in_file, linetxt, '\n'); // header
+
+    while (getline (in_file, linetxt, '\n'))
+    {
+        for (int i=0; i<nskips; i++)
+        {
+            ipos = linetxt.find (",");
+            linetxt = linetxt.substr (ipos + 1, linetxt.length () - ipos - 1);
+        }
+        ipos = linetxt.find (",");
+
+        lat = atof (linetxt.substr (0, ipos).c_str());
+        if (lat < latmin)
+            latmin = lat;
+        else if (lat > latmax)
+            latmax = lat;
+
+        linetxt = linetxt.substr (ipos + 1, linetxt.length () - ipos - 1);
+        ipos = linetxt.find (",");
+        lon = atof (linetxt.substr (0, ipos).c_str());
+        if (lon < lonmin)
+            lonmin = lon;
+        else if (lon > lonmax)
+            lonmax = lon;
+    } // end while getline
+    in_file.close ();
+
+    lonmin -= buffer;
+    latmin -= buffer;
+    lonmax += buffer;
+    latmax += buffer;
+
+    return 0;
+}; // end function getBBox
+
+
+/************************************************************************
+ ************************************************************************
+ **                                                                    **
  **                              READNODES                             **
  **                                                                    **
  ************************************************************************
@@ -44,12 +118,12 @@ int main(int argc, char *argv[]) {
 
 int Ways::readNodes ()
 {
-    int ipos [3];
+    int ipos;
     long long node;
     float lat, lon;
     std::string linetxt, txt;
     std::ifstream in_file;
-    
+
     /*
      * Note that boost::iostreams::bzip2_decompressor could be used to unzip the
      * .bz2, but they don't seem to compile, and it's not for lack of the
@@ -69,20 +143,135 @@ int Ways::readNodes ()
 
     while (getline (in_file, linetxt, '\n'))
     {
-        ipos [0] = linetxt.find ("<node id=");
-        ipos [1] = linetxt.find ("lat=");
-        if (ipos [0] != std::string::npos && ipos [1] != std::string::npos)
+        if (linetxt.find ("<node") != std::string::npos)
         {
-            ipos [2] = linetxt.find (" version=") - ipos [0] - 11;
-            node = atoll (linetxt.substr (ipos [0] + 10, ipos [2]).c_str());
-            linetxt = linetxt.substr (ipos [1] + 5, linetxt.length () - ipos [1] - 1);
-            ipos [0] = linetxt.find ("\" lon=");
-            lat = atof (linetxt.substr (0, ipos [0]).c_str ());
-            ipos [0] = linetxt.find ("lon=");
-            lon = atof (linetxt.substr (ipos [0] + 5, 
-                        linetxt.length () - ipos [0] - 5).c_str ());
+            ipos = linetxt.find ("id=\"");
+            linetxt = linetxt.substr (ipos + 4, 
+                    linetxt.length () - ipos - 4);
+            ipos = linetxt.find ("\"");
+            node = atoll (linetxt.substr (0, ipos).c_str());
 
-            allNodes [node] = std::make_pair (lat, lon);
+            // Note that this presumes that lat always comes before lon!
+            assert (linetxt.find ("lat=\"") < linetxt.find ("lon=\""));
+            ipos = linetxt.find ("lat=\"");
+            linetxt = linetxt.substr (ipos + 5, linetxt.length () - ipos - 5);
+            ipos = linetxt.find ("\"");
+            lat = atof (linetxt.substr (0, ipos).c_str());
+
+            if (lat >= latmin && lat <= latmax)
+            {
+                ipos = linetxt.find ("lon=\"");
+                linetxt = linetxt.substr (ipos + 5, linetxt.length () - ipos - 5);
+                ipos = linetxt.find ("\"");
+                lon = atof (linetxt.substr (0, ipos).c_str());
+
+                if (lon >= lonmin && lon <= lonmax)
+                    allNodes [node] = std::make_pair (lat, lon);
+            }
+        }
+    } 
+
+    /*
+     * Then rewind file and read any extra nodes that are part of ways with
+     * those in allNodes.
+     */
+    in_file.clear ();
+    in_file.seekg (0);
+
+    bool inway = false, highway = false, nodeFound;
+    int id0, id1, nways = 0;
+    umapPair_Itr umapitr;
+    std::vector <long long> waynodes;
+    boost::unordered_set <long long> extraNodes;
+    
+    // oneways should only be v="yes", but wiki allows the other two as well
+    typedef std::vector <std::string> strvec;
+    strvec oneWayList;
+    oneWayList.push_back ("k=\"oneway\" v=\"yes");
+    oneWayList.push_back ("k=\"oneway\" v=\"0");
+    oneWayList.push_back ("k=\"oneway\" v=\"true");
+
+    while (getline (in_file, linetxt, '\n'))
+    {
+        if (linetxt.find ("<way") != std::string::npos)
+        {
+            inway = true;
+            highway = false;
+            nodeFound = false;
+            waynodes.resize (0);
+        }
+        else if (linetxt.find ("</way>") != std::string::npos)
+        {
+            if (highway & nodeFound)
+            {
+                for (std::vector <long long>::iterator itr=waynodes.begin ();
+                        itr != waynodes.end (); itr++)
+                    if (allNodes.find (*itr) == allNodes.end () &&
+                        extraNodes.find (*itr) == extraNodes.end ())
+                        extraNodes.insert (*itr);
+            } // end if highway
+            inway = false;
+            nodeFound = false;
+        } // end else if end way
+        else if (inway)
+        {
+            if (linetxt.find ("<nd") != std::string::npos)
+            {
+                ipos = linetxt.find ("<nd ref=");
+                linetxt = linetxt.substr (ipos + 9, 
+                        linetxt.length () - ipos - 9);
+                node = atoll (linetxt.c_str ());
+                waynodes.push_back (node);
+                if (allNodes.find (node) != allNodes.end ())
+                    nodeFound = true;
+            }
+            else if (linetxt.find ("k=\"highway\"") != std::string::npos)
+            {
+                // highway is only true if it has one of the values listed in
+                // the profile
+                for (std::vector<ProfilePair>::iterator itr = profile.begin();
+                        itr != profile.end(); itr++)
+                {
+                    tempstr = "v=\"" + (*itr).first;
+                    if (linetxt.find (tempstr) != std::string::npos)
+                    {
+                        highway = true;
+                        break;
+                    }
+                }
+            }
+        } // end else if inway
+    } // end while getline
+
+    /*
+     * And then finally store the extraNodes in allNodes
+     */
+    in_file.clear ();
+    in_file.seekg (0);
+
+    while (getline (in_file, linetxt, '\n'))
+    {
+        if (linetxt.find ("<node") != std::string::npos)
+        {
+            ipos = linetxt.find ("id=\"");
+            linetxt = linetxt.substr (ipos + 4, 
+                    linetxt.length () - ipos - 4);
+            ipos = linetxt.find ("\"");
+            node = atoll (linetxt.substr (0, ipos).c_str());
+            if (extraNodes.find (node) != extraNodes.end ())
+            {
+                ipos = linetxt.find ("lat=\"");
+                linetxt = linetxt.substr (ipos + 5, linetxt.length () - ipos - 5);
+                ipos = linetxt.find ("\"");
+                lat = atof (linetxt.substr (0, ipos).c_str());
+
+                ipos = linetxt.find ("lon=\"");
+                linetxt = linetxt.substr (ipos + 5, linetxt.length () - ipos - 5);
+                ipos = linetxt.find ("\"");
+                lon = atof (linetxt.substr (0, ipos).c_str());
+
+                allNodes [node] = std::make_pair (lat, lon);
+            }
         }
     } 
     in_file.close ();
@@ -115,7 +304,7 @@ int Ways::readAllWays ()
      * The lat-lons of vertices are needed in gFull for matching stations, but
      * edge distances are not relevant, so default to 1.0.
      */
-    bool inway = false, highway = false, oneway;
+    bool inBBox, inway = false, highway = false, oneway;
     int ipos, id0, id1, nodeCount = 0, nways = 0;
     long long node;
     float lat0, lon0, lat1, lon1;
@@ -155,12 +344,23 @@ int Ways::readAllWays ()
             inway = true;
             highway = false;
             oneway = false;
+            inBBox = false;
             waynodes.resize (0);
         }
         else if (linetxt.find ("</way>") != std::string::npos)
         {
-            //if (highway && waynodes [0] != waynodes [waynodes.size () - 1])
-            if (highway)
+            /*
+             * Only highways that have every waynode in allNodes are inBBox, so
+             * this first has to be double checked.
+             */
+            if (highway && inBBox)
+            {
+                for (std::vector <long long>::iterator itr=waynodes.begin();
+                        itr != waynodes.end(); itr++)
+                    if (allNodes.find (*itr) == allNodes.end ())
+                        inBBox = false;
+            }
+            if (highway && inBBox)
             {
                 node = waynodes.front ();
                 assert ((umapitr = allNodes.find (node)) != allNodes.end());
@@ -222,6 +422,7 @@ int Ways::readAllWays ()
                 }
             } // end if highway
             inway = false;
+            inBBox = false;
         } // end else if end way
         else if (inway)
         {
@@ -236,6 +437,8 @@ int Ways::readAllWays ()
                         linetxt.length () - ipos - 9);
                 node = atoll (linetxt.c_str ());
                 waynodes.push_back (atoll (linetxt.c_str ()));
+                if (allNodes.find (node) != allNodes.end ())
+                    inBBox = true;
             }
             else if (linetxt.find ("k=\"highway\"") != std::string::npos)
             {
@@ -288,7 +491,7 @@ int Ways::readAllWays ()
 
 int Ways::readCompactWays ()
 {
-    bool inway = false, highway = false, oneway;
+    bool inBBox, inway = false, highway = false, oneway;
     int ipos, id0, id1, nodeCount = 0, nways = 0;
     long long node;
     float d, weight;
@@ -333,13 +536,20 @@ int Ways::readCompactWays ()
             inway = true;
             highway = false;
             oneway = false;
+            inBBox = false;
             weight = -9999.0;
             waynodes.resize (0);
         }
         else if (linetxt.find ("</way>") != std::string::npos)
         {
-            //if (highway && waynodes [0] != waynodes [waynodes.size () - 1])
-            if (highway)
+            if (highway && inBBox)
+            {
+                for (std::vector <long long>::iterator itr=waynodes.begin();
+                        itr != waynodes.end(); itr++)
+                    if (allNodes.find (*itr) == allNodes.end ())
+                        inBBox = false;
+            }
+            if (highway && inBBox)
             {
                 lats.resize (0);
                 lons.resize (0);
@@ -419,6 +629,8 @@ int Ways::readCompactWays ()
                         linetxt.length () - ipos - 9);
                 node = atoll (linetxt.c_str ());
                 waynodes.push_back (atoll (linetxt.c_str ()));
+                if (allNodes.find (node) != allNodes.end ())
+                    inBBox = true;
             }
             else if (linetxt.find ("k=\"highway\"") != std::string::npos)
             {
@@ -552,20 +764,20 @@ int Ways::getConnected ()
 int Ways::readStations ()
 {
     int nskips, ipos = 0;
-    // hubway_stations is extracted directly from the zip file of hubway data
-    std::string linetxt, txt, fname = "data/hubway_stations.csv";
+    std::string linetxt, txt, fname;
     if (getCity () == "boston")
     {
+        // hubway_stations is extracted directly from the zip file of hubway data
         fname = "data/hubway_stations.csv";
         nskips = 4;
     }
     else if (getCity () == "chicago")
     {
+        // Note chicago stations move a little between the years, but this is
+        // ignored here.
         fname = "data/Divvy_Stations_2014-Q3Q4.csv";
         nskips = 2;
     }
-    // Note chicago stations move a little between the years, but this is
-    // ignored here.
     std::ifstream in_file;
     Station station;
     

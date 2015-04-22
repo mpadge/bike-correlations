@@ -122,6 +122,7 @@ class Ways
     private:
         Graph_t gFull, gCompact;
     protected:
+        float latmin, lonmin, latmax, lonmax;
         std::string _dirName;
         const std::string _city;
         const std::string osmDir = "/data/data/bikes/";
@@ -155,7 +156,10 @@ class Ways
                     tempstr.begin(), ::toupper);
             std::cout << "---" << tempstr << "---" << std::endl;
             osmFile = osmDir + "planet-" + _city + ".osm";
+            
             setProfile ();
+
+            err = getBBox ();
             err = readNodes();
             err = readAllWays ();
             err = getConnected ();
@@ -216,6 +220,7 @@ class Ways
             profile.push_back (std::make_pair ("footway", 0.5));
         };
 
+        int getBBox ();
         int readNodes ();
         int readTerminalNodes ();
         int readAllWays ();

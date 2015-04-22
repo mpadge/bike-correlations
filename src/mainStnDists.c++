@@ -33,6 +33,8 @@ int main(int argc, char *argv[]) {
         city = "nyc";
     else if (city.substr (0, 2) == "lo")
         city = "london";
+    else if (city.substr (0, 2) == "dc" || city.substr (0, 2) == "wa")
+        city = "washingtondc";
 
     Ways ways (city);
 };
@@ -69,7 +71,8 @@ int Ways::getBBox ()
         fname = "data/Divvy_Stations_2014-Q3Q4.csv";
         nskips = 2;
     }
-    else if (getCity () == "nyc" || getCity () == "london")
+    else if (getCity () == "nyc" || getCity () == "london" || 
+            getCity () == "washingtondc")
     {
         fname = "data/station_latlons_" + getCity () + ".txt";
         nskips = 1;
@@ -788,7 +791,8 @@ int Ways::readStations ()
         fname = "data/Divvy_Stations_2014-Q3Q4.csv";
         nskips = 2;
     }
-    else if (getCity () == "nyc" || getCity () == "london")
+    else if (getCity () == "nyc" || getCity () == "london" ||
+            getCity () == "washingtondc")
     {
         fname = "data/station_latlons_" + getCity () + ".txt";
         nskips = 1;

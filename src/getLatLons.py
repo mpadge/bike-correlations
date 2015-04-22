@@ -17,6 +17,10 @@
 # run on the html source downloaded from
 # https://web.barclayscyclehire.tfl.gov.uk/maps/ which should be titled
 # "maps.html". 
+#
+# DC is also downloaded from 
+# http://www.capitalbikeshare.com/data/stations/bikeStations.xml
+# and should be titled "dc-bikeStations.xml"
 
 import sys, getopt, re, urllib2, json, os
 from bs4 import BeautifulSoup
@@ -92,6 +96,31 @@ def getNYC ():
     print '%s NYC stations in [%s - %s] written to %s' % (df.count()[0], ids.min
             (), ids.max (), fname)
 
+def getDC ():
+    f = open (rootDir() + '/data/dc-bikeStations.xml')
+    page = f.read ()
+    f.close ()
+    soup = BeautifulSoup (page)
+    stns = soup.findAll ('station')
+    ids = [st.find ('id').find(text=True).encode ('utf-8') for st in stns]
+    lats = [st.find ('lat').find(text=True).encode ('utf-8') for st in stns]
+    lons = [st.find ('long').find(text=True).encode ('utf-8') for st in stns]
+    lats = [float (l) for l in lats]
+    lons = [float (l) for l in lons]
+
+    outs = ('id', 'lat', 'long')
+    df = pd.DataFrame ([ids, lats, lons], index=outs).transpose()
+
+    fname = rootDir() + '/data/station_latlons_washingtondc.txt'
+
+    df = df.loc [df['lat'] != 0]
+    df = df.loc [df['long'] != 0]
+
+    df.to_csv (fname, index=False)
+    ids = df['id'].convert_objects(convert_numeric=True)
+    print '%s Washington DC stations in [%s - %s] written to %s' % (df.shape[0], ids.min (),
+            ids.max (), fname)
+
 def num (s):
     try:
         return int (s)
@@ -106,15 +135,19 @@ def num (s):
 if __name__ == "__main__":
     opts, args = getopt.getopt (sys.argv[1:],[])
     if len (args) == 0:
-        print "usage: getLatLons <city>=<london,nyc>; defaulting to London"
+        print "usage: getLatLons <city>=<london,nyc,dc>; defaulting to London"
         city = 'london'
     else:
         if args [0].find ('l') > -1 or args [0].find('L') > -1:
             city = 'london'
-        else:
+        elif args [0].find ('n') > -1 or args [0].find('N') > -1:
             city = 'nyc'
+        elif args [0].find ('w') > -1 or args [0].find('w') > -1:
+            city = 'dc'
     
     if city == 'london':
         getLondon ()
-    else:
+    elif city == 'nyc':
         getNYC ()
+    elif city == 'dc':
+        getDC ()

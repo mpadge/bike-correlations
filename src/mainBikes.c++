@@ -10,9 +10,11 @@ int main(int argc, char *argv[]) {
     std::cout << "|\t\t\t\t\t\t\t\t\t\t\t|" << std::endl;
     std::cout << "|\t./bikes with the following 3 parameters " <<
         "(defaulting to first values):\t\t|" << std::endl;
-    std::cout << "|\t1. <city> for <city>=<london/nyc/boston>\t\t\t\t\t|" << std::endl;
+    std::cout << "|\t1. <city> for <city>=<london/nyc/boston/chicago/" <<
+        "washingtondc>\t\t\t|" << std::endl;
     std::cout << "|\t2. (0,1,2) for analyses of (all, subscriber, customer)" <<
-        " data (NYC/Boston only)\t|" << std::endl;
+        " data\t\t\t|" << std::endl;
+    std::cout << "|\t\t\t\t(NYC/Boston/Chicago only)\t\t\t\t|" << std::endl;
     std::cout << "|\t ---or set the second parameter to >2 for analysis of" <<
         " age-class data---\t\t|" << std::endl;
     std::cout << "|\t ---in which case the 3rd parameter is the decade to"
@@ -20,7 +22,7 @@ int main(int argc, char *argv[]) {
     std::cout << "|\t ---or set to 0 for \"young\" = <40, and 1 for \"old\"" <<
         "---\t\t\t\t|" << std::endl;
     std::cout << "|\t3. (0,1,2) for analyses of (all, male, female) " <<
-        "data (NYC & Boston only)\t\t|" << std::endl;
+        "data (NYC/Boston/Chicago only)\t|" << std::endl;
     std::cout << "|\t(NOTE that (male,female) can only be analysed for " <<
         "subscribers.)\t\t\t|" << std::endl;
     std::cout << "|\t\t\t\t\t\t\t\t\t\t\t|" << std::endl;
@@ -49,6 +51,8 @@ int main(int argc, char *argv[]) {
                 city = "boston";
             else if (city.substr (0, 2) == "ch")
                 city = "chicago";
+            else if (city.substr (0, 2) == "wa" || city.substr (0, 2) == "dc")
+                city = "washingtondc";
             else
                 city = "nyc";
         } else {
@@ -167,9 +171,34 @@ int main(int argc, char *argv[]) {
         fname = "NumTrips_chicago_" + std::to_string (rideData.getSubscriber()) +
             std::to_string (rideData.getGender ()) + ".csv";
     }
+    else if (city == "washingtondc")
+    {
+        std::ofstream out_file;
+        tempi [0] = rideData.makeDCStationMap ();
+        for (int i=0; i<rideData.getNumFiles(); i++)
+        {
+            tempi [0] = rideData.getZipFileNameNYC (i);
+            if (rideData.fileName != "") {
+                count += rideData.readOneFileDC (i);
+                tempi [0] = rideData.removeFile ();
+            }
+        } // end for i
+        std::cout << "Total number of trips = " << count << std::endl;
+        if (rideData.missingStationNames.size () > 1)
+        {
+            // There is always "Alta Tech Office" - see note in RideData.c++
+            std::cout << "The following stations are present in trip data " <<
+                " yet not in station_latlons_washingtondc.txt:" << std::endl;
+            for (boost::unordered_set <std::string>::iterator
+                    itr = rideData.missingStationNames.begin ();
+                    itr != rideData.missingStationNames.end (); itr++)
+                std::cout << "\t[" << *itr << "]" << std::endl;
+        }
+        fname = "NumTrips_washingtondc.csv";
+    }
 
-    rideData.readDMat ();
-    if (city != "boston" && city != "chicago")
+    assert (rideData.readDMat () == 0);
+    if (city != "boston" && city != "chicago" && city != "washingtondc")
         rideData.writeDMat (); 
     rideData.writeNumTrips (fname);
 
@@ -184,10 +213,10 @@ int main(int argc, char *argv[]) {
         rideData.nearfar = i;
         rideData.txtnf = rideData.txtnflist [i];
 
-        if (city == "london")
+        if (city == "london" || city == "washingtondc")
         {
-            r2name = "R2_london_from_" + rideData.txtnf + ".csv";
-            covname = "Cov_london_from_" + rideData.txtnf + ".csv";
+            r2name = "R2_" + city + "_from_" + rideData.txtnf + ".csv";
+            covname = "Cov_" + city + "_from_" + rideData.txtnf + ".csv";
         }
         else if (city == "nyc" || city == "boston" || city == "chicago")
         {

@@ -8,6 +8,10 @@
 #include <zip.h>
 #include <errno.h>
 
+#include <boost/unordered_set.hpp>
+#include <boost/unordered_map.hpp>
+
+
 class RideData: public StationData 
 {
     /*
@@ -18,6 +22,8 @@ class RideData: public StationData
         const int _subscriber, _gender;
         // subscriber = (0, 1, 2) for (all, subscriber, customer)
         // gender = (0, 1, 2) for (all, male, female)
+        boost::unordered_map <std::string, int> DCStationNameMap,
+            DCStationNumberMap;
     public:
         imat ntrips_cust, ntrips_sub_m, ntrips_sub_f, ntrips_sub_n;
         imat ntrips1920, ntrips1930, ntrips1940, ntrips1950, ntrips1960,
@@ -28,6 +34,7 @@ class RideData: public StationData
         // subscribers whose gender is not given
         std::string fileName;
         std::vector <int> missingStations;
+        boost::unordered_set <std::string> missingStationNames; // For DC
 
         RideData (std::string str, int i0, int i1)
             : StationData (str), _subscriber (i0), _gender (i1)
@@ -75,6 +82,9 @@ class RideData: public StationData
 
         int getZipFileNameChicago (int filei);
         int readOneFileChicago (int filei);
+
+        int makeDCStationMap ();
+        int readOneFileDC (int filei);
         
         int aggregateTrips ();
 

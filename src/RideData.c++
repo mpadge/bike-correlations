@@ -893,6 +893,402 @@ int RideData::readOneFileChicago (int filei)
 /************************************************************************
  ************************************************************************
  **                                                                    **
+ **                         MAKEDCSTATIONMAP                           **
+ **                                                                    **
+ ************************************************************************
+ ************************************************************************/
+
+int RideData::makeDCStationMap ()
+{
+    const std::string dir = "data/"; 
+    int ipos, tempi, count;
+    bool tube;
+    std::string fname;
+    std::ifstream in_file;
+    std::string linetxt, name;
+
+    count = 0;
+
+    fname = dir + "station_latlons_" + _city + ".txt";
+    in_file.open (fname.c_str (), std::ifstream::in);
+    assert (!in_file.fail ());
+
+    in_file.clear ();
+    in_file.seekg (0); 
+
+    getline (in_file, linetxt, '\n'); // header
+
+    while (getline (in_file, linetxt,'\n'))
+    {
+        for (int i=0; i<3; i++)
+        {
+            ipos = linetxt.find(',', 0);
+            linetxt = linetxt.substr (ipos + 1, linetxt.length () - ipos - 1);
+        }
+        ipos = linetxt.find (',', 0);
+
+        // Remove trailing spaces (for example from #31089
+        name = linetxt.substr (0, ipos);
+        name.erase (std::remove_if (name.end() - 1, name.end(), 
+                    ::isspace), name.end());
+        DCStationNameMap [name] = count;
+
+        linetxt = linetxt.substr (ipos + 1, linetxt.length () - ipos - 1);
+        DCStationNumberMap [linetxt] = count;
+        count++;
+    }
+    in_file.close();
+
+    return 0;
+} // end makeDCStationMap
+
+
+
+/************************************************************************
+ ************************************************************************
+ **                                                                    **
+ **                           READONEFILEDC                            **
+ **                                                                    **
+ ************************************************************************
+ ************************************************************************/
+
+int RideData::readOneFileDC (int filei)
+{
+    // First unzip file, for which all error checks have been done in
+    // getZipFileNameNYC above
+    std::string fname = StationData::GetDirName() + '/' + filelist [filei];
+    const char *archive;
+    struct zip *za;
+    struct zip_file *zf;
+    struct zip_stat sb;
+    char buf[100]; 
+    int err, len, fileYear, age;
+    long long sum;
+
+    archive = fname.c_str ();
+    za = zip_open(archive, 0, &err);
+    zf = zip_fopen_index(za, 0, 0);
+    zip_stat_index(za, 0, 0, &sb);
+    std::string fname_csv = StationData::GetDirName() + '/' + fileName;
+    std::ofstream out_file (fname_csv.c_str(), std::ios::out);
+    fileYear = atoi (fileName.substr (0, 4).c_str());
+
+    sum = 0;
+    while (sum != sb.size) {
+        len = zip_fread(zf, buf, 100);
+        if (len < 0) {
+            // TODO: INSERT ERROR HANDLER
+        }
+        out_file.write (buf, len);
+        sum += len;
+    }
+    out_file.close ();
+    zip_fclose(zf); 
+
+    // Then read unzipped .csv file
+    int count = 0, ipos [2], tempi [4];
+    int nstations = getStnIndxLen ();
+    std::ifstream in_file;
+    std::string linetxt, station;
+
+    in_file.open (fname_csv.c_str (), std::ifstream::in);
+    if (in_file.fail ()) {
+        // TODO: INSERT ERROR HANDLER
+    } 
+    getline (in_file, linetxt, '\n');
+    while (getline (in_file, linetxt, '\n')) { count++;	}
+
+    std::cout << "Reading file [";
+    if (filei < 10)
+        std::cout << " ";
+    std::cout << filei << "/" << filelist.size() <<
+        "]: " << fileName.c_str() << " with " <<
+        count << " records";
+    std::cout.flush ();
+
+    in_file.clear ();
+    in_file.seekg (0); 
+    count = 0;
+
+    /*
+     * Unlike all others, the Washington DC trip files are inconsistently
+     * formatted, and headers thus have to be scanned.
+     */
+    int startcol = INT_MIN, endcol = INT_MIN, starti, endi;
+    std::string tempstr;
+    getline (in_file, linetxt, '\n');
+    while ((ipos [0] = linetxt.find (",")) != std::string::npos)
+    {
+        tempstr = linetxt.substr (0, ipos [0]).c_str ();
+        std::transform (tempstr.begin(), tempstr.end (),
+                tempstr.begin(), ::tolower);
+        if (tempstr == "start station")
+            startcol = count;
+        else if (tempstr == "end station")
+            endcol = count;
+
+        linetxt = linetxt.substr (ipos [0] + 1, linetxt.length () - ipos [0] - 1);
+        count++;
+    }
+    /* 
+     * linetxt still has last entry at this point, but this is never start or
+     * end station. Note that the following also presumes that endi > starti
+     * *ALWAYS*!
+     */
+    assert (startcol >= 0);
+    assert (endcol >= 0);
+
+    /*
+     * The DC data are truly messy, and alternative station names do not come
+     * with lat/lon coordinates, so there's no simply way to re-map them.
+     * Rather, those that don't match the "official" list simply have to be
+     * manually detected and replaced with the following values.
+     */
+    std::vector <std::pair <std::string, std::string> > nameSubs;
+    typedef std::vector <std::pair <std::string, std::string> >::iterator 
+        nameSubsIterator;
+    nameSubs.push_back (std::make_pair (
+            "Court House Metro / Wilson Blvd & N Uhle St",
+            "Court House Metro / 15th & N Uhle St"));
+    nameSubs.push_back (std::make_pair (
+            "N Highland St & Wilson Blvd",
+            "Clarendon Metro / Wilson Blvd & N Highland St"));
+    nameSubs.push_back (std::make_pair (
+            "Central Library", "Central Library / N Quincy St & 10th St N"));
+    nameSubs.push_back (std::make_pair (
+            "Randle Circle & Minnesota Ave NE",
+            "Randle Circle & Minnesota Ave SE"));
+    nameSubs.push_back (std::make_pair (
+            "1st & N St SE", "1st & N St  SE"));
+    nameSubs.push_back (std::make_pair (
+            "N Fillmore St & Clarendon Blvd",
+            "Clarendon Blvd & N Fillmore St"));
+    // next one is just a guess
+    nameSubs.push_back (std::make_pair (
+            "26th & Crystal Dr", "27th & Crystal Dr"));
+    nameSubs.push_back (std::make_pair (
+            "17th & K St NW [formerly 17th & L St NW]",
+            "17th & K St NW"));
+    nameSubs.push_back (std::make_pair (
+            "4th St & Rhode Island Ave NE", "4th & W St NE")); 
+    nameSubs.push_back (std::make_pair (
+            "18th & Hayes St", "Aurora Hills Community Ctr/18th & Hayes St"));
+    nameSubs.push_back (std::make_pair (
+            "12th & Hayes St", "Pentagon City Metro / 12th & S Hayes St"));
+    nameSubs.push_back (std::make_pair (
+            "15th & Hayes St", "Pentagon City Metro / 12th & S Hayes St"));
+    nameSubs.push_back (std::make_pair (
+            "Wisconsin Ave & Macomb St NW", "Wisconsin Ave & Newark St NW"));
+    nameSubs.push_back (std::make_pair (
+            "Court House Metro / Wilson Blvd & N Uhle St",
+            "Court House Metro / 15th & N Uhle St"));
+    nameSubs.push_back (std::make_pair (
+            "Virginia Square",
+            "Virginia Square Metro / N Monroe St & 9th St N"));
+    nameSubs.push_back (std::make_pair (
+            "23rd & Eads", "23rd & Eads St"));
+    nameSubs.push_back (std::make_pair (
+            "18th & Bell St", "Crystal City Metro / 18th & Bell St"));
+    nameSubs.push_back (std::make_pair (
+            "5th & K St NW", "5th St & K St NW"));
+    nameSubs.push_back (std::make_pair (
+            "4th St & Massachusetts Ave NW", "5th St & Massachusetts Ave NW"));
+    nameSubs.push_back (std::make_pair ( // No such station!
+            "16th & U St NW", "New Hampshire Ave & T St NW"));
+    nameSubs.push_back (std::make_pair (
+            "7th & Water St SW / SW Waterfront",
+            "6th & Water St SW / SW Waterfront"));
+    nameSubs.push_back (std::make_pair (
+            "McPherson Square - 14th & H St NW", "15th & K St NW"));
+    nameSubs.push_back (std::make_pair (
+            "5th St & K St NW", "5th & K St NW"));
+    nameSubs.push_back (std::make_pair (
+        "1st & N ST SE", "1st & N St  SE"));
+    nameSubs.push_back (std::make_pair ( // No such station!
+        "Fairfax Dr & Glebe Rd", "Glebe Rd & 11th St N"));
+    nameSubs.push_back (std::make_pair (
+        "Idaho Ave & Newark St NW [on 2nd District patio]",
+        "Wisconsin Ave & Newark St NW"));
+    nameSubs.push_back (std::make_pair (
+        "New Hampshire Ave & T St NW [formerly 16th & U St NW]",
+        "New Hampshire Ave & T St NW"));
+    nameSubs.push_back (std::make_pair (
+        "8th & F St NW / National Portrait Gallery",
+        "7th & F St NW / National Portrait Gallery"));
+    nameSubs.push_back (std::make_pair (
+        "Pentagon City Metro / 12th & Hayes St",
+        "Pentagon City Metro / 12th & S Hayes St"));
+    nameSubs.push_back (std::make_pair (
+        "12th & Hayes St /  Pentagon City Metro",
+        "Pentagon City Metro / 12th & S Hayes St"));
+    nameSubs.push_back (std::make_pair (
+        "Fallsgove Dr & W Montgomery Ave", "Fallsgrove Dr & W Montgomery Ave"));
+    nameSubs.push_back (std::make_pair (
+        "Bethesda Ave & Arlington Blvd", "Bethesda Ave & Arlington Rd"));
+    nameSubs.push_back (std::make_pair (
+        "Thomas Jefferson Cmty Ctr / 2nd St S & Ivy",
+        "TJ Cmty Ctr / 2nd St & S Old Glebe Rd"));
+    nameSubs.push_back (std::make_pair (
+        "McPherson Square / 14th & H St NW", "15th & K St NW"));
+    nameSubs.push_back (std::make_pair (
+        "13th & U St NW", "12th & U St NW"));
+    nameSubs.push_back (std::make_pair (
+        "Connecticut Ave & Nebraska Ave NW", "Connecticut & Nebraska Ave NW"));
+    nameSubs.push_back (std::make_pair (
+        "18th & Wyoming Ave NW", "18th St & Wyoming Ave NW"));
+    nameSubs.push_back (std::make_pair (
+        "Connecticut Ave & Yuma St NW", "Van Ness Metro / UDC"));
+    nameSubs.push_back (std::make_pair (
+        "22nd & Eads St", "23rd & Eads St"));
+
+    count = 0;
+    while (getline (in_file, linetxt,'\n')) {
+        starti = endi = -INT_MAX;
+        for (int i=0; i<startcol; i++) {
+            ipos [0] = linetxt.find(",",0);
+            linetxt = linetxt.substr (ipos [0] + 1, linetxt.length () - ipos [0] - 1);
+        }
+        ipos [0] = linetxt.find (",", 0);
+        /*
+         * The earlier files (prior to 2012) have station name followed by
+         * parenthesised terminalName (which is a number). Since then, only
+         * station names are present, yet these unfortunately change and require
+         * individual replacements as stated below. Any additional differences
+         * yet to come will be caught by the asserts!
+         */
+        ipos [1] = linetxt.find ("(", 0);
+        if (ipos [1] != std::string::npos && ipos [1] < ipos [0])
+        {
+            linetxt = linetxt.substr (ipos [1] + 1, 
+                    linetxt.length () - ipos [1] - 1);
+            ipos [0] = linetxt.find (")", 0);
+            station = linetxt.substr (0, ipos [0]);
+            /*
+             * There is one doubly-parenthesised station ("(Dupont Circle
+             * South)"), with the number only coming in the second parentheses.
+             */
+            if (!std::all_of (station.begin(), station.end(), ::isdigit))
+            {
+                linetxt = linetxt.substr (ipos [0] + 1, 
+                        linetxt.length () - ipos [0] - 1);
+                ipos [0] = linetxt.find ("(", 0);
+                assert (ipos [0] != std::string::npos);
+                linetxt = linetxt.substr (ipos [0] + 1, 
+                        linetxt.length () - ipos [0] - 1);
+                ipos [0] = linetxt.find (")", 0);
+                station = linetxt.substr (0, ipos [0]);
+            }
+            /*
+             * 31999 == "Alta Bicycle Share Demonstation Station"
+             * 31900 == "Birthday Station" (22 Sep 2011 only)
+             * There is also "Alta Tech Office" which only appears in 2013-Q3 on
+             * two self-trips
+             */
+            if (station != "31999" && station != "31900") 
+            {
+                if (DCStationNumberMap.find (station) == DCStationNumberMap.end())
+                    std::cout << count<< ": station[" << station << 
+                        "] start not found in number map!" << std::endl;
+                assert (DCStationNumberMap.find (station) != 
+                        DCStationNumberMap.end());
+                starti = DCStationNumberMap [station];
+            }
+        }
+        else
+        {
+            station = linetxt.substr (0, ipos [0]);
+            station.erase (std::remove_if (station.end() - 1, station.end(), 
+                        ::isspace), station.end());
+            if (DCStationNameMap.find (station) == DCStationNameMap.end())
+            {
+                for (nameSubsIterator itr = nameSubs.begin(); 
+                        itr != nameSubs.end (); itr++)
+                    if (station == itr->first)
+                        station = itr->second;
+            } 
+            if (DCStationNameMap.find (station) != DCStationNameMap.end())
+                starti = DCStationNameMap [station];
+            else if (missingStationNames.find (station) ==
+                    missingStationNames.end ())
+                missingStationNames.insert (station);
+        }
+
+        // Then same for end station
+        for (int i=0; i<(endcol - startcol); i++)
+        {
+            ipos [0] = linetxt.find (",", 0);
+            linetxt = linetxt.substr (ipos [0] + 1, linetxt.length () - ipos [0] - 1);
+        }
+        ipos [0] = linetxt.find (",", 0);
+        ipos [1] = linetxt.find ("(", 0);
+        if (ipos [1] != std::string::npos && ipos [1] < ipos [0])
+        {
+            linetxt = linetxt.substr (ipos [1] + 1, 
+                    linetxt.length () - ipos [1] - 1);
+            ipos [0] = linetxt.find (")", 0);
+            station = linetxt.substr (0, ipos [0]);
+             // check again for doubly-parenthesised stations
+            if (ipos [0] > 1 &&
+                    !std::all_of (station.begin(), station.end(), ::isdigit))
+            {
+                linetxt = linetxt.substr (ipos [0] + 1, 
+                        linetxt.length () - ipos [0] - 1);
+                ipos [0] = linetxt.find ("(", 0);
+                assert (ipos [0] != std::string::npos);
+                linetxt = linetxt.substr (ipos [0] + 1, 
+                        linetxt.length () - ipos [0] - 1);
+                ipos [0] = linetxt.find (")", 0);
+                station = linetxt.substr (0, ipos [0]);
+            }
+            if (station != "31999" && station != "31900" && ipos [0] > 1) 
+            {
+                if (DCStationNumberMap.find (station) == DCStationNumberMap.end())
+                    std::cout << count<< ": station[" << station << 
+                        "] end not found in number map!" << std::endl;
+                assert (DCStationNumberMap.find (station) != 
+                        DCStationNumberMap.end());
+                endi = DCStationNumberMap [station];
+            }
+        }
+        else if (ipos [0] > 1)
+        {
+            station = linetxt.substr (0, ipos [0]);
+            station.erase (std::remove_if (station.end() - 1, station.end(), 
+                        ::isspace), station.end());
+            if (DCStationNameMap.find (station) == DCStationNameMap.end())
+            {
+                for (nameSubsIterator itr = nameSubs.begin(); 
+                        itr != nameSubs.end (); itr++)
+                    if (station == itr->first)
+                        station = itr->second;
+            } 
+            if (DCStationNameMap.find (station) != DCStationNameMap.end())
+                endi = DCStationNameMap [station];
+            else if (missingStationNames.find (station) ==
+                    missingStationNames.end ())
+                missingStationNames.insert (station);
+        }
+
+        // Note that unlike all other cities, DC does not use the _stationIndex!
+        if (starti >= 0 && endi >= 0 && starti != endi)
+        {
+            ntrips (starti, endi) += 1.0;
+            count++;
+        }
+    } // end while getline
+    in_file.close();
+    std::cout << " and " << count << " valid trips." << std::endl;
+
+    nameSubs.resize (0);
+
+    return count;
+} // end readOneFileDC
+
+
+
+/************************************************************************
+ ************************************************************************
+ **                                                                    **
  **                          AGGREGATETRIPS                            **
  **                                                                    **
  ************************************************************************

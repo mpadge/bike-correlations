@@ -107,7 +107,7 @@ int StationData::GetStations ()
     count = 0;
     oneStation.name = "";
 
-    if (_city == "london" || _city == "nyc")
+    if (_city == "london" || _city == "nyc" || _city == "washingtondc")
     {
         fname = dir + "station_latlons_" + _city + ".txt";
         in_file.open (fname.c_str (), std::ifstream::in);
@@ -297,10 +297,8 @@ int StationData::readDMat ()
         distFile = "data/station_dists_london.txt";
     else if (_city == "nyc")
         distFile = "data/station_dists_nyc.txt";
-    else if (_city == "boston")
-        distFile = "results/stationDistsMat_boston.csv";
-    else if (_city == "chicago")
-        distFile = "results/stationDistsMat_chicago.csv";
+    else if (_city == "boston" || _city == "chicago" || _city == "washingtondc")
+        distFile = "results/stationDistsMat-" + _city + ".csv";
     else if (_city == "oysterTube")
         distFile = "data/London-tube-station-dists.txt";
     else if (_city == "oysterRail")
@@ -341,8 +339,10 @@ int StationData::readDMat ()
     }
     else 
     {
-        // Distances between bike stations in boston & chicago, and between
-        // train stations are read direct from matrix
+        /*
+         * Distances between bike stations in boston, chicago, and washington,
+         * and between train stations are read direct from matrix
+         */
         while (getline (in_file, linetxt, '\n'))
             count++;
         if (count != _numStations)

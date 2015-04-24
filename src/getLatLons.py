@@ -98,18 +98,22 @@ def getNYC ():
 
 def getDC ():
     f = open (rootDir() + '/data/dc-bikeStations.xml')
+    outs = ('id', 'lat', 'long', 'name', 'number')
     page = f.read ()
     f.close ()
     soup = BeautifulSoup (page)
     stns = soup.findAll ('station')
     ids = [st.find ('id').find(text=True).encode ('utf-8') for st in stns]
+    names = [st.find ('name').find(text=True).encode ('utf-8') 
+            for st in stns]
+    numbers = [st.find ('terminalname').find(text=True).encode ('utf-8') 
+            for st in stns]
     lats = [st.find ('lat').find(text=True).encode ('utf-8') for st in stns]
     lons = [st.find ('long').find(text=True).encode ('utf-8') for st in stns]
     lats = [float (l) for l in lats]
     lons = [float (l) for l in lons]
 
-    outs = ('id', 'lat', 'long')
-    df = pd.DataFrame ([ids, lats, lons], index=outs).transpose()
+    df = pd.DataFrame ([ids, lats, lons, names, numbers], index=outs).transpose()
 
     fname = rootDir() + '/data/station_latlons_washingtondc.txt'
 

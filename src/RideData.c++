@@ -1040,106 +1040,69 @@ int RideData::readOneFileDC (int filei)
 
     /*
      * The DC data are truly messy, and alternative station names do not come
-     * with lat/lon coordinates, so there's no simply way to re-map them.
+     * with lat/lon coordinates, so there's no simple way to re-map them.
      * Rather, those that don't match the "official" list simply have to be
-     * manually detected and replaced with the following values.
+     * manually substituted with the following values.
      */
-    std::vector <std::pair <std::string, std::string> > nameSubs;
-    typedef std::vector <std::pair <std::string, std::string> >::iterator 
+    boost::unordered_map <std::string, std::string> nameSubs;
+    typedef boost::unordered_map <std::string, std::string>::iterator
         nameSubsIterator;
-    nameSubs.push_back (std::make_pair (
-            "Court House Metro / Wilson Blvd & N Uhle St",
-            "Court House Metro / 15th & N Uhle St"));
-    nameSubs.push_back (std::make_pair (
-            "N Highland St & Wilson Blvd",
-            "Clarendon Metro / Wilson Blvd & N Highland St"));
-    nameSubs.push_back (std::make_pair (
-            "Central Library", "Central Library / N Quincy St & 10th St N"));
-    nameSubs.push_back (std::make_pair (
-            "Randle Circle & Minnesota Ave NE",
-            "Randle Circle & Minnesota Ave SE"));
-    nameSubs.push_back (std::make_pair (
-            "1st & N St SE", "1st & N St  SE"));
-    nameSubs.push_back (std::make_pair (
-            "N Fillmore St & Clarendon Blvd",
-            "Clarendon Blvd & N Fillmore St"));
-    // next one is just a guess
-    nameSubs.push_back (std::make_pair (
-            "26th & Crystal Dr", "27th & Crystal Dr"));
-    nameSubs.push_back (std::make_pair (
-            "17th & K St NW [formerly 17th & L St NW]",
-            "17th & K St NW"));
-    nameSubs.push_back (std::make_pair (
-            "4th St & Rhode Island Ave NE", "4th & W St NE")); 
-    nameSubs.push_back (std::make_pair (
-            "18th & Hayes St", "Aurora Hills Community Ctr/18th & Hayes St"));
-    nameSubs.push_back (std::make_pair (
-            "12th & Hayes St", "Pentagon City Metro / 12th & S Hayes St"));
-    nameSubs.push_back (std::make_pair (
-            "15th & Hayes St", "Pentagon City Metro / 12th & S Hayes St"));
-    nameSubs.push_back (std::make_pair (
-            "Wisconsin Ave & Macomb St NW", "Wisconsin Ave & Newark St NW"));
-    nameSubs.push_back (std::make_pair (
-            "Court House Metro / Wilson Blvd & N Uhle St",
-            "Court House Metro / 15th & N Uhle St"));
-    nameSubs.push_back (std::make_pair (
-            "Virginia Square",
-            "Virginia Square Metro / N Monroe St & 9th St N"));
-    nameSubs.push_back (std::make_pair (
-            "23rd & Eads", "23rd & Eads St"));
-    nameSubs.push_back (std::make_pair (
-            "18th & Bell St", "Crystal City Metro / 18th & Bell St"));
-    nameSubs.push_back (std::make_pair (
-            "5th & K St NW", "5th St & K St NW"));
-    nameSubs.push_back (std::make_pair (
-            "4th St & Massachusetts Ave NW", "5th St & Massachusetts Ave NW"));
-    nameSubs.push_back (std::make_pair ( // No such station!
-            "16th & U St NW", "New Hampshire Ave & T St NW"));
-    nameSubs.push_back (std::make_pair (
-            "7th & Water St SW / SW Waterfront",
-            "6th & Water St SW / SW Waterfront"));
-    nameSubs.push_back (std::make_pair (
-            "McPherson Square - 14th & H St NW", "15th & K St NW"));
-    nameSubs.push_back (std::make_pair (
-            "5th St & K St NW", "5th & K St NW"));
-    nameSubs.push_back (std::make_pair (
-        "1st & N ST SE", "1st & N St  SE"));
-    nameSubs.push_back (std::make_pair ( // No such station!
-        "Fairfax Dr & Glebe Rd", "Glebe Rd & 11th St N"));
-    nameSubs.push_back (std::make_pair (
-        "Idaho Ave & Newark St NW [on 2nd District patio]",
-        "Wisconsin Ave & Newark St NW"));
-    nameSubs.push_back (std::make_pair (
-        "New Hampshire Ave & T St NW [formerly 16th & U St NW]",
-        "New Hampshire Ave & T St NW"));
-    nameSubs.push_back (std::make_pair (
-        "8th & F St NW / National Portrait Gallery",
-        "7th & F St NW / National Portrait Gallery"));
-    nameSubs.push_back (std::make_pair (
-        "Pentagon City Metro / 12th & Hayes St",
-        "Pentagon City Metro / 12th & S Hayes St"));
-    nameSubs.push_back (std::make_pair (
-        "12th & Hayes St /  Pentagon City Metro",
-        "Pentagon City Metro / 12th & S Hayes St"));
-    nameSubs.push_back (std::make_pair (
-        "Fallsgove Dr & W Montgomery Ave", "Fallsgrove Dr & W Montgomery Ave"));
-    nameSubs.push_back (std::make_pair (
-        "Bethesda Ave & Arlington Blvd", "Bethesda Ave & Arlington Rd"));
-    nameSubs.push_back (std::make_pair (
-        "Thomas Jefferson Cmty Ctr / 2nd St S & Ivy",
-        "TJ Cmty Ctr / 2nd St & S Old Glebe Rd"));
-    nameSubs.push_back (std::make_pair (
-        "McPherson Square / 14th & H St NW", "15th & K St NW"));
-    nameSubs.push_back (std::make_pair (
-        "13th & U St NW", "12th & U St NW"));
-    nameSubs.push_back (std::make_pair (
-        "Connecticut Ave & Nebraska Ave NW", "Connecticut & Nebraska Ave NW"));
-    nameSubs.push_back (std::make_pair (
-        "18th & Wyoming Ave NW", "18th St & Wyoming Ave NW"));
-    nameSubs.push_back (std::make_pair (
-        "Connecticut Ave & Yuma St NW", "Van Ness Metro / UDC"));
-    nameSubs.push_back (std::make_pair (
-        "22nd & Eads St", "23rd & Eads St"));
+
+    nameSubs ["Court House Metro / Wilson Blvd & N Uhle St"] =
+            "Court House Metro / 15th & N Uhle St";
+    nameSubs ["N Highland St & Wilson Blvd"] =
+            "Clarendon Metro / Wilson Blvd & N Highland St";
+    nameSubs ["Central Library"] = "Central Library / N Quincy St & 10th St N";
+    nameSubs ["Randle Circle & Minnesota Ave NE"] =
+            "Randle Circle & Minnesota Ave SE";
+    nameSubs ["1st & N St SE"] = "1st & N St  SE";
+    nameSubs ["N Fillmore St & Clarendon Blvd"] =
+            "Clarendon Blvd & N Fillmore St";
+    nameSubs ["26th & Crystal Dr"] = "27th & Crystal Dr"; // Just a guess
+    nameSubs ["17th & K St NW [formerly 17th & L St NW]"] = "17th & K St NW";
+    nameSubs ["4th St & Rhode Island Ave NE"] = "4th & W St NE";
+    nameSubs ["18th & Hayes St"] = "Aurora Hills Community Ctr/18th & Hayes St";
+    nameSubs ["12th & Hayes St"] = "Pentagon City Metro / 12th & S Hayes St";
+    nameSubs ["15th & Hayes St"] = "Pentagon City Metro / 12th & S Hayes St";
+    nameSubs ["Wisconsin Ave & Macomb St NW"] = "Wisconsin Ave & Newark St NW";
+    nameSubs ["Court House Metro / Wilson Blvd & N Uhle St"] =
+            "Court House Metro / 15th & N Uhle St";
+    nameSubs ["Virginia Square"] =
+            "Virginia Square Metro / N Monroe St & 9th St N";
+    nameSubs ["23rd & Eads"] = "23rd & Eads St";
+    nameSubs ["18th & Bell St"] = "Crystal City Metro / 18th & Bell St";
+    nameSubs ["5th & K St NW"] = "5th St & K St NW";
+    nameSubs ["4th St & Massachusetts Ave NW"] =
+            "5th St & Massachusetts Ave NW";
+    nameSubs ["16th & U St NW"] = "New Hampshire Ave & T St NW"; // No such station
+    nameSubs ["7th & Water St SW / SW Waterfront"] =
+            "6th & Water St SW / SW Waterfront";
+    nameSubs ["McPherson Square - 14th & H St NW"] = "15th & K St NW";
+    nameSubs ["5th St & K St NW"] = "5th & K St NW";
+    nameSubs ["1st & N ST SE"] = "1st & N St  SE";
+    nameSubs ["Fairfax Dr & Glebe Rd"] = "Glebe Rd & 11th St N"; // No such station
+    nameSubs ["Idaho Ave & Newark St NW [on 2nd District patio]"] =
+        "Wisconsin Ave & Newark St NW";
+    nameSubs ["New Hampshire Ave & T St NW [formerly 16th & U St NW]"] =
+        "New Hampshire Ave & T St NW";
+    nameSubs ["8th & F St NW / National Portrait Gallery"] =
+        "7th & F St NW / National Portrait Gallery";
+    nameSubs ["Pentagon City Metro / 12th & Hayes St"] =
+        "Pentagon City Metro / 12th & S Hayes St";
+    nameSubs ["12th & Hayes St /  Pentagon City Metro"] =
+        "Pentagon City Metro / 12th & S Hayes St";
+    nameSubs ["Fallsgove Dr & W Montgomery Ave"] =
+        "Fallsgrove Dr & W Montgomery Ave";
+    nameSubs ["Bethesda Ave & Arlington Blvd"] = "Bethesda Ave & Arlington Rd";
+    nameSubs ["Thomas Jefferson Cmty Ctr / 2nd St S & Ivy"] =
+        "TJ Cmty Ctr / 2nd St & S Old Glebe Rd";
+    nameSubs ["McPherson Square / 14th & H St NW"] = "15th & K St NW";
+    nameSubs ["13th & U St NW"] = "12th & U St NW";
+    nameSubs ["Connecticut Ave & Nebraska Ave NW"] =
+        "Connecticut & Nebraska Ave NW";
+    nameSubs ["18th & Wyoming Ave NW"] = "18th St & Wyoming Ave NW";
+    nameSubs ["Connecticut Ave & Yuma St NW"] = "Van Ness Metro / UDC";
+    nameSubs ["22nd & Eads St"] = "23rd & Eads St";
 
     count = 0;
     while (getline (in_file, linetxt,'\n')) {
@@ -1201,10 +1164,14 @@ int RideData::readOneFileDC (int filei)
                         ::isspace), station.end());
             if (DCStationNameMap.find (station) == DCStationNameMap.end())
             {
+                if (nameSubs.find (station) != nameSubs.end ())
+                    station = nameSubs[station];
+                /*
                 for (nameSubsIterator itr = nameSubs.begin(); 
                         itr != nameSubs.end (); itr++)
                     if (station == itr->first)
                         station = itr->second;
+                 */
             } 
             if (DCStationNameMap.find (station) != DCStationNameMap.end())
                 starti = DCStationNameMap [station];
@@ -1257,10 +1224,14 @@ int RideData::readOneFileDC (int filei)
                         ::isspace), station.end());
             if (DCStationNameMap.find (station) == DCStationNameMap.end())
             {
+                if (nameSubs.find (station) != nameSubs.end ())
+                    station = nameSubs[station];
+                /*
                 for (nameSubsIterator itr = nameSubs.begin(); 
                         itr != nameSubs.end (); itr++)
                     if (station == itr->first)
                         station = itr->second;
+                 */
             } 
             if (DCStationNameMap.find (station) != DCStationNameMap.end())
                 endi = DCStationNameMap [station];
@@ -1278,8 +1249,6 @@ int RideData::readOneFileDC (int filei)
     } // end while getline
     in_file.close();
     std::cout << " and " << count << " valid trips." << std::endl;
-
-    nameSubs.resize (0);
 
     return count;
 } // end readOneFileDC

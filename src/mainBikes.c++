@@ -216,7 +216,7 @@ int main(int argc, char *argv[]) {
         if (city == "london" || city == "washingtondc")
         {
             r2name = "R2_" + city + "_from_" + rideData.txtnf + ".csv";
-            covname = "Cov_" + city + "_from_" + rideData.txtnf + ".csv";
+            covname = "Cov_" + city + "_from_" + stdtxt + rideData.txtnf + ".csv";
         }
         else if (city == "nyc" || city == "boston" || city == "chicago")
         {

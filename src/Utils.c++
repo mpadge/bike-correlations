@@ -382,7 +382,7 @@ RegrResults regression(std::vector <double> x, std::vector <double> y)
     } // end if count > 0
     else {
         regr_results.r2 = regr_results.slope = regr_results.intercept =
-            regr_results.SS = regr_results.tval = NAN;
+            regr_results.cov = regr_results.SS = regr_results.tval = NAN;
     }
     return regr_results;
 }

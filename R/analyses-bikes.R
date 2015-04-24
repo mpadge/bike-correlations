@@ -29,10 +29,9 @@ get.data <- function (city="nyc", from=TRUE, covar=TRUE, std=TRUE,
         else txt.sd <- "unstd" # these files don't currently exist
         fname <- paste (txt.dir, "Cov_", city, "_", txt.ft, 
                         "_", txt.sd, "_", txt.nf, sep="")
-        indx <- which (dists < 0)
+        indx <- which (dists < 0) # the latter is for -DOUBLE_MAX
     } else {
         fname <- paste (txt.dir, "R2_", city, "_", txt.ft, "_", txt.nf, sep="")
-        indx <- which (dists < 0 | abs (y) > 1)
     }
     if (subscriber == 0 | subscriber == 2)
         mf = 0
@@ -41,6 +40,12 @@ get.data <- function (city="nyc", from=TRUE, covar=TRUE, std=TRUE,
     fname <- paste (fname, ".csv", sep="")
     y <- as.matrix (read.csv (fname, header=FALSE))
     y <- array (y, dim=dims)
+
+    # covar 
+    if (covar)
+        indx <- which (dists < 0 | y < (-999999)) # arbitrarily big number
+    else
+        indx <- which (dists < 0 | abs (y) > 1)
 
     dists [indx] <- NA
     y [indx] <- NA
@@ -92,7 +97,7 @@ fit.decay <- function (city="nyc", from=TRUE, mod.type="power", covar=TRUE,
     {
         d <- dat$d [i, ]
         y <- dat$y [i, ]
-        indx <- which (!is.na (d) & !is.na (y) & y > 0)
+        indx <- which (!is.na (d) & !is.na (y))
         # There are some cases for which trip data exist yet station distances
         # haven't yet been added to list. These produce NAs in the dists table.
         if (length (indx) > 10)
@@ -109,11 +114,12 @@ fit.decay <- function (city="nyc", from=TRUE, mod.type="power", covar=TRUE,
                 # d^k = e
                 # k log d = 1
                 # d = exp (1/k)
-                indx <- which (d > 0) # Because 0 distances do occur
+                indx <- which (y > 0 & d > 0) # Because 0 distances do occur
                 d <- d [indx]
                 y <- y [indx]
                 mod <- lm (log10 (y) ~ log10 (d))
                 coeffs <- summary (mod)$coefficients
+                cat (i, "\n")
                 if (exp (-1 / coeffs[2]) < 100)
                 {
                     yfit <- 10 ^ predict (mod)
@@ -369,7 +375,7 @@ compare.ntrips <- function (covar=TRUE, std=TRUE)
     # other half of the resultant relationships, which are relationships between
     # numbers of trips and k-values, which are also not significant. This is the
     # major and interesting finding here.
-    cities <- c ("boston", "washingtondc")
+    cities <- c ("london", "nyc")
     x11 (width=14)
     par (mfrow=c(2,4), mar=c(2.5,2.5,0.5,0.5), mgp=c(1.3,0.7,0), ps=10)
     ft <- c (TRUE, FALSE)

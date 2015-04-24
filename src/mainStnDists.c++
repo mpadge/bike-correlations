@@ -562,7 +562,7 @@ int Ways::readCompactWays ()
             highway = false;
             oneway = false;
             inBBox = false;
-            weight = -9999.0;
+            weight = -FLOAT_MAX;
             waynodes.resize (0);
         }
         else if (linetxt.find ("</way>") != std::string::npos)
@@ -1015,17 +1015,23 @@ int Ways::dijkstra (long long fromNode)
     }
 
     assert (dists.size () == stationList.size ());
-    // First have to match long long fromNode to index# within stationList
-    int id = -INT_MAX;
+    /*
+     * First have to match long long fromNode to index# within stationList.
+     * There are cases where two stations match to same OSM node, so distmats
+     * have to be filled for all such multiples
+     */
+    std::vector <int> id;
+    id.resize (0);
     for (int i=0; i<stationList.size(); i++)
-    {
         if (stationList [i].nodeIndex == fromNode)
-            id = i;
-    }
-    assert (id >= 0);
+            id.push_back (i);
+    assert (id.size () > 0);
+    for (int i=0; i<id.size (); i++)
+        idDone [id[i]] = true;
 
     for (int i=0; i<stationList.size (); i++)
-        distMat (id, i) = dists [i];
+        for (std::vector <int>::iterator itr=id.begin(); itr != id.end(); itr++)
+            distMat (*itr, i) = dists [i];
 
     return 0;
 }

@@ -148,6 +148,7 @@ class Ways
         umapInt nodeNames;
         std::vector <Station> stationList;
         std::vector <float> dists;
+        std::vector <bool> idDone; // TODO: DELETE!
         Ways (std::string str)
             : _city (str)
         {
@@ -175,6 +176,9 @@ class Ways
             std::cout << "Getting inter-station distances";
             std::cout.flush ();
             count = 0;
+            idDone.resize (stationList.size ());
+            for (int i=0; i<stationList.size (); i++)
+                idDone [i] = false;
             for (std::vector<Station>::iterator itr=stationList.begin();
                     itr != stationList.end(); itr++)
             {
@@ -188,6 +192,12 @@ class Ways
             std::cout << "\rGetting inter-station distances " <<
                 stationList.size () << "/" << stationList.size () <<
                 " done." << std::endl;
+
+            for (int i=0; i<stationList.size (); i++)
+                if (!idDone [i])
+                    std::cout << "ERROR: ID#" << i << " was not done" <<
+                        std::endl;
+
             writeDMat ();
         }
         ~Ways ()

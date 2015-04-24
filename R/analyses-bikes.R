@@ -119,7 +119,6 @@ fit.decay <- function (city="nyc", from=TRUE, mod.type="power", covar=TRUE,
                 y <- y [indx]
                 mod <- lm (log10 (y) ~ log10 (d))
                 coeffs <- summary (mod)$coefficients
-                cat (i, "\n")
                 if (exp (-1 / coeffs[2]) < 100)
                 {
                     yfit <- 10 ^ predict (mod)
@@ -820,4 +819,65 @@ summary.stats <- function (covar=TRUE, std=TRUE)
             cat (rep ("-", 105), "\n", sep="")
     }
     cat (rep ("-", 105), "\n", sep="")
+}
+
+spatial.var <- function (city="london")
+{
+    # Quantifies the extent to which estimates of distance decay functions are
+    # same for near vs. far stations.
+    tf <- c (FALSE, TRUE)
+    tftxt <- c ("TO", "FROM")
+    fht <- 3.5
+    mfrow <- c (1, 2)
+    if (city != "london" & city != "washingtondc")
+    {
+        fht <- 7
+        mfrow <- c (2, 2)
+    }
+    x11 (width=10, height=fht)
+    par (mfrow=mfrow, mar=c(2.5,2.5,2.5,0.5), mgp=c(1.3,0.7,0), ps=10)
+
+    for (i in 1:2)
+    {
+        dat1 <- fit.gaussian (city=city, nearfar=1, from=tf [i])
+        dat2 <- fit.gaussian (city=city, nearfar=2, from=tf [i])
+        n <- max (c (dat1$i, dat2$i))
+        k1 <- k2 <- rep (NA, n)
+        k1 [dat1$i] <- dat1$k
+        k2 [dat2$i] <- dat2$k
+        nin <- length (which (!is.na (k1) & !is.na (k2)))
+        plot (k1, k2, pch=1, col="lawngreen", xlab="near", ylab="far")
+        mod <- lm (k2 ~ k1)
+        x <- seq (min (k1,na.rm=TRUE), max(k1,na.rm=TRUE), length.out=100)
+        y <- predict (mod, new=data.frame (k1=x))
+        lines (x, y, col="blue", lwd=2)
+        r2 <- formatC (summary (mod)$r.squared, format="f", digits=2)
+        title (main=paste (tftxt [i], ": R2 = ", r2, " (n=", nin,
+                           "/", n, ")", sep=""))
+    }
+
+    if (city != "london" & city != "washingtondc")
+    {
+        for (i in 1:2)
+        {
+            dat1 <- fit.gaussian (city=city, nearfar=0, from=tf [i],
+                                  subscriber=1, mf=1)
+            dat2 <- fit.gaussian (city=city, nearfar=0, from=tf [i],
+                                  subscriber=1, mf=2)
+            n <- max (c (dat1$i, dat2$i))
+            k1 <- k2 <- rep (NA, n)
+            k1 [dat1$i] <- dat1$k
+            k2 [dat2$i] <- dat2$k
+            nin <- length (which (!is.na (k1) & !is.na (k2)))
+            plot (k1, k2, pch=1, col="lawngreen", xlab="male", ylab="female")
+            mod <- lm (k2 ~ k1)
+            x <- seq (min (k1,na.rm=TRUE), max(k1,na.rm=TRUE), length.out=100)
+            y <- predict (mod, new=data.frame (k1=x))
+            lines (x, y, col="blue", lwd=2)
+            r2 <- formatC (summary (mod)$r.squared, format="f", digits=2)
+            p <- formatC (summary (mod)$coefficients [8], format="f", digits=4)
+            title (main=paste (tftxt [i], ": R2 = ", r2, " (n=", nin,
+                               "/", n, "; p=", p, ")", sep=""))
+        }
+    }
 }

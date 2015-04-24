@@ -10,6 +10,14 @@ get.data <- function (city="nyc", from=TRUE, covar=TRUE, std=TRUE,
                       nearfar=0, subscriber=0, mf=0,
                       msg=FALSE)
 {
+    # subscriber = 0 -> all data
+    # subscriber = 2 -> non-subscriber data only
+    # subscriber = 1:
+    #           mf = 0 -> all data
+    #           mf = 1/2 -> male/female data
+    # subscriber = 3:
+    #           mf = 0/1 -> young/old suscribers
+
     txt.dir <- "../results/"
     if (subscriber > 2)
         txt.dir <- paste (txt.dir, "age/", sep="")
@@ -831,11 +839,11 @@ spatial.var <- function (city="london")
     mfrow <- c (1, 2)
     if (city != "london" & city != "washingtondc")
     {
-        fht <- 7
-        mfrow <- c (2, 2)
+        fht <- 8
+        mfrow <- c (3, 2)
     }
-    x11 (width=10, height=fht)
-    par (mfrow=mfrow, mar=c(2.5,2.5,2.5,0.5), mgp=c(1.3,0.7,0), ps=10)
+    x11 (width=7, height=fht)
+    par (mfrow=mfrow, mar=c(2.5,2.5,2.5,0.5), mgp=c(1.3,0.7,0), ps=12)
 
     for (i in 1:2)
     {
@@ -855,29 +863,48 @@ spatial.var <- function (city="london")
         title (main=paste (tftxt [i], ": R2 = ", r2, " (n=", nin,
                            "/", n, ")", sep=""))
     }
+    xpos <- min (k1, na.rm=TRUE) + 0.8 * diff (range (k1, na.rm=TRUE))
+    ypos <- min (k2, na.rm=TRUE) + 0.8 * diff (range (k2, na.rm=TRUE))
+    par (ps=18)
+    text (xpos, ypos, labels=toupper (city))
+    par (ps=12)
 
+    # subscriber = 0 -> all data
+    # subscriber = 2 -> non-subscriber data only
+    # subscriber = 1:
+    #           mf = 0 -> all data
+    #           mf = 1/2 -> male/female data
+    # subscriber = 3:
+    #           mf = 0/1 -> young/old suscribers
     if (city != "london" & city != "washingtondc")
     {
-        for (i in 1:2)
-        {
-            dat1 <- fit.gaussian (city=city, nearfar=0, from=tf [i],
-                                  subscriber=1, mf=1)
-            dat2 <- fit.gaussian (city=city, nearfar=0, from=tf [i],
-                                  subscriber=1, mf=2)
-            n <- max (c (dat1$i, dat2$i))
-            k1 <- k2 <- rep (NA, n)
-            k1 [dat1$i] <- dat1$k
-            k2 [dat2$i] <- dat2$k
-            nin <- length (which (!is.na (k1) & !is.na (k2)))
-            plot (k1, k2, pch=1, col="lawngreen", xlab="male", ylab="female")
-            mod <- lm (k2 ~ k1)
-            x <- seq (min (k1,na.rm=TRUE), max(k1,na.rm=TRUE), length.out=100)
-            y <- predict (mod, new=data.frame (k1=x))
-            lines (x, y, col="blue", lwd=2)
-            r2 <- formatC (summary (mod)$r.squared, format="f", digits=2)
-            p <- formatC (summary (mod)$coefficients [8], format="f", digits=4)
-            title (main=paste (tftxt [i], ": R2 = ", r2, " (n=", nin,
-                               "/", n, "; p=", p, ")", sep=""))
-        }
+        subs <- c (1, 3)
+        mf1 <- c (1, 0)
+        mf2 <- c (2, 1)
+        xtxt <- c ("male", "young")
+        ytxt <- c ("female", "old")
+        for (i in 1:2) # over (gender, age)
+            for (j in 1:2) # over (to, from)
+            {
+                dat1 <- fit.gaussian (city=city, nearfar=0, from=tf [j],
+                                      subscriber=subs [i], mf=mf1 [i])
+                dat2 <- fit.gaussian (city=city, nearfar=0, from=tf [j],
+                                      subscriber=subs [i], mf=mf2 [i])
+                n <- max (c (dat1$i, dat2$i))
+                k1 <- k2 <- rep (NA, n)
+                k1 [dat1$i] <- dat1$k
+                k2 [dat2$i] <- dat2$k
+                nin <- length (which (!is.na (k1) & !is.na (k2)))
+                plot (k1, k2, pch=1, col="lawngreen", 
+                      xlab=xtxt [i], ylab=ytxt [i])
+                mod <- lm (k2 ~ k1)
+                x <- seq (min (k1,na.rm=TRUE), max(k1,na.rm=TRUE), length.out=100)
+                y <- predict (mod, new=data.frame (k1=x))
+                lines (x, y, col="blue", lwd=2)
+                r2 <- formatC (summary (mod)$r.squared, format="f", digits=2)
+                p <- formatC (summary (mod)$coefficients [8], format="f", digits=4)
+                title (main=paste (tftxt [i], ": R2 = ", r2, " (n=", nin,
+                                   "/", n, "; p=", p, ")", sep=""))
+            } # end for j
     }
-}
+} # end spatial.var()

@@ -86,8 +86,6 @@ get.data <- function (city="nyc", from=TRUE, covar=TRUE, std=TRUE,
 # *****                                                  *****
 # ************************************************************ 
 # ************************************************************ 
-#
-# TODO: Fix this up to reflect code in compare.models()
 
 fit.gaussian <- function (city="nyc", from=TRUE, covar=TRUE, std=TRUE,
                           nearfar=0, subscriber=0, mf=0, msg=FALSE)
@@ -98,6 +96,7 @@ fit.gaussian <- function (city="nyc", from=TRUE, covar=TRUE, std=TRUE,
     dat <- get.data (city=city, from=from, covar=covar, std=std,
                      nearfar=nearfar, subscriber=subscriber,
                      mf=mf, msg=msg)
+
     rd <- "../results/";
     if (subscriber > 2)
         rd <- paste (rd, "age/", sep="")
@@ -108,69 +107,52 @@ fit.gaussian <- function (city="nyc", from=TRUE, covar=TRUE, std=TRUE,
     ntrips.mat <- read.csv (fname, header=FALSE)
 
     n <- dim (dat$d)[1]
-    if (n != dim (ntrips.mat) [1])
-        cat ("ERROR: size of ntrips not same as covariance matrix!\n")
+
     index <- kvec <- intercept <- ss <- ntrips <- NULL
+
     if (from) ftxt <- "from"
     else ftxt <- "to"
-    # Note that the FROM data contain 2 junk cases with k<0!
+    tstr <- paste (toupper (city), "-", ftxt, sep="")
+
     for (i in 1:n)
     {
         d <- dat$d [i, ]
         y <- dat$y [i, ]
-        indx <- which (!is.na (d) & !is.na (y) & y > 0)
+        indx <- which (!is.na (d) & !is.na (y))
         # There are some cases for which trip data exist yet station distances
         # haven't yet been added to list (because the stations do not appear in
         # the website!) These produce NAs in the dists table.
-        if (length (indx) > 2)
+        # The sd(y) condition prevents analyses of !covar for which all trips,
+        # and thus all y-values, are zero.
+        if (length (indx) > 10 & sd (y, na.rm=TRUE) > 0)
         {
             d <- d[indx]
             y <- y[indx]
             dfit <- seq(min(d), max(d), length.out=100)
-            if (covar)
-                a0 <- 2 * mean (y)
-            else
-                a0 <- 1
+            a0 <- 2 * mean (y)
             k0 <- 1
             mod <- NULL
             while (is.null (mod) & k0 < 5)
             {
                 k0 <- k0 + 1
-                mod <- tryCatch (nls (y ~ y0 + a * exp (-d^2 / k^2), 
-                            start=list(y0=0, a=2*mean(y),k=k0)),
-                            error=function(e) NULL)
+                mod <- tryCatch (nls (y ~ a * exp (-d^2 / k^2), 
+                            start = list (a = 2 * mean (y), k = k0)),
+                            error = function (e) NULL)
             }
             if (!is.null (mod))
             {
                 coeffs <- summary (mod)$coefficients
-                if (coeffs [3] > 0)
+                if (coeffs [2] > 0 & coeffs [2] < 10)
                 {
-                    ss <- c (ss, mean (summary (mod)$residuals ^ 2))
-                    kvec <- c (kvec, coeffs [3])
-                    intercept <- c (intercept, coeffs [2])
-                    index <- c (index, i)
+                    ss <- c (ss, mean (sum ((predict (mod) - y) ^ 2)))
+                    kvec <- c (kvec, coeffs [2])
+                    intercept <- c (intercept, coeffs [1])
                     ntrips <- c (ntrips, sum (ntrips.mat [,i]))
+                    index <- c (index, i)
                 }
             }
-            tstr <- paste (toupper (city), "-", ftxt, sep="")
         } # end if len (indx) > 10
     } # end for i
-    # Any cases that generate k-values that are greater than max (d) are very
-    # likely spurious, so are removed here (but only for nearfar == 0)
-    if (nearfar == 0)
-    {
-        maxd <- max (dat$d, na.rm=TRUE)
-        indx <- which (kvec > maxd)
-        if (msg & length (indx) > 0)
-            cat (city, "-", ftxt, ": Removed ", length (indx), 
-                 " k-values > d = ", maxd, "km\n", sep="")
-        indx <- kvec < maxd
-        ss <- ss [indx]
-        index <- index [indx]
-        kvec <- kvec [indx]
-        intercept <- intercept [indx] 
-        ntrips <- ntrips [indx]
-    }
 
     # Standardised SS values are means for each model, which have already been
     # standardised to have means of ~O(1/nstations). Actual SS values are
@@ -178,10 +160,11 @@ fit.gaussian <- function (city="nyc", from=TRUE, covar=TRUE, std=TRUE,
     # finally divided again below by nstations below to give final single SS
     # values. With nstations=332 (nyc) or 752 (london), respective values are
     # ultimately divided by 36,594,368 = 3.6e7 and 425,259,008 = 4.2e8.
-    if (std)
-        ss <- ss * 1e12
-    else if (covar)
-        ss <- ss / 1e7
+    if (covar)
+        ss <- ss * 1e11
+    else
+        ss <- ss / 10000
+
     dat <- data.frame (cbind (index, kvec, intercept, ntrips, ss)) 
     colnames (dat) <- c("i", "k", "y", "ntrips", "ss")
     return (dat)
@@ -340,8 +323,8 @@ compare.models <- function (city="nyc", from=TRUE, covar=TRUE, plot=FALSE)
             {
                 k0 <- k0 + 1
                 modg <- tryCatch (nls (y ~ a * exp (-d^2 / k^2), 
-                            start=list(a=2*mean(y),k=k0)),
-                            error=function(e) NULL)
+                            start = list (a = 2 * mean (y), k = k0)),
+                            error = function (e) NULL)
             }
             if (!is.null (modg))
             {
@@ -459,10 +442,8 @@ compare.tofrom <- function (covar=TRUE, std=TRUE, paired=FALSE)
     cities <- c ("nyc", "washingtondc", "chicago")
     for (city in cities)
     {
-        to <- fit.gaussian (city=city, from=FALSE, covar=covar, 
-                            std=std, ylims=c(0, 10))
-        from <- fit.gaussian (city=city, from=TRUE, covar=covar, 
-                            std=std, ylims=c(0, 10))
+        to <- fit.gaussian (city=city, from=FALSE, covar=covar, std=std)
+        from <- fit.gaussian (city=city, from=TRUE, covar=covar, std=std)
         # matrices of correlations and t-tests between k-values
         imax <- max (c (max (to$i), max (from$i)))
         x <- y <- rep (NA, imax)
@@ -767,6 +748,15 @@ summary.stats <- function (covar=TRUE, std=TRUE)
     cat (rep ("-", 105), "\n", sep="")
 }
 
+
+# ************************************************************ 
+# ************************************************************ 
+# *****                                                  *****
+# *****                    SPATIAL.VAR                   *****
+# *****                                                  *****
+# ************************************************************ 
+# ************************************************************ 
+
 spatial.var <- function (city="london")
 {
     # Quantifies the extent to which estimates of distance decay functions are
@@ -846,3 +836,155 @@ spatial.var <- function (city="london")
             } # end for j
     }
 } # end spatial.var()
+
+
+# ************************************************************ 
+# ************************************************************ 
+# *****                                                  *****
+# *****                    PLOT.HISTS                    *****
+# *****                                                  *****
+# ************************************************************ 
+# ************************************************************ 
+
+plot.hists <- function (covar=TRUE)
+{
+    require (segmented)
+
+    # if !covar, then hists of trip fluxes are plotted
+    city <- c ("nyc", "boston", "chicago", "washingtondc", "london")
+    ntabs <- c (1, 1, 1, 0, 1)
+    cov.mult <- 1e5
+
+    x11 (width=10, height=6)
+    layout (matrix (c (1, 1, 1, 2:7), 3, 3, byrow=TRUE), 
+            height=c (0.1, 0.45, 0.45))
+    cols <- c ("red", "blue", "grey") # (from, to, regression line)
+
+    par (mar=rep (0, 4), mgp=rep (0, 3))
+    plot (NULL, xlim=c(0, 1), ylim=c(0, 1), 
+          xlab="", ylab="", xaxt="n", yaxt="n", frame=FALSE)
+    par (ps=24)
+    if (covar)
+        mt <- "Covariance"
+    else
+        mt <- "Numbers of trips"
+    text (0.5, 0.4, labels=mt, pos=3)
+    if (covar)
+        mt <- expression (paste (Covariance %*% 10^5, sep=""))
+    par (mar=c(3,3,2.5,0.5), mgp=c(1.8,0.7,0), ps=12)
+
+    yall <- NULL
+    if (covar)
+    {
+        ft <- c (TRUE, FALSE)
+        ft.txt <- c ("from", "to")
+        cat ("\t|\tCITY\t\tDIR\t|\tslope1\tslope2\tbreak point\t|\n")
+        cat ("\t|", rep("-", 71), "|\n", sep="")
+    }
+    else
+    {
+        cat ("\t|\tCITY\t\t|\tslope\t|\n", sep="")
+        cat ("\t|", rep("-", 39), "|\n", sep="")
+    }
+
+    for (ci in 1:length (city))
+    {
+        if (covar)
+        {
+            dat <- x <- y <- list ()
+            for (i in 1:2)
+            {
+                dat [[i]] <- get.data (city=city [ci], from=ft [i], covar=TRUE)
+                dat [[i]]$y <- dat [[i]]$y * cov.mult
+                yall <- c (yall, dat [[i]]$y)
+                hh <- hist (dat[[i]]$y, breaks=101, plot=FALSE)
+                # Plots are only taken up to first count of zero - rest is noise
+                indx <- min (which (hh$mids > 0)):(which (hh$counts == 0)[1] - 1)
+                x [[i]] <- hh$mids [indx]
+                y [[i]] <- hh$counts [indx]
+            }
+        }
+        else
+        {
+            dat <- get.data (city=city [ci], covar=FALSE)
+            yall <- c (yall, dat$y)
+            hh <- hist (dat$y, breaks=101, plot=FALSE)
+            # Plots are only taken up to first count of zero - rest is noise
+            indx <- min (which (hh$mids > 0)):(which (hh$counts == 0)[1] - 1)
+            x <- hh$mids [indx]
+            y <- hh$counts [indx]
+        }
+
+        ylims <- range (y, na.rm=TRUE)
+
+        if (covar)
+        {
+            plot (x [[1]], y [[1]], "l", log="xy", lwd=2, col=cols [1], 
+                  ylim=ylims, xlab=mt, ylab="Frequency", main=city [ci])
+            lines (x [[2]], y [[2]], col=cols [2], lwd=2)
+            xlims <- range (x, na.rm=TRUE)
+            xpos <- xlims [1] + 0.2 * diff (xlims)
+            legend (xpos, ylims [2], lwd=2, col=cols, bty="n", legend=ft.txt)
+
+            for (i in 1:2)
+            {
+                xl <- log10 (x [[i]])
+                yl <- log10 (y [[i]])
+                cat ("\t|\t", city [ci], "\t", rep ("\t", ntabs [ci]), 
+                                             ft.txt [i], "\t|\t", sep="")
+                # Then fit the segmented linear model
+                mod <- segmented (lm (yl ~ xl), seg.Z = ~xl, psi=mean (xl)) 
+                slope1 <- formatC (slope (mod)$xl [1], format="f", digits=2)
+                slope2 <- formatC (slope (mod)$xl [2], format="f", digits=2)
+                breakpt <- formatC (10 ^ mod$psi [2], format="f", digits=1)
+                cat (slope1, "\t", slope2, "\t", breakpt, "\t\t|\n")
+                yfit <- 10 ^ predict (mod)
+                lines (x [[i]], yfit, col=cols [i], lwd=1, lty=2)
+            }
+        }
+        else # !covar
+        {
+            plot (x, y, "l", log="xy", lwd=2, col=cols [1], 
+                  ylim=ylims, xlab=mt, ylab="Frequency", main=city [ci])
+            xl <- log10 (x)
+            yl <- log10 (y)
+            mod <- lm (yl ~ xl)
+            slope <- formatC (summary (mod)$coefficients [2],
+                              format="f", digits=2)
+            cat ("\t|\t", city [ci], rep ("\t", ntabs [ci]), 
+                 "\t|\t", slope, "\t|\n", sep="")
+            yfit <- 10 ^ predict (mod)
+            lines (x, yfit, col=cols [3], lwd=2)
+        }
+    } # end for ci over city
+
+    hh <- hist (yall, breaks=101, plot=FALSE)
+    indx <- which (hh$mids > 0 & hh$counts > 0)
+    x <- hh$mids [indx]
+    y <- hh$counts [indx]
+
+    ylims <- range (y, na.rm=TRUE)
+    plot (x, y, "l", log="xy", lwd=2, col=cols [1], ylim=ylims,
+          xlab=mt, ylab="Frequency", main="All")
+
+    yl <- log10 (y)
+    xl <- log10 (x)
+    mod <- lm (yl ~ xl)
+    slope <- formatC (summary (mod)$coefficients [2], format="f", digits=2)
+    yfit <- 10 ^ predict (mod)
+    lines (x, yfit, col=cols [3], lwd=2)
+    if (covar)
+    {
+        cat ("\t|", rep("-", 71), "|\n", sep="")
+        cat ("\t|\tALL\t\t\t|\t", slope, "\t\t\t\t|\n")
+        cat ("\t|", rep("-", 71), "|\n", sep="")
+    }
+    else
+    {
+        cat ("\t|", rep("-", 39), "|\n", sep="")
+        cat ("\t|\tALL\t\t|\t", slope, "\t|\n", sep="")
+        cat ("\t|", rep("-", 39), "|\n", sep="")
+    }
+}
+graphics.off ()
+plot.hists (TRUE)

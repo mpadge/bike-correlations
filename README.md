@@ -3,8 +3,8 @@ bike-correlations
 
 Calculates matrices of both correlations and distances between all pairs of
 bicycle and rail stations in various cities (bikes for London, NYC, Boston,
-Chicago; rail for London).  Correlations are based on ride data downloaded from
-repositories for the respective cities.
+Chicago, Washington DC; rail for London).  Correlations are based on ride data
+downloaded from repositories for the respective cities.
 
 Distances are routed with urban-region OSM files obtained from
 [mapzen](https://mapzen.com/metro-extracts) or

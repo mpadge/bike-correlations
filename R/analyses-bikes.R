@@ -936,10 +936,15 @@ plot.hists <- function (covar=TRUE)
                 mod <- segmented (lm (yl ~ xl), seg.Z = ~xl, psi=mean (xl)) 
                 slope1 <- formatC (slope (mod)$xl [1], format="f", digits=2)
                 slope2 <- formatC (slope (mod)$xl [2], format="f", digits=2)
-                breakpt <- formatC (10 ^ mod$psi [2], format="f", digits=1)
+                bp <- 10 ^ mod$psi [2]
+                breakpt <- formatC (bp, format="f", digits=1)
                 cat (slope1, "\t", slope2, "\t", breakpt, "\t\t|\n")
                 yfit <- 10 ^ predict (mod)
                 lines (x [[i]], yfit, col=cols [i], lwd=1, lty=2)
+                bi <- which.min (abs (x [[i]] - bp))
+                points (x [[i]] [bi], yfit [bi], pch=19, col=cols [i], cex=1.5)
+                lines (rep (bp, 2), c (ylims [1], yfit [bi]), 
+                       col=cols [i], lty=2)
             }
         }
         else # !covar
@@ -959,7 +964,7 @@ plot.hists <- function (covar=TRUE)
     } # end for ci over city
 
     hh <- hist (yall, breaks=101, plot=FALSE)
-    indx <- which (hh$mids > 0 & hh$counts > 0)
+    indx <- min (which (hh$mids > 0)):(which (hh$counts == 0)[1] - 1)
     x <- hh$mids [indx]
     y <- hh$counts [indx]
 
@@ -986,5 +991,3 @@ plot.hists <- function (covar=TRUE)
         cat ("\t|", rep("-", 39), "|\n", sep="")
     }
 }
-graphics.off ()
-plot.hists (TRUE)

@@ -117,7 +117,8 @@ fit.gaussian <- function (city="nyc", from=TRUE, covar=TRUE, std=TRUE,
 
     n <- dim (dat$d)[1]
 
-    index <- kvec <- intercept <- ss <- ntrips <- resid.slope <- fvals <- NULL
+    index <- kvec <- intercept <- ss <- r2 <- ntrips <- 
+        resid.slope <- fvals <- NULL
 
     if (from) ftxt <- "from"
     else ftxt <- "to"
@@ -153,7 +154,10 @@ fit.gaussian <- function (city="nyc", from=TRUE, covar=TRUE, std=TRUE,
                 coeffs <- summary (mod)$coefficients
                 if (coeffs [2] > 0 & coeffs [2] < 10)
                 {
-                    ss <- c (ss, mean (sum ((predict (mod) - y) ^ 2)))
+                    ss.mod <- sum ((predict (mod) - y) ^ 2)
+                    ss <- c (ss, ss.mod)
+                    # NOTE: These r2 values aren't necessarily meaningful!
+                    r2 <- c (r2, 1 - ss.mod / sum ((y - mean (y)) ^ 2))
                     kvec <- c (kvec, coeffs [2])
                     intercept <- c (intercept, coeffs [1])
                     ntrips <- c (ntrips, sum (ntrips.mat [,i]))
@@ -188,9 +192,9 @@ fit.gaussian <- function (city="nyc", from=TRUE, covar=TRUE, std=TRUE,
     else
         ss <- ss / 10000
 
-    dat <- data.frame (cbind (index, kvec, intercept, ntrips, ss, 
+    dat <- data.frame (cbind (index, kvec, intercept, ntrips, ss, r2,
                               resid.slope, fvals)) 
-    colnames (dat) <- c("i", "k", "y", "ntrips", "ss", "resid.slope", "f")
+    colnames (dat) <- c("i", "k", "y", "ntrips", "ss", "r2", "resid.slope", "f")
     return (dat)
 } # end fit.gaussian()
 
@@ -218,6 +222,8 @@ test.resids <- function (from=TRUE, covar=TRUE)
     {
         cat (rep ("-", 20), toupper (ci), rep ("-", 20), "\n", sep="")
         dat <- fit.gaussian (city=ci, from=from, covar=covar)
+        cat ("R2 = ", formatC (mean (dat$r2), format="f", digits=2), " +/- ",
+             formatC (sd (dat$r2), format="f", digits=2), "\n", sep="")
         fp <- 1 - pf (mean (dat$f), 1, 18)
         tp <- t.test (dat$resid.slope)$p.value
         cat ("Mean F-statistic = ", formatC (mean (dat$f), format="f", digits=2),

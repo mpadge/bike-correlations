@@ -90,9 +90,18 @@ get.data <- function (city="nyc", from=TRUE, covar=TRUE, std=TRUE,
 fit.gaussian <- function (city="nyc", from=TRUE, covar=TRUE, std=TRUE,
                           nearfar=0, subscriber=0, mf=0, msg=FALSE)
 {
-    # Produces a data frame with [i, k, y, ss, ntrips]
-    # If !covar, then models are fitted to R2 values, otherwise they are fitted
-    # to covariances.
+    # Produces a data frame with [i, k, y, ss, ntrips, F], where F is an
+    # F-statistic for changes in the variance of model residuals with distance.
+    # This is calculated by binning them into 20 bins, and so can be tested with
+    # p = 1 - pf (mean (f), 1, 18). Note, however, that slopes of these
+    # relationships can differ in sign, so perhaps a more robust way to test is
+    # simply with a T-test on the distribution of slopes of these residual
+    # regressions.
+    #
+    # Statistics for these residuals are evaluated in the subsequent routine
+    # "test.resids"
+    nbins <- 20
+
     dat <- get.data (city=city, from=from, covar=covar, std=std,
                      nearfar=nearfar, subscriber=subscriber,
                      mf=mf, msg=msg)
@@ -108,7 +117,7 @@ fit.gaussian <- function (city="nyc", from=TRUE, covar=TRUE, std=TRUE,
 
     n <- dim (dat$d)[1]
 
-    index <- kvec <- intercept <- ss <- ntrips <- NULL
+    index <- kvec <- intercept <- ss <- ntrips <- resid.slope <- fvals <- NULL
 
     if (from) ftxt <- "from"
     else ftxt <- "to"
@@ -149,6 +158,20 @@ fit.gaussian <- function (city="nyc", from=TRUE, covar=TRUE, std=TRUE,
                     intercept <- c (intercept, coeffs [1])
                     ntrips <- c (ntrips, sum (ntrips.mat [,i]))
                     index <- c (index, i)
+
+                    # Then the F-statistic for variance of residuals
+                    resids <- summary (mod)$residuals
+
+                    dindx <- ceiling (1:length (indx) * nbins / length (indx))
+                    d2 <- d
+                    d2 [order (d)] <- dindx
+                    rvar <- sapply (1:nbins, function (ix) 
+                                    var (resids [which (dindx == ix)]))
+                    xvar <- sapply (1:nbins, function (ix) 
+                                    mean (d [which (d2 == ix)]))
+                    mod <- summary (lm (rvar ~ xvar))
+                    resid.slope <- c (resid.slope, mod$coefficients [2])
+                    fvals <- c (fvals, as.numeric (mod$fstatistic [1]))
                 }
             }
         } # end if len (indx) > 10
@@ -165,10 +188,51 @@ fit.gaussian <- function (city="nyc", from=TRUE, covar=TRUE, std=TRUE,
     else
         ss <- ss / 10000
 
-    dat <- data.frame (cbind (index, kvec, intercept, ntrips, ss)) 
-    colnames (dat) <- c("i", "k", "y", "ntrips", "ss")
+    dat <- data.frame (cbind (index, kvec, intercept, ntrips, ss, 
+                              resid.slope, fvals)) 
+    colnames (dat) <- c("i", "k", "y", "ntrips", "ss", "resid.slope", "f")
     return (dat)
 } # end fit.gaussian()
+
+
+# ************************************************************ 
+# ************************************************************ 
+# *****                                                  *****
+# *****                   TEST.RESIDS                    *****
+# *****                                                  *****
+# ************************************************************ 
+# ************************************************************ 
+
+test.resids <- function (from=TRUE, covar=TRUE)
+{
+    # Tests the regressions of the variances of model residuals from the above
+    # fit.gaussian procedure. A reasonable hypothesis would be that these
+    # residuals should have slopes that differ systematically from zero---which
+    # is tested with the T-test---and that individual relationships should be
+    # significant on average---which is tested with the F-test. Thus only if
+    # both of these criteria are fulfilled may it be concluded that there are
+    # significant spatial associations in the residuals of the models.
+
+    cities <- c ("london", "nyc", "boston", "chicago", "washingtondc")
+    for (ci in cities)
+    {
+        cat (rep ("-", 20), toupper (ci), rep ("-", 20), "\n", sep="")
+        dat <- fit.gaussian (city=ci, from=from, covar=covar)
+        fp <- 1 - pf (mean (dat$f), 1, 18)
+        tp <- t.test (dat$resid.slope)$p.value
+        cat ("Mean F-statistic = ", formatC (mean (dat$f), format="f", digits=2),
+             " p (df=1,18) = ", formatC (fp, format="f", digits=4),
+             "; T-statistic for slopes of residuals: p = ",
+             formatC (tp, format="f", digits=4), "\n", sep="")
+
+        p0 <- 0.05
+        if (fp < p0 & tp < p0)
+            cat ("Residuals manifest SIGNIFICANT spatial structure!\n")
+        else
+            cat ("Residuals do not manifest any significant spatial structure\n")
+    }
+} # end test.resids
+
 
 # ************************************************************ 
 # ************************************************************ 
@@ -261,6 +325,10 @@ compare.ntrips <- function (covar=TRUE, std=TRUE)
 
 compare.models <- function (city="nyc", from=TRUE, covar=TRUE, plot=FALSE)
 {
+    # TODO: Add distributions: Weibull, Cauchy, squared Cauchy (see Halas2014),
+    # Box-Cox
+    # See Luoma1983 and Halas2014
+    #
     # plot allows inspection of individual station results
     if (covar)
         cat ("Fitting distance decays to covariances\n")

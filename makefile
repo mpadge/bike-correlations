@@ -1,4 +1,4 @@
-#CC=g++
+if [[-z "$CXX"]]; then CXX='c++'
 CFLAGS=-c -std=c++11
 LIBS=-lzip 
 VPATH=./src

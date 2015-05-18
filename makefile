@@ -1,4 +1,4 @@
-CC=g++
+#CC=g++
 CFLAGS=-c -std=c++11
 LIBS=-lzip 
 VPATH=./src
@@ -11,20 +11,20 @@ all: mainBikes mainTrains mainStnDists
 bikes: mainBikes
 
 mainBikes: $(OBJECTS_BIKES)
-	$(CC) $(OBJECTS_BIKES) -o bikes $(LIBS) 
+	$(CXX) $(OBJECTS_BIKES) -o bikes $(LIBS) 
 
 trains: mainTrains
 
 mainTrains: $(OBJECTS_TRAINS)
-	$(CC) $(OBJECTS_TRAINS) -o trains $(LIBS) 
+	$(CXX) $(OBJECTS_TRAINS) -o trains $(LIBS) 
 
 dists: mainStnDists
 
 mainStnDists: $(OBJECTS_DISTS)
-	$(CC) $(OBJECTS_DISTS) -o dists $(LIBS) 
+	$(CXX) $(OBJECTS_DISTS) -o dists $(LIBS) 
 
 %.o: %.c++
-	$(CC) $(CFLAGS) $<
+	$(CXX) $(CFLAGS) $<
 
 clean:
 	rm -f *.o 

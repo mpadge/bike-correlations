@@ -1,3 +1,13 @@
+/***************************************************************************
+ * This software is in the public domain, furnished "as is", without technical
+ * support, and with no warranty, express or implied, as to its usefulness for
+ * any purpose.
+ *
+ * <StationData.c++>
+ *
+ * Author: Mark Padgham, May 2015
+ ***************************************************************************/
+
 #include "StationData.h"
 
 /************************************************************************
@@ -642,3 +652,133 @@ int StationData::writeCovMat (std::string fname)
 
     return 0;
 }
+
+
+/************************************************************************
+ ************************************************************************
+ **                                                                    **
+ **                              CALCMI                                **
+ **                                                                    **
+ ************************************************************************
+ ************************************************************************/
+
+double StationData::calcMI (dvec x, dvec y)
+{
+    double mi = 0.0, sum = 0.0, rowSums [2] = {0.0, 0.0};
+
+    assert (x.size () == y.size ());
+    int n = x.size ();
+
+    for (int i=0; i<n; i++)
+        sum += x (i) + y (i);
+    for (int i=0; i<n; i++)
+    {
+        x (i) = x (i) / sum;
+        y (i) = y (i) / sum;
+    }
+
+    dvec colSums;
+    colSums.resize (n);
+    dmat xyNull;
+    xyNull.resize (n, 2);
+
+    for (int i=0; i<n; i++)
+    {
+        rowSums [0] += x (i);
+        rowSums [1] += y (i);
+        colSums (i) = x (i) + y (i);
+    }
+
+    sum = 0.0;
+    for (int i=0; i<n; i++)
+    {
+        xyNull (i, 0) = colSums (i) * rowSums [0];
+        xyNull (i, 1) = colSums (i) * rowSums [1];
+        sum += xyNull (i, 0) + xyNull (i, 1);
+    }
+
+    for (int i=0; i<n; i++)
+    {
+        xyNull (i, 0) = xyNull (i, 0) / sum;
+        xyNull (i, 1) = xyNull (i, 1) / sum;
+        assert (x (i) >= 0.0);
+        assert (y (i) >= 0.0);
+        if (x (i) > 0.0)
+            x (i) = x (i) * log2 (x (i) / xyNull (i, 0));
+        if (y (i) > 0.0)
+            y (i) = y (i) * log2 (y (i) / xyNull (i, 1));
+        mi += x (i) + y (i);
+    }
+
+    colSums.resize (0);
+    xyNull.resize (0, 0);
+
+    return (mi);
+}
+    
+int StationData::calcMIMat (bool from)
+{
+    int numStations = StationList.size ();
+    double tempd;
+    dvec x, y;
+    x.resize (numStations);
+    y.resize (numStations);
+
+    for (int i=0; i<(numStations-1); i++)
+    {
+        for (int k=0; k<numStations; k++)
+        {
+            if (from)
+                x (k) = (double) ntrips (i, k);
+            else
+                x (k) = (double) ntrips (k, i);
+        }
+        for (int j=(i+1); j<numStations; j++)
+        {
+            for (int k=0; k<numStations; k++)
+            {
+                if (from)
+                    y (k) = (double) ntrips (j, k);
+                else
+                    y (k) = (double) ntrips (k, j);
+            }
+
+            MI (i, j) = MI (j, i) = calcMI (x, y);
+        } // end for j over (i+1):numStations
+    } // end for i over (numStations - 1)
+
+    x.resize (0);
+    y.resize (0);
+
+    return 0;
+}
+
+/************************************************************************
+ ************************************************************************
+ **                                                                    **
+ **                            WRITEMIMAT                              **
+ **                                                                    **
+ ************************************************************************
+ ************************************************************************/
+
+int StationData::writeMIMat (std::string fname)
+{
+    int numStations = StationList.size ();
+
+    std::ofstream out_file;
+    out_file.open (fname.c_str (), std::ofstream::out);
+    for (int i=0; i<numStations; i++) {
+        for (int j=0; j<numStations; j++) {
+            out_file << MI (i, j);
+            if (j == (numStations - 1))
+                out_file << std::endl;
+            else
+                out_file << ", ";
+        }
+    }
+    out_file.close ();
+    std::cout << "Mutual Information written to " << fname.c_str () << std::endl;
+
+    return 0;
+}
+

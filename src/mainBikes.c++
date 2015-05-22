@@ -1,9 +1,19 @@
+/***************************************************************************
+ * This software is in the public domain, furnished "as is", without technical
+ * support, and with no warranty, express or implied, as to its usefulness for
+ * any purpose.
+ *
+ * <mainBikes.c++>
+ *
+ * Author: Mark Padgham, May 2015
+ ***************************************************************************/
+
 #include "mainBikes.h"
 
 int main(int argc, char *argv[]) {
     int nfiles, count, tempi [2];
     std::vector <std::string> tempstr;
-    std::string city, nfext, fname, r2name, covname;
+    std::string city, nfext, fname, r2name, covname, MIname;
 
     std::cout << std::endl << "_____________________________________________" << 
         "____________________________________________" << std::endl;
@@ -217,6 +227,7 @@ int main(int argc, char *argv[]) {
         {
             r2name = "R2_" + city + "_from_" + rideData.txtnf + ".csv";
             covname = "Cov_" + city + "_from_" + stdtxt + rideData.txtnf + ".csv";
+            MIname = "MI_" + city + "_from_" + rideData.txtnf + ".csv";
         }
         else if (city == "nyc" || city == "boston" || city == "chicago")
         {
@@ -224,6 +235,9 @@ int main(int argc, char *argv[]) {
                 std::to_string (rideData.getSubscriber ()) +
                 std::to_string (rideData.getGender ()) + ".csv";
             covname = "Cov_" + city + "_from_" + stdtxt + rideData.txtnf + "_" +
+                std::to_string (rideData.getSubscriber ()) +
+                std::to_string (rideData.getGender ()) + ".csv";
+            MIname = "MI_" + city + "_from_" + rideData.txtnf + "_" +
                 std::to_string (rideData.getSubscriber ()) +
                 std::to_string (rideData.getGender ()) + ".csv";
         }
@@ -239,6 +253,13 @@ int main(int argc, char *argv[]) {
         covname.replace (count, 6, "_to_");
         //rideData.writeR2Mat (r2name);
         rideData.writeCovMat (covname);
+
+        rideData.calcMIMat (true);
+        rideData.writeMIMat (MIname);
+        count = MIname.find ("_from_");
+        MIname.replace (count, 6, "_to_");
+        rideData.calcMIMat (false);
+        rideData.writeMIMat (MIname);
     }
     //rideData.readR2Mat (false);
     std::cout << "_____________________________________________" << 

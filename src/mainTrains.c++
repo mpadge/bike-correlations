@@ -1,3 +1,13 @@
+/***************************************************************************
+ * This software is in the public domain, furnished "as is", without technical
+ * support, and with no warranty, express or implied, as to its usefulness for
+ * any purpose.
+ *
+ * <mainTrains.c++>
+ *
+ * Author: Mark Padgham, May 2015
+ ***************************************************************************/
+
 #include "mainTrains.h"
 
 int main (int argc, char *argv[]) {

@@ -1,3 +1,13 @@
+/***************************************************************************
+ * This software is in the public domain, furnished "as is", without technical
+ * support, and with no warranty, express or implied, as to its usefulness for
+ * any purpose.
+ *
+ * <StationData.h>
+ *
+ * Author: Mark Padgham, May 2015
+ ***************************************************************************/
+
 #ifndef STATIONDATA_H
 #define STATIONDATA_H
 
@@ -76,7 +86,7 @@ class StationData : public Stations
         };
         std::vector <OneStation> StationList;
         dmat ntrips; // dmat to allow standardisation to unit sum
-        dmat r2, cov, dists;
+        dmat r2, cov, MI, dists;
 
         std::string txtnf;
         std::vector <std::string> txtnflist;
@@ -104,6 +114,7 @@ class StationData : public Stations
             ntrips.resize (0, 0);
             r2.resize (0, 0);
             cov.resize (0, 0);
+            MI.resize (0, 0);
             dists.resize (0, 0);
             txtnflist.resize (0);
         }
@@ -124,12 +135,16 @@ class StationData : public Stations
         int calcR2 (bool from);
         int writeR2Mat (std::string fname);
         int writeCovMat (std::string fname);
+        double calcMI (dvec x, dvec y);
+        int calcMIMat (bool from);
+        int writeMIMat (std::string fname);
 
         void InitialiseArrays ()
         {
             ntrips.resize (_numStations, _numStations);
             r2.resize (_numStations, _numStations);
             cov.resize (_numStations, _numStations);
+            MI.resize (_numStations, _numStations);
             dists.resize (_numStations, _numStations);
             for (int i=0; i<_numStations; i++)
             {
@@ -138,6 +153,7 @@ class StationData : public Stations
                     ntrips (i, j) = 0.0;
                     r2 (i, j) = DOUBLE_MIN;
                     cov (i, j) = DOUBLE_MIN;
+                    MI (i, j) = DOUBLE_MIN;
                     dists (i, j) = DOUBLE_MIN;
                 }
             }

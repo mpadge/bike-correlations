@@ -701,8 +701,6 @@ double StationData::calcMI (dvec x, dvec y)
     {
         xyNull (i, 0) = xyNull (i, 0) / sum;
         xyNull (i, 1) = xyNull (i, 1) / sum;
-        assert (x (i) >= 0.0);
-        assert (y (i) >= 0.0);
         if (x (i) > 0.0)
             x (i) = x (i) * log2 (x (i) / xyNull (i, 0));
         if (y (i) > 0.0)

@@ -6,11 +6,12 @@
 # ************************************************************ 
 # ************************************************************ 
 
-get.data <- function (city="nyc", from=TRUE, covar=TRUE, std=TRUE, 
+get.data <- function (city="nyc", from=TRUE, measure='covar', std=TRUE, 
                       nearfar=0, subscriber=0, mf=0,
                       msg=FALSE)
 {
-    # If !cov, then raw trip numbers are returned
+    # measure can be ('covar', 'ntrips', 'info'), where the latter is mutual
+    # information.
     #
     # subscriber = 0 -> all data
     # subscriber = 2 -> non-subscriber data only
@@ -36,12 +37,18 @@ get.data <- function (city="nyc", from=TRUE, covar=TRUE, std=TRUE,
     if (subscriber == 0 | subscriber == 2)
         mf = 0
 
-    if (covar)
+    if (measure == 'covar' | measure == "info")
     {
-        if (std) txt.sd <- "std"
-        else txt.sd <- "unstd" # these files don't currently exist
-        fname <- paste (txt.dir, "Cov_", city, "_", txt.ft, 
-                        "_", txt.sd, "_", txt.nf, sep="")
+        if (measure == "covar") 
+            prefix <- "Cov"
+        else
+            prefix <- "MI"
+        if (std) txt.sd <- "std_"
+        else txt.sd <- "unstd_" # these files don't currently exist
+        if (measure == "info")
+            txt.sd <- ""
+        fname <- paste (txt.dir, prefix, "_", city, "_", txt.ft, 
+                        "_", txt.sd, txt.nf, sep="")
         indx <- which (dists < 0) # the latter is for -DOUBLE_MAX
         if (city == "nyc" | city == "boston" | city == "chicago")
             fname <- paste (fname, "_", subscriber, mf, sep="")
@@ -55,13 +62,13 @@ get.data <- function (city="nyc", from=TRUE, covar=TRUE, std=TRUE,
     y <- array (y, dim=dims)
 
     # covar 
-    if (covar)
-        indx <- which (dists < 0 | y < (-999999)) # arbitrarily big number
+    if (measure != 'ntrips')
+        indx <- which (dists < 0 | y == min (y, na.rm=TRUE)) 
     else
         indx <- which (dists < 0)
-
     dists [indx] <- NA
     y [indx] <- NA
+
     # London has some extreme outliers in unstandarsied covariances, so
     if (!std & city == "london")
     {
@@ -79,6 +86,7 @@ get.data <- function (city="nyc", from=TRUE, covar=TRUE, std=TRUE,
 } # end get.data()
 
 
+
 # ************************************************************ 
 # ************************************************************ 
 # *****                                                  *****
@@ -87,7 +95,7 @@ get.data <- function (city="nyc", from=TRUE, covar=TRUE, std=TRUE,
 # ************************************************************ 
 # ************************************************************ 
 
-fit.gaussian <- function (city="nyc", from=TRUE, covar=TRUE, std=TRUE,
+fit.gaussian <- function (city="nyc", from=TRUE, measure='covar', std=TRUE,
                           nearfar=0, subscriber=0, mf=0, msg=FALSE)
 {
     # Produces a data frame with [i, k, y, ss, ntrips, F], where F is an
@@ -102,7 +110,7 @@ fit.gaussian <- function (city="nyc", from=TRUE, covar=TRUE, std=TRUE,
     # "test.resids"
     nbins <- 20
 
-    dat <- get.data (city=city, from=from, covar=covar, std=std,
+    dat <- get.data (city=city, from=from, measure=measure, std=std,
                      nearfar=nearfar, subscriber=subscriber,
                      mf=mf, msg=msg)
 
@@ -119,10 +127,6 @@ fit.gaussian <- function (city="nyc", from=TRUE, covar=TRUE, std=TRUE,
 
     index <- kvec <- intercept <- ss <- r2 <- ntrips <- 
         resid.slope <- fvals <- NULL
-
-    if (from) ftxt <- "from"
-    else ftxt <- "to"
-    tstr <- paste (toupper (city), "-", ftxt, sep="")
 
     for (i in 1:n)
     {
@@ -187,7 +191,7 @@ fit.gaussian <- function (city="nyc", from=TRUE, covar=TRUE, std=TRUE,
     # finally divided again below by nstations below to give final single SS
     # values. With nstations=332 (nyc) or 752 (london), respective values are
     # ultimately divided by 36,594,368 = 3.6e7 and 425,259,008 = 4.2e8.
-    if (covar)
+    if (measure == 'covar')
         ss <- ss * 1e11
     else
         ss <- ss / 10000
@@ -207,7 +211,7 @@ fit.gaussian <- function (city="nyc", from=TRUE, covar=TRUE, std=TRUE,
 # ************************************************************ 
 # ************************************************************ 
 
-test.resids <- function (from=TRUE, covar=TRUE)
+test.resids <- function (from=TRUE, measure='covar')
 {
     # Tests the regressions of the variances of model residuals from the above
     # fit.gaussian procedure. A reasonable hypothesis would be that these
@@ -221,7 +225,7 @@ test.resids <- function (from=TRUE, covar=TRUE)
     for (ci in cities)
     {
         cat (rep ("-", 20), toupper (ci), rep ("-", 20), "\n", sep="")
-        dat <- fit.gaussian (city=ci, from=from, covar=covar)
+        dat <- fit.gaussian (city=ci, from=from, measure=measure)
         cat ("R2 = ", formatC (mean (dat$r2), format="f", digits=2), " +/- ",
              formatC (sd (dat$r2), format="f", digits=2), "\n", sep="")
         fp <- 1 - pf (mean (dat$f), 1, 18)
@@ -240,6 +244,7 @@ test.resids <- function (from=TRUE, covar=TRUE)
 } # end test.resids
 
 
+
 # ************************************************************ 
 # ************************************************************ 
 # *****                                                  *****
@@ -248,7 +253,7 @@ test.resids <- function (from=TRUE, covar=TRUE)
 # ************************************************************ 
 # ************************************************************ 
 
-compare.ntrips <- function (covar=TRUE, std=TRUE)
+compare.ntrips <- function (measure='covar', std=TRUE)
 {
     # These results with std=TRUE are statistical artefacts, because
     # correlations involving stations with high numbers of trips will
@@ -278,16 +283,16 @@ compare.ntrips <- function (covar=TRUE, std=TRUE)
     par (mfrow=c(2,4), mar=c(2.5,2.5,0.5,0.5), mgp=c(1.3,0.7,0), ps=10)
     ft <- c (TRUE, FALSE)
     ftxt <- c ("from", "to")
-    if (covar) ytxt <- c ("k-value", "Covariance")
+    if (measure == 'covar') ytxt <- c ("k-value", "Covariance")
     else ytxt <- c ("k-value", "R2")
     for (city in cities)
     {
         for (i in 1:2) {
-            dat <- fit.gaussian (city=city, from=ft[i], covar=covar, std=std,
+            dat <- fit.gaussian (city=city, from=ft[i], measure=measure, std=std,
                                  nearfar=0, subscriber=0, mf=0)
             n <- dat$ntrips
             yvals <- list (k=dat$k, covar=dat$y)
-            if (!covar)
+            if (measure != covar)
             {
                 # Remove stations with the lowest 10% of ntrips
                 indx <- sort (n, index.return=TRUE)$ix
@@ -329,24 +334,26 @@ compare.ntrips <- function (covar=TRUE, std=TRUE)
 # ************************************************************ 
 
 
-compare.models <- function (city="nyc", from=TRUE, covar=TRUE, plot=FALSE)
+compare.models <- function (city="nyc", from=TRUE, measure='covar', plot=FALSE)
 {
     # TODO: Add distributions: Weibull, Cauchy, squared Cauchy (see Halas2014),
     # Box-Cox
     # See Luoma1983 and Halas2014
     #
     # plot allows inspection of individual station results
-    if (covar)
+    if (measure == 'covar')
         cat ("Fitting distance decays to covariances\n")
+    else if (measure == "info")
+        cat ("Fitting distance decays to mutual information\n")
     else
         cat ("Fitting distance decays to absolute numbers of trips\n")
 
-    dat <- get.data(city=city, from=from, covar=covar, std=TRUE, 
+    dat <- get.data(city=city, from=from, measure=measure, std=TRUE, 
                     nearfar=0, subscriber=0, mf=0, msg=TRUE)
 
     n <- dim (dat$d)[1]
 
-    if (covar)
+    if (measure == 'covar')
         ssmult <- 1e11
     else
         ssmult <- 1 / 10000
@@ -503,7 +510,7 @@ compare.models <- function (city="nyc", from=TRUE, covar=TRUE, plot=FALSE)
 # ************************************************************ 
 # ************************************************************ 
 
-compare.tofrom <- function (covar=TRUE, std=TRUE, paired=FALSE)
+compare.tofrom <- function (measure='covar', std=TRUE, paired=FALSE)
 {
     # "paired" is fed to the t.test for differences in estimated k-values
     # between to- and from- values. If the two data sets are truly presumed to
@@ -516,8 +523,8 @@ compare.tofrom <- function (covar=TRUE, std=TRUE, paired=FALSE)
     cities <- c ("nyc", "washingtondc", "chicago")
     for (city in cities)
     {
-        to <- fit.gaussian (city=city, from=FALSE, covar=covar, std=std)
-        from <- fit.gaussian (city=city, from=TRUE, covar=covar, std=std)
+        to <- fit.gaussian (city=city, from=FALSE, measure=measure, std=std)
+        from <- fit.gaussian (city=city, from=TRUE, measure=measure, std=std)
         # matrices of correlations and t-tests between k-values
         imax <- max (c (max (to$i), max (from$i)))
         x <- y <- rep (NA, imax)
@@ -555,15 +562,15 @@ compare.tofrom <- function (covar=TRUE, std=TRUE, paired=FALSE)
 # ************************************************************ 
 # ************************************************************ 
 
-compare.nearfar <- function (from=TRUE, covar=TRUE, std=TRUE)
+compare.nearfar <- function (from=TRUE, measure="covar", std=TRUE)
 {
     # nearfar == (1, 2) is (near, far)
     cities <- c ("london", "nyc", "boston", "chicago", "washingtondc")
     for (city in cities)
     {
-        dat1 <- fit.gaussian (city=city, from=from, covar=covar, 
+        dat1 <- fit.gaussian (city=city, from=from, measure=measure, 
                               std=std, nearfar=1)
-        dat2 <- fit.gaussian (city=city, from=from, covar=covar, 
+        dat2 <- fit.gaussian (city=city, from=from, measure=measure, 
                               std=std, nearfar=2)
         tt <- t.test (dat1$k, dat2$k)
         cat (toupper (city), ": T = ",
@@ -582,9 +589,9 @@ compare.nearfar <- function (from=TRUE, covar=TRUE, std=TRUE)
     {
         # -------------------------------------------------
         # Then comparisons of subscribers and customers (excluding london & DC)
-        dat1 <- fit.gaussian (city=city, from=from, covar=covar, std=std, 
+        dat1 <- fit.gaussian (city=city, from=from, measure=measure, std=std, 
                               nearfar=1, subscriber=1, mf=0)
-        dat2 <- fit.gaussian (city=city, from=from, covar=covar, std=std, 
+        dat2 <- fit.gaussian (city=city, from=from, measure=measure, std=std, 
                               nearfar=2, subscriber=1, mf=0)
         tt <- t.test (dat1$k, dat2$k)
         cat ("\n", toupper (city), " Subscribers: T = ",
@@ -596,9 +603,9 @@ compare.nearfar <- function (from=TRUE, covar=TRUE, std=TRUE)
              formatC (sd (dat1$k), format="f", digits=2), ", ",
              formatC (mean (dat2$k), format="f", digits=2), "+/-",
              formatC (sd (dat2$k), format="f", digits=2), ")\n", sep="")
-        dat1 <- fit.gaussian (city=city, from=from, covar=covar, std=std, 
+        dat1 <- fit.gaussian (city=city, from=from, measure=measure, std=std, 
                               nearfar=1, subscriber=2, mf=0)
-        dat2 <- fit.gaussian (city=city, from=from, covar=covar, std=std, 
+        dat2 <- fit.gaussian (city=city, from=from, measure=measure, std=std, 
                               nearfar=2, subscriber=2, mf=0)
         tt <- t.test (dat1$k, dat2$k)
         cat (toupper (city), " Customers: T = ",
@@ -613,9 +620,9 @@ compare.nearfar <- function (from=TRUE, covar=TRUE, std=TRUE)
 
         # -------------------------------------------------
         # Then male and female, which can only be done for subscribers
-        dat1 <- fit.gaussian (city=city, from=from, covar=covar, std=std, 
+        dat1 <- fit.gaussian (city=city, from=from, measure=measure, std=std, 
                               nearfar=1, subscriber=1, mf=2)
-        dat2 <- fit.gaussian (city=city, from=from, covar=covar, std=std, 
+        dat2 <- fit.gaussian (city=city, from=from, measure=measure, std=std, 
                               nearfar=2, subscriber=1, mf=2)
         tt <- t.test (dat1$k, dat2$k)
         cat ("\n", toupper (city), " Female: T = ",
@@ -628,9 +635,9 @@ compare.nearfar <- function (from=TRUE, covar=TRUE, std=TRUE)
              formatC (mean (dat2$k), format="f", digits=2), "+/-",
              formatC (sd (dat2$k), format="f", digits=2), ")\n", sep="")
 
-        dat1 <- fit.gaussian (city=city, from=from, covar=covar, std=std, 
+        dat1 <- fit.gaussian (city=city, from=from, measure=measure, std=std, 
                               nearfar=1, subscriber=1, mf=1)
-        dat2 <- fit.gaussian (city=city, from=from, covar=covar, std=std, 
+        dat2 <- fit.gaussian (city=city, from=from, measure=measure, std=std, 
                               nearfar=2, subscriber=1, mf=1)
         tt <- t.test (dat1$k, dat2$k)
         cat (toupper (city), " Male: T = ",
@@ -654,12 +661,12 @@ compare.nearfar <- function (from=TRUE, covar=TRUE, std=TRUE)
 # ************************************************************ 
 # ************************************************************ 
 
-compare.subscribers <- function (city="nyc", covar=TRUE, std=TRUE)
+compare.subscribers <- function (city="nyc", measure='covar', std=TRUE)
 {
     # comparisons of subscribers and customers
-    dat1 <- fit.gaussian (city=city, covar=covar, std=std, 
+    dat1 <- fit.gaussian (city=city, measure=measure, std=std, 
                           nearfar=0, subscriber=1, mf=0)
-    dat2 <- fit.gaussian (city=city, covar=covar, std=std, 
+    dat2 <- fit.gaussian (city=city, measure=measure, std=std, 
                           nearfar=0, subscriber=2, mf=0)
     tt <- t.test (dat1$k, dat2$k)
     cat (toupper (city), " Subscribers/Non-subscribers: T = ",
@@ -672,9 +679,9 @@ compare.subscribers <- function (city="nyc", covar=TRUE, std=TRUE)
          formatC (mean (dat2$k), format="f", digits=2), "+/-",
          formatC (sd (dat2$k), format="f", digits=2), ")\n", sep="")
 
-    dat1 <- fit.gaussian (city=city, covar=covar, std=std, 
+    dat1 <- fit.gaussian (city=city, measure=measure, std=std, 
                           nearfar=0, subscriber=1, mf=1) # male
-    dat2 <- fit.gaussian (city=city, covar=covar, std=std, 
+    dat2 <- fit.gaussian (city=city, measure=measure, std=std, 
                           nearfar=0, subscriber=1, mf=2) # female
     tt <- t.test (dat1$k, dat2$k)
     cat (city, " Male/Female: T = ",
@@ -697,14 +704,14 @@ compare.subscribers <- function (city="nyc", covar=TRUE, std=TRUE)
 # ************************************************************ 
 # ************************************************************ 
 
-compare.age <- function (covar=TRUE, std=TRUE)
+compare.age <- function (measure='covar', std=TRUE)
 {
     years <- (192:199) * 10
     kmn <- ksd <- rep (NA, length (years)) # Just used to get ylims
     dat <- list ()
     for (i in 1:length (years))
     {
-        dat [[i]] <- fit.gaussian (city="nyc", covar=covar, std=std,
+        dat [[i]] <- fit.gaussian (city="nyc", measure=measure, std=std,
                                    subscriber=3, mf=years [i])
         kmn [i] <- mean (dat [[i]]$k)
         ksd [i] <- sd (dat [[i]]$k)
@@ -738,9 +745,9 @@ compare.age <- function (covar=TRUE, std=TRUE)
     p <- formatC (summary (mod)$coefficients [8], format="f", digits=4)
     title (main=paste ("R2 = ", r2, " (p = ", p, ")", sep=""))
     
-    dat1 <- fit.gaussian (city="nyc", covar=covar, std=std, 
+    dat1 <- fit.gaussian (city="nyc", measure=measure, std=std, 
                           nearfar=0, subscriber=3, mf=0) # young
-    dat2 <- fit.gaussian (city="nyc", covar=covar, std=std, 
+    dat2 <- fit.gaussian (city="nyc", measure=measure, std=std, 
                           nearfar=0, subscriber=3, mf=1) # old
     tt <- t.test (dat1$k, dat2$k)
     cat ("NYC Young/Old: T = ",
@@ -763,7 +770,7 @@ compare.age <- function (covar=TRUE, std=TRUE)
 # ************************************************************ 
 # ************************************************************ 
 
-summary.stats <- function (covar=TRUE, std=TRUE)
+summary.stats <- function (measure='covar', std=TRUE)
 {
     cat ("-----T-statistics for pairwise comparisons between k-values-----\n")
     cat ("NOTE: Comparisons are ordered as written, so negative T-values",
@@ -807,10 +814,10 @@ summary.stats <- function (covar=TRUE, std=TRUE)
         cat ("|\t", city [i], "\t", nftxt [i], "\t", subtxt [i], "\t\t", 
              gtxt [i], "\t", atxt [i], "\t", sep="")
 
-        dat1 <- fit.gaussian (city=city[i], covar=covar, std=std, 
+        dat1 <- fit.gaussian (city=city[i], measure=measure, std=std, 
                               nearfar=nearfar1[i], 
                               subscriber=subscriber1[i], mf=gender1[i])
-        dat2 <- fit.gaussian (city=city[i], covar=covar, std=std, 
+        dat2 <- fit.gaussian (city=city[i], measure=measure, std=std, 
                               nearfar=nearfar2[i], 
                               subscriber=subscriber2[i], mf=gender2[i]) 
         tt <- t.test (dat1$k, dat2$k)
@@ -920,7 +927,7 @@ spatial.var <- function (city="london")
 # ************************************************************ 
 # ************************************************************ 
 
-plot.hists <- function (covar=TRUE)
+plot.hists <- function (measure='covar')
 {
     require (segmented)
 
@@ -938,17 +945,17 @@ plot.hists <- function (covar=TRUE)
     plot (NULL, xlim=c(0, 1), ylim=c(0, 1), 
           xlab="", ylab="", xaxt="n", yaxt="n", frame=FALSE)
     par (ps=24)
-    if (covar)
+    if (measure == 'covar')
         mt <- "Covariance"
     else
         mt <- "Numbers of trips"
     text (0.5, 0.4, labels=mt, pos=3)
-    if (covar)
+    if (measure == 'covar')
         mt <- expression (paste (Covariance %*% 10^5, sep=""))
     par (mar=c(3,3,2.5,0.5), mgp=c(1.8,0.7,0), ps=12)
 
     yall <- NULL
-    if (covar)
+    if (measure == 'covar')
     {
         ft <- c (TRUE, FALSE)
         ft.txt <- c ("from", "to")
@@ -963,12 +970,13 @@ plot.hists <- function (covar=TRUE)
 
     for (ci in 1:length (city))
     {
-        if (covar)
+        if (measure == 'covar')
         {
             dat <- x <- y <- list ()
             for (i in 1:2)
             {
-                dat [[i]] <- get.data (city=city [ci], from=ft [i], covar=TRUE)
+                dat [[i]] <- get.data (city=city [ci], from=ft [i],
+                                       measure='covar')
                 dat [[i]]$y <- dat [[i]]$y * cov.mult
                 yall <- c (yall, dat [[i]]$y)
                 hh <- hist (dat[[i]]$y, breaks=101, plot=FALSE)
@@ -980,7 +988,7 @@ plot.hists <- function (covar=TRUE)
         }
         else
         {
-            dat <- get.data (city=city [ci], covar=FALSE)
+            dat <- get.data (city=city [ci], measure='XXXX')
             yall <- c (yall, dat$y)
             hh <- hist (dat$y, breaks=101, plot=FALSE)
             # Plots are only taken up to first count of zero - rest is noise
@@ -991,7 +999,7 @@ plot.hists <- function (covar=TRUE)
 
         ylims <- range (y, na.rm=TRUE)
 
-        if (covar)
+        if (measure == 'covar')
         {
             plot (x [[1]], y [[1]], "l", log="xy", lwd=2, col=cols [1], 
                   ylim=ylims, xlab=mt, ylab="Frequency", main=city [ci])
@@ -1052,7 +1060,7 @@ plot.hists <- function (covar=TRUE)
     slope <- formatC (summary (mod)$coefficients [2], format="f", digits=2)
     yfit <- 10 ^ predict (mod)
     lines (x, yfit, col=cols [3], lwd=2)
-    if (covar)
+    if (measure == 'covar')
     {
         cat ("\t|", rep("-", 71), "|\n", sep="")
         cat ("\t|\tALL\t\t\t|\t", slope, "\t\t\t\t|\n")

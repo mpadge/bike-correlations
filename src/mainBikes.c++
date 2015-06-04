@@ -75,7 +75,7 @@ int main(int argc, char *argv[]) {
     RideData rideData (city, tempi [0], tempi [1]);
 
     std::cout << "|\t\tcity = " << city;
-    if (city == "london")
+    if (city == "london" || city == "washingtondc")
         std::cout << "\t\t\t\t\t\t|" << std::endl;
     else
     {

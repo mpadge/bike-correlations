@@ -35,28 +35,32 @@ compare_models <- function (city="nyc", from=TRUE, measure='covar', plot=FALSE,
         ssmult <- 1 / 10000
 
     # ***** THE FUNCTIONAL FORMS *****
-    # for all models, b and k are respective form and width parameters. 
+    # For all models, b and k are respective form and width parameters.
+    # Covariances generally decay to a slightly negative value, requiring all
+    # models to include an additive y0 parameter. This is also necessary for MI,
+    # which increases from zero, and so models are fitted to negative values,
+    # ultimately decaying to some value << 0.
     mods <- list ()
     mods [[1]] <- function (y, d, a0=2*mean(y), k0, b0) # Gaussian (b0 not used)
-                tryCatch (nls (y ~ a * exp (-(d / k)^2), 
-                            start = list (a = 2*mean(y), k = k0)),
+                tryCatch (nls (y ~ y0 + a * exp (-(d / k)^2), 
+                            start = list (a = 2*mean(y), k = k0, y0=0)),
                             error=function (e) NULL)
     mods [[2]] <- function (y, d, a0=2*mean(y), k0, b0) # Exponential
-                tryCatch (nls (y ~ a * exp (-(d / k) ^ b), 
-                            start=list(a=a0,k=k0, b=2)),
+                tryCatch (nls (y ~ y0 + a * exp (-(d / k) ^ b), 
+                            start=list(a=a0,k=k0, b=2, y0=0)),
                             error=function (e) NULL)
     mods [[3]] <- function (y, d, a0=2*mean(y), k0, b0) # Weibull
-                tryCatch (nls (y ~ a * (b / k) * (d / k) ^ (b - 1) * 
+                tryCatch (nls (y ~ y0 + a * (b / k) * (d / k) ^ (b - 1) * 
                             exp (-(d / k) ^ b),
-                            start=list(a=a0, k=k0, b=b0)),
+                            start=list(a=a0, k=k0, b=b0, y0=0)),
                             error=function (e) NULL)
     mods [[4]] <- function (y, d, a0=2*mean(y), k0, b0) # Cauchy (b0 not used)
-                tryCatch (nls (y ~ (a / k) * (k ^ 2 / (d ^ 2 + k ^ 2)),
-                            start=list(a=a0, k=k0)),
+                tryCatch (nls (y ~ y0 + (a / k) * (k ^ 2 / (d ^ 2 + k ^ 2)),
+                            start=list(a=a0, k=k0, y0=0)),
                             error=function (e) NULL)
     mods [[5]] <- function (y, d, a0=2*mean(y), k0, b0) # Box-Cox
-                tryCatch (nls (y ~ a * exp (-d^(2*b) / (k^2*b^2)), 
-                            start = list (a = a0, k = k0, b=b0)),
+                tryCatch (nls (y ~ y0 + a * exp (-d^(2*b) / (k^2*b^2)), 
+                            start = list (a = a0, k = k0, b=b0, y0=0)),
                             error=function (e) NULL)
     # ***** END FUNCTIONAL FORMS *****
 
@@ -83,13 +87,24 @@ compare_models <- function (city="nyc", from=TRUE, measure='covar', plot=FALSE,
             d <- d[indx]
             y <- y[indx]
             if (plot)
+            {
                 plot (d, y, pch=1, col="orange")
+                lines (range (d), c (0, 0), col="gray", lty=2)
+            }
             dfit <- seq(min(d), max(d), length.out=100)
 
             # ***** power-law is done separately:
-            indx <- which (y > 0 & d > 0) # Because 0 distances do occur
+            if (tolower (measure) == "info" | tolower (measure) == "mi")
+            {
+                indx <- which (d > 0) # Because 0 distances do occur
+                y2 <- -y[indx]
+            }
+            else
+            {
+                indx <- which (y > 0 & d > 0) # Because 0 distances do occur
+                y2 <- y [indx]
+            }
             d2 <- d [indx]
-            y2 <- y [indx]
             mod <- lm (log10 (y2) ~ log10 (d2))
             coeffs <- summary (mod)$coefficients
             yfit <- 10 ^ (coeffs [1] + log10 (d2) * coeffs [2])
@@ -99,6 +114,8 @@ compare_models <- function (city="nyc", from=TRUE, measure='covar', plot=FALSE,
             if (plot)
             {
                 yfit <- 10 ^ (coeffs [1] + log10 (dfit) * coeffs [2])
+                if (tolower (measure) == "info" | tolower (measure) == "mi")
+                    yfit <- -yfit
                 lines (dfit, yfit, col=cols [1], lty=ltys [1])
             }
 
@@ -144,6 +161,9 @@ compare_models <- function (city="nyc", from=TRUE, measure='covar', plot=FALSE,
         } # end if len (indx) > 10
     } # end for i
     cat ("\n")
+
+    if (tolower (measure) == "info" | tolower (measure) == "mi")
+        results$pow$k <- -results$pow$k
 
     # Box-Cox fits yield occassionally enormous k-values, so
     indx <- which (results$boxcox$k > (5 * median (results$boxcox$k, na.rm=T)))

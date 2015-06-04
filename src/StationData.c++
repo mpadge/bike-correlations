@@ -664,7 +664,7 @@ int StationData::writeCovMat (std::string fname)
 
 double StationData::calcMI (dvec x, dvec y)
 {
-    double mi = 0.0, sum = 0.0, rowSums [2] = {0.0, 0.0};
+    double mi = 0.0, sum = 0.0, xsum = 0.0, ysum = 0.0;
 
     assert (x.size () == y.size ());
     int n = x.size ();
@@ -677,48 +677,55 @@ double StationData::calcMI (dvec x, dvec y)
         y (i) = y (i) / sum;
     }
 
-    dvec colSums;
+    dvec colSums, xnull, ynull;
     colSums.resize (n);
-    dmat xyNull;
-    xyNull.resize (n, 2);
+    xnull.resize (n);
+    ynull.resize (n);
 
     for (int i=0; i<n; i++)
     {
-        rowSums [0] += x (i);
-        rowSums [1] += y (i);
+        xsum += x (i);
+        ysum += y (i);
         colSums (i) = x (i) + y (i);
     }
 
-    sum = 0.0;
     for (int i=0; i<n; i++)
     {
-        xyNull (i, 0) = colSums (i) * rowSums [0];
-        xyNull (i, 1) = colSums (i) * rowSums [1];
-        sum += xyNull (i, 0) + xyNull (i, 1);
+        xnull (i) = colSums (i) * xsum;
+        ynull (i) = colSums (i) * ysum;
     }
 
     for (int i=0; i<n; i++)
     {
-        xyNull (i, 0) = xyNull (i, 0) / sum;
-        xyNull (i, 1) = xyNull (i, 1) / sum;
         if (x (i) > 0.0)
-            x (i) = x (i) * log2 (x (i) / xyNull (i, 0));
+            x (i) = x (i) * log2 (x (i) / xnull (i));
         if (y (i) > 0.0)
-            y (i) = y (i) * log2 (y (i) / xyNull (i, 1));
+            y (i) = y (i) * log2 (y (i) / ynull (i));
         mi += x (i) + y (i);
     }
 
     colSums.resize (0);
-    xyNull.resize (0, 0);
+    xnull.resize (0);
+    ynull.resize (0);
 
     return (mi);
 }
     
+
+/************************************************************************
+ ************************************************************************
+ **                                                                    **
+ **                            CALCMIMAT                               **
+ **                                                                    **
+ ************************************************************************
+ ************************************************************************/
+
 int StationData::calcMIMat (bool from)
 {
     int numStations = StationList.size ();
     double tempd;
-    dvec x, y;
+    std::vector <double> d, x2, y2;
+    dvec x, y, x1, y1;
     x.resize (numStations);
     y.resize (numStations);
 
@@ -741,12 +748,57 @@ int StationData::calcMIMat (bool from)
                     y (k) = (double) ntrips (k, j);
             }
 
-            MI (i, j) = MI (j, i) = calcMI (x, y);
+            if (nearfar != 0) // Remove half of stations from lists
+            {
+                d.resize (0);
+                for (int k=0; k<numStations; k++)
+                    d.push_back (dists (i, k) + dists (j, k));
+                std::sort (d.begin(), d.end());
+                tempi = floor (d.size () / 2);
+                tempd = (d [tempi] + d [tempi + 1]) / 2.0;
+                d.resize (0);
+                for (int k=0; k<numStations; k++)
+                    d.push_back (dists (i, k) + dists (j, k));
+                x2.resize (0);
+                y2.resize (0);
+                for (int k=0; k<numStations; k++)
+                {
+                    if (nearfar == 1 && d[k] < tempd)
+                    {
+                        x2.push_back (x (k));
+                        y2.push_back (y (k));
+                    } else if (nearfar == 2 && d[k] > tempd)
+                    {
+                        x2.push_back (x (k));
+                        y2.push_back (y (k));
+                    }
+                }
+                x1.resize (x2.size ());
+                y1.resize (y2.size ());
+                assert (x2.size () == y2.size ());
+                for (int k=0; k<x2.size(); k++)
+                {
+                    x1 (k) = x2 [k];
+                    y1 (k) = y2 [k];
+                }
+                x2.resize (0);
+                y2.resize (0);
+                d.resize (0);
+
+                MI (i, j) = MI (j, i) = calcMI (x1, y1);
+            } // end if nearfar
+            else
+                MI (i, j) = MI (j, i) = calcMI (x, y);
         } // end for j over (i+1):numStations
     } // end for i over (numStations - 1)
 
     x.resize (0);
     y.resize (0);
+    x1.resize (0);
+    y1.resize (0);
+    x2.resize (0);
+    y2.resize (0);
+    d.resize (0);
 
     return 0;
 }

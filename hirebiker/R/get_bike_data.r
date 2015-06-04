@@ -36,7 +36,8 @@ get_bike_data <- function (city="nyc", from=TRUE, measure='covar', std=TRUE,
     if (subscriber == 0 | subscriber == 2)
         mf = 0
 
-    if (measure == 'covar' | measure == "info")
+    if (tolower (measure) == 'covar' | tolower (measure) == "info" |
+        tolower (measure) == "mi")
     {
         if (measure == "covar") 
             prefix <- "Cov"
@@ -44,7 +45,7 @@ get_bike_data <- function (city="nyc", from=TRUE, measure='covar', std=TRUE,
             prefix <- "MI"
         if (std) txt.sd <- "std_"
         else txt.sd <- "unstd_" # these files don't currently exist
-        if (measure == "info")
+        if (tolower (measure) == "info" | tolower (measure) == "mi")
             txt.sd <- ""
         fname <- paste (txt.dir, prefix, "_", city, "_", txt.ft, 
                         "_", txt.sd, txt.nf, sep="")
@@ -57,6 +58,7 @@ get_bike_data <- function (city="nyc", from=TRUE, measure='covar', std=TRUE,
             fname <- paste (fname, "_", subscriber, mf, sep="")
     }
     fname <- paste (fname, ".csv", sep="")
+    cat ("***", fname, "\n")
     y <- as.matrix (read.csv (fname, header=FALSE))
     y <- array (y, dim=dims)
 
@@ -66,6 +68,8 @@ get_bike_data <- function (city="nyc", from=TRUE, measure='covar', std=TRUE,
         indx <- which (dists < 0)
     dists [indx] <- NA
     y [indx] <- NA
+    if (tolower (measure) == "info" | tolower (measure) == "mi")
+        y <- -y
 
     # Also load station coordinates
     wd <- getwd ()

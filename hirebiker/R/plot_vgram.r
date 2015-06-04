@@ -87,6 +87,13 @@ plot_vgram <- function (city="nyc", measure="covar", nearfar=0,
                 legend=c("Pow","Sph","Exp"))
         title (main=paste (toupper (ftxt [i]), ": ", best.mod, 
                            " b = ", b, sep=""))
+
+        if (best.mod != "Pow")
+        {
+            powdiff <- 100 * (ss [1,i] / min (ss [,i]) - 1)
+            cat (toupper (ftxt [i]), ": SS for ", best.mod, " lower than Pow by ",
+                 formatC (powdiff, format="f", digits=2), "%\n", sep="")
+        }
     }
     ss <- data.frame (ss * 1000)
     names (ss) <- ftxt

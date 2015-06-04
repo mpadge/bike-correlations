@@ -79,7 +79,7 @@ plot_vgram <- function (city="nyc", measure="covar", nearfar=0,
                 ss [j, i] <- NA
 
             if (mods [j] == "Pow")
-                b <- formatC (vgm.fit$range, format="f", digits=3)
+                b <- formatC (vgm.fit$range, format="f", digits=2)
         }
 
         best.mod <- mods [which.min (ss [,i])]

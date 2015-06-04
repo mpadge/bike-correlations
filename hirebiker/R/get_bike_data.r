@@ -58,7 +58,6 @@ get_bike_data <- function (city="nyc", from=TRUE, measure='covar', std=TRUE,
             fname <- paste (fname, "_", subscriber, mf, sep="")
     }
     fname <- paste (fname, ".csv", sep="")
-    cat ("***", fname, "\n")
     y <- as.matrix (read.csv (fname, header=FALSE))
     y <- array (y, dim=dims)
 
@@ -68,6 +67,7 @@ get_bike_data <- function (city="nyc", from=TRUE, measure='covar', std=TRUE,
         indx <- which (dists < 0)
     dists [indx] <- NA
     y [indx] <- NA
+    # MI increases, so decays are measured in negative terms
     if (tolower (measure) == "info" | tolower (measure) == "mi")
         y <- -y
 

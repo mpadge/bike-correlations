@@ -64,14 +64,14 @@ fit_gaussian <- function (city="nyc", from=TRUE, measure='covar', std=TRUE,
             d <- d[indx]
             y <- y[indx]
             dfit <- seq(min(d), max(d), length.out=100)
-            y0 <- 2 * mean (y)
             k0 <- 1
             mod <- NULL
             while (is.null (mod) & k0 < 10)
             {
                 k0 <- k0 + 1
+                # See note in compare_models for explanation of the y0 term.
                 mod <- tryCatch (nls (y ~ y0 + a * exp (-d^2 / k^2), 
-                            start = list (a = 2 * mean (y), k = k0, y0=y0)),
+                            start = list (a=diff (range(y)), k=k0, y0=2*mean(y))),
                             error = function (e) NULL)
             }
             if (!is.null (mod))

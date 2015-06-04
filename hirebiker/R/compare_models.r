@@ -43,7 +43,7 @@ compare_models <- function (city="nyc", from=TRUE, measure='covar', plot=FALSE,
     mods <- list ()
     mods [[1]] <- function (y, d, a0=2*mean(y), k0, b0) # Gaussian (b0 not used)
                 tryCatch (nls (y ~ y0 + a * exp (-(d / k)^2), 
-                            start = list (a = 2*mean(y), k = k0, y0=0)),
+                            start = list (a=diff (range(y)), k=k0, y0=0)),
                             error=function (e) NULL)
     mods [[2]] <- function (y, d, a0=2*mean(y), k0, b0) # Exponential
                 tryCatch (nls (y ~ y0 + a * exp (-(d / k) ^ b), 

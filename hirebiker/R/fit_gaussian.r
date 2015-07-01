@@ -17,7 +17,7 @@
 #' @param measure can be ('covar', 'ntrips', 'info'), where the latter is mutual
 #' information.
 #' @param std is not implemented
-#' @param nearfar = (0,1,2) for (all, near, far)
+#' @param nearfar = (0,1,2,3) for (all, near, far, deciles)
 #' @param subscriber = 0 to analyse all data; 1 to analyse subscribers only; 2
 #' to analyse non-subscribers only; 3 to perform aged-based analyses
 #' @param mf = 1/2 for male/female data (for subscriber=1 only)
@@ -35,19 +35,24 @@ fit_gaussian <- function (city="nyc", from=TRUE, measure='covar', std=TRUE,
     dat <- get_bike_data (city=city, from=from, measure=measure, std=std,
                      nearfar=nearfar, subscriber=subscriber,
                      mf=mf, data.dir=data.dir, msg=msg)
-
-    if (subscriber > 2)
+    if (nearfar < 3 & subscriber > 3)
         data.dir <- paste (data.dir, "age/", sep="")
     fname <- paste (data.dir, "NumTrips_", city, sep="")
     if (city == "nyc" | city == "boston" | city == "chicago")
-        fname <- paste (fname, "_", subscriber, mf, sep="")
+        if (nearfar < 3)
+            fname <- paste (fname, "_", subscriber, mf, sep="")
+        else
+            fname <- paste (fname, "_00", sep="")
     fname <- paste (fname, ".csv", sep="")
     ntrips.mat <- read.csv (fname, header=FALSE)
 
     n <- dim (dat$d)[1]
 
-    index <- kvec <- intercept <- ss <- r2 <- ntrips <- 
-        resid.slope <- fvals <- NULL
+    cnames <- c("x", "y", "k", "ntrips", "ss", "r2", "resid.slope", "f")
+    results <- data.frame (array (NA, dim=c(n, length (cnames))))
+    names (results) <- cnames
+    results$x <- dat$xy$lon
+    results$y <- dat$xy$lat
 
     for (i in 1:n)
     {
@@ -59,7 +64,7 @@ fit_gaussian <- function (city="nyc", from=TRUE, measure='covar', std=TRUE,
         # the website!) These produce NAs in the dists table.
         # The sd(y) condition prevents analyses of !covar for which all trips,
         # and thus all y-values, are zero.
-        if (length (indx) > 10 & sd (y, na.rm=TRUE) > 0)
+        if (length (indx) > 0 & sd (y, na.rm=TRUE) > 0)
         {
             d <- d[indx]
             y <- y[indx]
@@ -79,14 +84,11 @@ fit_gaussian <- function (city="nyc", from=TRUE, measure='covar', std=TRUE,
                 coeffs <- summary (mod)$coefficients
                 if (coeffs [2] > 0 & coeffs [2] < 10)
                 {
-                    ss.mod <- sum ((predict (mod) - y) ^ 2)
-                    ss <- c (ss, ss.mod)
+                    results$ss [i] <- sum ((predict (mod) - y) ^ 2)
                     # NOTE: These r2 values aren't necessarily meaningful!
-                    r2 <- c (r2, 1 - ss.mod / sum ((y - mean (y)) ^ 2))
-                    kvec <- c (kvec, coeffs [2])
-                    intercept <- c (intercept, coeffs [1])
-                    ntrips <- c (ntrips, sum (ntrips.mat [,i]))
-                    index <- c (index, i)
+                    results$r2 [i] <- 1 - results$ss [i] / sum ((y - mean (y)) ^ 2)
+                    results$k [i] <- coeffs [2]
+                    results$ntrips [i] <- sum (ntrips.mat [,i])
 
                     # Then the F-statistic for variance of residuals
                     resids <- summary (mod)$residuals
@@ -99,8 +101,8 @@ fit_gaussian <- function (city="nyc", from=TRUE, measure='covar', std=TRUE,
                     xvar <- sapply (1:nbins, function (ix) 
                                     mean (d [which (d2 == ix)]))
                     mod <- summary (lm (rvar ~ xvar))
-                    resid.slope <- c (resid.slope, mod$coefficients [2])
-                    fvals <- c (fvals, as.numeric (mod$fstatistic [1]))
+                    results$resid.slope [i] <-  mod$coefficients [2]
+                    results$f [i] <- as.numeric (mod$fstatistic [1])
                 }
             }
         } # end if len (indx) > 10
@@ -113,14 +115,9 @@ fit_gaussian <- function (city="nyc", from=TRUE, measure='covar', std=TRUE,
     # values. With nstations=332 (nyc) or 752 (london), respective values are
     # ultimately divided by 36,594,368 = 3.6e7 and 425,259,008 = 4.2e8.
     if (measure == 'covar')
-        ss <- ss * 1e12
+        results$ss <- results$ss * 1e12
     else
-        ss <- ss / 10000
+        results$ss <- results$ss / 10000
 
-    results <- data.frame (cbind (dat$xy$lon [index], dat$xy$lat [index], 
-                                  index, kvec, intercept, ntrips, ss, r2,
-                                  resid.slope, fvals)) 
-    colnames (results) <- c("x", "y", "i", "k", "y0", "ntrips", "ss", "r2", 
-                            "resid.slope", "f")
     return (results)
 } 

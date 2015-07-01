@@ -14,7 +14,7 @@
 #' power-law, Gaussian or Cauchy models).
 
 compare_models <- function (city="nyc", from=TRUE, measure='covar', plot=FALSE,
-                           data.dir="./results/")
+                           nearfar=0, data.dir="./results/")
 {
     if (measure == 'covar')
         cat (city, ": Fitting distance decays to covariances\n")
@@ -24,7 +24,7 @@ compare_models <- function (city="nyc", from=TRUE, measure='covar', plot=FALSE,
         cat (city, ": Fitting distance decays to absolute numbers of trips\n")
 
     dat <- get_bike_data (city=city, from=from, measure=measure, std=TRUE, 
-                    nearfar=0, subscriber=0, mf=0, msg=TRUE,
+                    nearfar=nearfar, subscriber=0, mf=0, msg=TRUE,
                     data.dir=data.dir)
 
     n <- dim (dat$d)[1]

@@ -61,6 +61,7 @@ DistStruct getdists (double xa, double ya, double xb, double yb);
 DistStruct convert_distance (double dist, double midx, double midy);
 void timeout (double tseconds);
 RegrResults regression (std::vector <double> x, std::vector <double> y);
+double calcMI (std::vector <double> x, std::vector <double> y);
 void progLine (double progress);
 
 #endif

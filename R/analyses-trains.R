@@ -36,7 +36,16 @@ get.data <- function (from=TRUE, covar=TRUE, tube=TRUE, nearfar=0, msg=FALSE)
     y <- as.matrix (read.csv (fname, header=FALSE))
     y <- array (y, dim=dims)
 
-    return (list (d=dists, y=y))
+    # Then the lat-lons
+    if (tube)
+        fname <- paste (txt.dir, "DistMatTube_StationList.csv", sep="")
+    else
+        fname <- paste (txt.dir, "DistMatRail_StationList.csv", sep="")
+    stns <- read.csv (fname, header=FALSE)
+    xy <- stns [,2:3]
+    names (xy) <- c ("lat", "lon")
+
+    return (list (d=dists, y=y, xy=xy))
 } # end get.data()
 
 # ************************************************************ 
@@ -273,21 +282,27 @@ fit.gaussian <- function (tube=TRUE, from=TRUE, covar=TRUE,
     n <- dim (dat$d)[1]
     if (n != dim (ntrips.mat) [1])
         cat ("ERROR: size of ntrips not same as covariance matrix!\n")
-    index <- kvec <- intercept <- ss <- ntrips <- NULL
     if (from) ftxt <- "from"
     else ftxt <- "to"
+
+    cnames <- c("x", "y", "k", "ntrips", "ss")
+    results <- data.frame (array (NA, dim=c(n, length (cnames))))
+    names (results) <- cnames
+    results$x <- dat$xy$lon
+    results$y <- dat$xy$lat
+
     for (i in 1:n)
     {
         d <- dat$d [i, ]
         y <- dat$y [i, ]
-        indx <- which (!is.na (d) & is.finite (d) & !is.na (y) & y > 0)
+        indx <- which (!is.na (d) & is.finite (d) & !is.na (y))
         if (length (indx) > 0) # because some values for "_near" have all y=0
         {
             d <- d[indx]
             y <- y[indx]
             dfit <- seq(min(d), max(d), length.out=100)
             if (covar)
-                a0 <- 2 * mean (y)
+                a0 <- diff (range (y))
             else
                 a0 <- 1
             k0 <- 0
@@ -296,62 +311,25 @@ fit.gaussian <- function (tube=TRUE, from=TRUE, covar=TRUE,
             {
                 k0 <- k0 + 5
                 mod <- tryCatch (nls (y ~ y0 + a * exp (-d^2 / k^2), 
-                            start=list(y0=0, a=2*mean(y),k=k0)),
+                            start = list (a=a0, k=k0, y0=2*mean(y))),
                             error=function(e) NULL)
             }
             if (!is.null (mod))
             {
                 coeffs <- summary (mod)$coefficients
-                if (coeffs [3] > 0)
+                if (coeffs [2] > 0)
                 {
-                    ss <- c (ss, mean (summary (mod)$residuals ^ 2))
-                    kvec <- c (kvec, coeffs [3])
-                    intercept <- c (intercept, coeffs [2])
-                    index <- c (index, i)
-                    ntrips <- c (ntrips, sum (ntrips.mat [,i]))
+                    results$ss [i] <- mean (summary (mod)$residuals ^ 2)
+                    results$k [i] <- coeffs [2]
+                    results$ntrips [i] <- sum (ntrips.mat [,i])
                 }
             }
         }
     } # end for i
-    # Any cases that generate k-values that are greater than max (d) are very
-    # likely spurious, so are removed here (but only for nearfar == 0)
-    if (nearfar == 0)
-    {
-        if (tube)
-            maxd <- 50 * max (dat$d, na.rm=TRUE, finite=TRUE)
-        else
-            maxd <- 1 * max (dat$d, na.rm=TRUE, finite=TRUE)
-        indx <- which (kvec > maxd)
-        if (msg & length (indx) > 0)
-            cat (ftxt, ": Removed ", length (indx), 
-                 " k-values > d = ", maxd, "km\n", sep="")
-        indx <- (kvec < maxd)
-        ss <- ss [indx]
-        index <- index [indx]
-        kvec <- kvec [indx]
-        intercept <- intercept [indx] 
-        # For NR, there are also a couple of extreme power-law intercepts 
-        if (covar & !tube)
-            intlim <- 0.8
-        else
-            intlim <- 1e10
-        
-        indx <- which (intercept > intlim)
-        if (msg & length (indx) > 0)
-            cat (ftxt, ": Removed ", length (indx), 
-                 " intercepts > ", intlim, "\n", sep="")
-        indx <- which (intercept <= intlim)
-        ss <- ss [indx]
-        index <- index [indx]
-        kvec <- kvec [indx]
-        intercept <- intercept [indx] 
-    }
 
     if (covar)
-        ss <- ss * 1e10
-    dat <- data.frame (cbind (index, kvec, intercept, ntrips, ss)) 
-    colnames (dat) <- c("i", "k", "y", "ntrips", "ss")
-    return (dat)
+        results$ss <- results$ss * 1e10
+    return (results)
 } # end fit.gaussian()
 
 # ************************************************************ 
@@ -589,9 +567,10 @@ compare.nearfar <- function (from=TRUE, covar=TRUE)
                  formatC (tt$parameter, format="f", digits=1), "; p = ",
                  formatC (tt$p.value, format="f", digits=4), "\n", sep="")
             cat ("Mean +/- SD k-values for (near, far) are (",
-                 formatC (mean (dat1$k), format="f", digits=2), "+/-",
-                 formatC (sd (dat1$k), format="f", digits=2), ", ",
-                 formatC (mean (dat2$k), format="f", digits=2), "+/-",
-                 formatC (sd (dat2$k), format="f", digits=2), ")\n", sep="")
+                 formatC (mean (dat1$k, na.rm=TRUE), format="f", digits=2), "+/-",
+                 formatC (sd (dat1$k, na.rm=TRUE), format="f", digits=2), ", ",
+                 formatC (mean (dat2$k, na.rm=TRUE), format="f", digits=2), "+/-",
+                 formatC (sd (dat2$k, na.rm=TRUE), format="f", digits=2), 
+                 ")\n", sep="")
         }
 } # end compare.nearfar()

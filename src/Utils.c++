@@ -395,6 +395,65 @@ RegrResults regression(std::vector <double> x, std::vector <double> y)
 // end function regression
 
 
+/************************************************************************
+ ************************************************************************
+ **                                                                    **
+ **                              CALCMI                                **
+ **                                                                    **
+ ************************************************************************
+ ************************************************************************/
+
+double calcMI (std::vector <double> x, std::vector <double> y)
+{
+    double mi = 0.0, sum = 0.0, xsum = 0.0, ysum = 0.0;
+
+    assert (x.size () == y.size ());
+    int n = x.size ();
+
+    for (int i=0; i<n; i++)
+        sum += x [i] + y [i];
+    for (int i=0; i<n; i++)
+    {
+        x [i] = x [i] / sum;
+        y [i] = y [i] / sum;
+    }
+
+    dvec colSums, xnull, ynull;
+    colSums.resize (n);
+    xnull.resize (n);
+    ynull.resize (n);
+
+    for (int i=0; i<n; i++)
+    {
+        xsum += x [i];
+        ysum += y [i];
+        colSums (i) = x [i] + y [i];
+    }
+
+    for (int i=0; i<n; i++)
+    {
+        xnull (i) = colSums (i) * xsum;
+        ynull (i) = colSums (i) * ysum;
+    }
+
+    for (int i=0; i<n; i++)
+    {
+        if (x [i] > 0.0)
+            x [i] = x [i] * log2 (x [i] / xnull (i));
+        if (y [i] > 0.0)
+            y [i] = y [i] * log2 (y [i] / ynull (i));
+        mi += x [i] + y [i];
+    }
+
+    colSums.resize (0);
+    xnull.resize (0);
+    ynull.resize (0);
+
+    return (mi);
+}
+
+
+
 
 /************************************************************************
  ************************************************************************

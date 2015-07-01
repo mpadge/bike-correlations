@@ -25,7 +25,9 @@ int main(int argc, char *argv[]) {
     std::cout << "|\t2. (0,1,2) for analyses of (all, subscriber, customer)" <<
         " data\t\t\t|" << std::endl;
     std::cout << "|\t\t\t\t(NYC/Boston/Chicago only)\t\t\t\t|" << std::endl;
-    std::cout << "|\t ---or set the second parameter to >2 for analysis of" <<
+    std::cout << "|\t ---or set the second parameter to 3 for analysis of" <<
+        " distance deciles---\t|" << std::endl;
+    std::cout << "|\t ---or set the second parameter to >3 for analysis of" <<
         " age-class data---\t\t|" << std::endl;
     std::cout << "|\t ---in which case the 3rd parameter is the decade to"
         " be analysed---\t\t|" << std::endl;
@@ -98,9 +100,9 @@ int main(int argc, char *argv[]) {
                 std::cout << "\t";
             std::cout << "\t\t\t\t|" << std::endl;
             tempstr.resize (0);
-        }
-        else
-        {
+        } else if (tempi [0] == 3) {
+            std::cout << "distance deciles)\t\t\t\t|" << std::endl;
+        } else {
             std::cout << "age)\t\t\t\t\t\t|" << std::endl;
         }
     }
@@ -218,10 +220,24 @@ int main(int argc, char *argv[]) {
         stdtxt = "std_";
     else
         stdtxt = "unstd_";
-    for (int i=0; i<3; i++)
+
+    int nloops = 3;
+    if (rideData.returnDeciles ())
     {
-        rideData.nearfar = i;
-        rideData.txtnf = rideData.txtnflist [i];
+        rideData.writeDistDeciles ();
+        nloops = 10;
+    }
+
+    for (int i=0; i<nloops; i++)
+    {
+        if (!rideData.returnDeciles ())
+        {
+            rideData.nearfar = i;
+            rideData.txtnf = rideData.txtnflist [i];
+        } else {
+            rideData.nearfar = 10 + i;
+            rideData.txtnf = "D" + std::to_string (i);
+        }
 
         if (city == "london" || city == "washingtondc")
         {
@@ -231,34 +247,40 @@ int main(int argc, char *argv[]) {
         }
         else if (city == "nyc" || city == "boston" || city == "chicago")
         {
-            r2name = "R2_" + city + "_from_" + rideData.txtnf + "_" +
-                std::to_string (rideData.getSubscriber ()) +
-                std::to_string (rideData.getGender ()) + ".csv";
-            covname = "Cov_" + city + "_from_" + stdtxt + rideData.txtnf + "_" +
-                std::to_string (rideData.getSubscriber ()) +
-                std::to_string (rideData.getGender ()) + ".csv";
-            MIname = "MI_" + city + "_from_" + rideData.txtnf + "_" +
-                std::to_string (rideData.getSubscriber ()) +
-                std::to_string (rideData.getGender ()) + ".csv";
+            r2name = "R2_" + city + "_from_" + rideData.txtnf;
+            covname = "Cov_" + city + "_from_" + stdtxt + rideData.txtnf;
+            MIname = "MI_" + city + "_from_" + rideData.txtnf;
+
+            if (!rideData.returnDeciles ())
+            {
+                r2name = r2name + "_" + std::to_string (rideData.getSubscriber ()) +
+                    std::to_string (rideData.getGender ());
+                covname = covname + "_" + 
+                    std::to_string (rideData.getSubscriber ()) +
+                    std::to_string (rideData.getGender ());
+                MIname = MIname + "_" +
+                    std::to_string (rideData.getSubscriber ()) +
+                    std::to_string (rideData.getGender ());
+            }
+            r2name = r2name + ".csv";
+            covname = covname + ".csv";
+            MIname = MIname + ".csv";
         }
 
         rideData.calcR2 (true);
-        //rideData.writeR2Mat (r2name);
+        rideData.writeR2Mat (r2name);
         rideData.writeCovMat (covname);
+        rideData.writeMIMat (MIname);
 
         rideData.calcR2 (false);
         count = r2name.find ("_from_");
         r2name.replace (count, 6, "_to_");
         count = covname.find ("_from_");
         covname.replace (count, 6, "_to_");
-        //rideData.writeR2Mat (r2name);
-        rideData.writeCovMat (covname);
-
-        rideData.calcMIMat (true);
-        rideData.writeMIMat (MIname);
         count = MIname.find ("_from_");
         MIname.replace (count, 6, "_to_");
-        rideData.calcMIMat (false);
+        rideData.writeR2Mat (r2name);
+        rideData.writeCovMat (covname);
         rideData.writeMIMat (MIname);
     }
     //rideData.readR2Mat (false);

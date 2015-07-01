@@ -997,12 +997,13 @@ plot.hists <- function (measure='covar')
             y <- hh$counts [indx]
         }
 
+        xlims <- c (0.1, 50)
         ylims <- range (y, na.rm=TRUE)
 
         if (measure == 'covar')
         {
             plot (x [[1]], y [[1]], "l", log="xy", lwd=2, col=cols [1], 
-                  ylim=ylims, xlab=mt, ylab="Frequency", main=city [ci])
+                  xlim=xlims, ylim=ylims, xlab=mt, ylab="Frequency", main=city [ci])
             lines (x [[2]], y [[2]], col=cols [2], lwd=2)
             xlims <- range (x, na.rm=TRUE)
             xpos <- xlims [1] + 0.2 * diff (xlims)

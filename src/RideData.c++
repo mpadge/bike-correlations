@@ -388,7 +388,7 @@ int RideData::readOneFileNYC (int filei)
             if (age > 0 && age < 99)
                 ageDistribution [age]++;
             tempi [2] = floor (tempi [2] / 10);
-            if (RideData::getSubscriber () > 2)
+            if (RideData::getSubscriber () > 3)
             {
                 if (age > 0 && age < 38) // Average age is 37.7
                     ntripsYoung (tempi [0], tempi [1])++;
@@ -458,7 +458,7 @@ void RideData::summaryStats ()
     std::cout << "Average Age = " << (double) tempi [0] / (double) tempi [1] << 
         std::endl;
 
-    if (RideData::getSubscriber () < 3)
+    if (RideData::getSubscriber () < 4)
     {
         // Male-Female ratio
         tempi [0] = tempi [1] = 0;
@@ -640,7 +640,7 @@ int RideData::readOneFileBoston (int filei)
             if (age > 0 && age < 99)
                 ageDistribution [age]++;
             tempi [2] = floor (tempi [2] / 10);
-            if (RideData::getSubscriber () > 2)
+            if (RideData::getSubscriber () > 3)
             {
                 if (age > 0 && age < 37) // Average age is 36.7
                     ntripsYoung (tempi [0], tempi [1])++;
@@ -1282,7 +1282,7 @@ int RideData::aggregateTrips ()
     // gender = (0, 1, 2) for (all, male, female)
     // (male, female) only make sense for subscriber = 1, and are ignored
     // otherwise.
-    if (subscriber == 0)
+    if (subscriber == 0 || subscriber == 3)
     {
         for (int i=0; i<numStations; i++)
             for (int j=0; j<numStations; j++)

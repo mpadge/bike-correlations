@@ -54,13 +54,13 @@ class RideData: public StationData
             missingStations.resize (0);
             if (_city == "nyc" || _city == "boston" || _city == "chicago")
             {
-                //if (_subscriber < 3)
-                    subscriberMFConstruct ();
-                //else
-                    subscriberAgeConstruct ();
+                subscriberMFConstruct ();
+                subscriberAgeConstruct ();
                 for (int i=0; i<99; i++)
                     ageDistribution [i] = 0;
             }
+            if (_subscriber == 3)
+                _deciles = true;
         }
 
         ~RideData ()

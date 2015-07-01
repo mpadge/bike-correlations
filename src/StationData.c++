@@ -485,8 +485,8 @@ int StationData::writeNumTrips (std::string fname)
 
 int StationData::calcR2 (bool from)
 {
-    int tempi, numStations = StationList.size ();
-    double tempd;
+    int tempi, numStations = StationList.size (), decLimsi [2];
+    double tempd, decLims [2];
     std::vector <double> x0, y0, x1, x2, y2, d;
     RegrResults regrResults;
 
@@ -508,6 +508,7 @@ int StationData::calcR2 (bool from)
      * The code ensures that all vectors have the same lengths at all times, and
      * so explicit loops rather than iterators are used for clarity.
      */
+
     for (int i=0; i<(numStations-1); i++)
     {
         x0.resize (0);
@@ -546,52 +547,162 @@ int StationData::calcR2 (bool from)
                     y0 [k] = y0 [k] / tempd;
             }
 
-            if (nearfar != 0) // Remove half of stations from lists
+            if (nearfar > 0 && nearfar < 3) // Remove half of stations from lists
             {
                 d.resize (0);
                 for (int k=0; k<numStations; k++)
-                    d.push_back (dists (i, k) + dists (j, k));
-                std::sort (d.begin(), d.end());
-                tempi = floor (d.size () / 2);
-                tempd = (d [tempi] + d [tempi + 1]) / 2.0;
-                d.resize (0);
-                for (int k=0; k<numStations; k++)
-                    d.push_back (dists (i, k) + dists (j, k));
-                x2.resize (0);
-                y2.resize (0);
-                for (int k=0; k<numStations; k++)
+                    if (dists (i, k) > 0.0 && dists (j, k) > 0.0)
+                        d.push_back (dists (i, k) + dists (j, k));
+                if (d.size () > 10)
                 {
-                    if (nearfar == 1 && d[k] < tempd)
+                    std::sort (d.begin(), d.end());
+                    tempi = floor (d.size () / 2);
+                    tempd = (d [tempi] + d [tempi + 1]) / 2.0;
+                    d.resize (0);
+                    for (int k=0; k<numStations; k++)
+                        d.push_back (dists (i, k) + dists (j, k));
+                    x2.resize (0);
+                    y2.resize (0);
+                    for (int k=0; k<numStations; k++)
                     {
-                        x2.push_back (x1[k]);
-                        y2.push_back (y0[k]);
-                    } else if (nearfar == 2 && d[k] > tempd)
+                        if (nearfar == 1 && d[k] < tempd)
+                        {
+                            x2.push_back (x1[k]);
+                            y2.push_back (y0[k]);
+                        } else if (nearfar == 2 && d[k] > tempd)
+                        {
+                            x2.push_back (x1[k]);
+                            y2.push_back (y0[k]);
+                        }
+                    }
+                    x1.resize (0);
+                    y0.resize (0);
+                    for (int k=0; k<x2.size(); k++)
                     {
-                        x2.push_back (x1[k]);
-                        y2.push_back (y0[k]);
+                        x1.push_back (x2 [k]);
+                        y0.push_back (y2 [k]);
                     }
                 }
-                x1.resize (0);
-                y0.resize (0);
-                for (int k=0; k<x2.size(); k++)
-                {
-                    x1.push_back (x2 [k]);
-                    y0.push_back (y2 [k]);
-                }
-                x2.resize (0);
-                y2.resize (0);
+            } else if (nearfar >= 10) { // Analyse deciles
                 d.resize (0);
+                for (int k=0; k<numStations; k++)
+                    if (dists (i, k) > 0.0 && dists (j, k) > 0.0)
+                        d.push_back (dists (i, k) + dists (j, k));
+                if (d.size () > 10)
+                {
+                    std::sort (d.begin(), d.end());
+                    tempi = nearfar - 10;
+                    decLimsi [0] = floor ((double) tempi * d.size () / 10.0);
+                    decLimsi [1] = floor (((double) tempi + 1.0) * 
+                                        d.size () / 10.0) - 1;
+                    if (decLimsi [0] > 0)
+                        decLims [0] = (d [decLimsi [0]] + d [decLimsi [0] + 1]) / 2.0;
+                    if (tempi < 9)
+                        decLims [1] = (d [decLimsi [1]] + d [decLimsi [1] + 1]) / 2.0;
+                    
+                    x2.resize (0);
+                    y2.resize (0);
+                    for (int k=0; k<numStations; k++)
+                        if (d [k] > decLims [0] && d [k] < decLims [1])
+                        {
+                            x2.push_back (x1[k]);
+                            y2.push_back (y0[k]);
+                        }
+                    x1.resize (0);
+                    y0.resize (0);
+                    for (int k=0; k<x2.size(); k++)
+                    {
+                        x1.push_back (x2 [k]);
+                        y0.push_back (y2 [k]);
+                    }
+                }
             } // end if nearfar
             regrResults = regression (x1, y0);
             r2 (i, j) = r2 (j, i) = regrResults.r2;
             cov (i, j) = cov (j, i) = regrResults.cov;
+            MI (i, j) = MI (j, i) = calcMI (x1, y0);
         } // end for j over (i+1):numStations
     } // end for i over (numStations - 1)
     x0.resize (0);
     x1.resize (0);
+    x2.resize (0);
     y0.resize (0);
+    y2.resize (0);
 
     return 0;
+}
+
+
+/************************************************************************
+ ************************************************************************
+ **                                                                    **
+ **                           GETDISTDECILES                           **
+ **                                                                    **
+ ************************************************************************
+ ************************************************************************/
+
+void StationData::writeDistDeciles ()
+{
+    int numStations = StationList.size ();
+    double tempd, decLo, decHi;
+    std::vector <int> counts1 (10), counts2 (10);
+    std::vector <double> d, dtemp (10), decileDists (10);
+
+    d.resize (0);
+
+    for (int i=0; i<10; i++)
+    {
+        counts1 [i] = 0;
+        decileDists [i] = 0.0;
+    }
+
+    // Some stations are in station lists, yet don't have lat-lons, and so can't
+    // be mapped onto distance matrices. Thus distance matrices sometimes have
+    // entire rows/columns of INT_MIN.
+    for (int i=0; i<(numStations-1); i++)
+    {
+        for (int j=(i+1); j<numStations; j++)
+        {
+            d.resize (0);
+            for (int k=0; k<numStations; k++)
+                if (dists (i, k) > 0.0 && dists (j, k) > 0.0)
+                    d.push_back (dists (i, k) + dists (j, k));
+            if (d.size () > 10) 
+            {
+                std::sort (d.begin(), d.end());
+                for (int k=0; k<10; k++)
+                {
+                    decLo = d [floor ((double) k * d.size () / 10.0)];
+                    decHi = d [floor (((double) k + 1.0) * d.size () / 10.0) - 1];
+                    counts2 [k] = 0;
+                    dtemp [k] = 0.0;
+                    for (int m=0; m<d.size (); m++)
+                        if (d [m] > decLo && d [m] < decHi && d [m] > 0.0)
+                        {
+                            dtemp [k] += d [m] / 2.0;
+                            counts2 [k] += 1;
+                        }
+                    decileDists [k] += dtemp [k] / (double) counts2 [k];
+                    counts1 [k]++;
+                }
+            }
+        } 
+    }
+
+    std::string fname = "DistDeciles_" + returnCity () + ".csv";
+    std::ofstream out_file;
+    out_file.open (fname.c_str (), std::ofstream::out);
+
+    for (int i=0; i<10; i++)
+        out_file << decileDists [i] / counts1 [i] << std::endl;
+    out_file.close ();
+    std::cout << "Distance deciles written to " << fname.c_str () << std::endl;
+
+    counts1.resize (0);
+    counts2.resize (0);
+    dtemp.resize (0);
+    d.resize (0);
+    decileDists.resize (0);
 }
 
 
@@ -654,154 +765,6 @@ int StationData::writeCovMat (std::string fname)
 }
 
 
-/************************************************************************
- ************************************************************************
- **                                                                    **
- **                              CALCMI                                **
- **                                                                    **
- ************************************************************************
- ************************************************************************/
-
-double StationData::calcMI (dvec x, dvec y)
-{
-    double mi = 0.0, sum = 0.0, xsum = 0.0, ysum = 0.0;
-
-    assert (x.size () == y.size ());
-    int n = x.size ();
-
-    for (int i=0; i<n; i++)
-        sum += x (i) + y (i);
-    for (int i=0; i<n; i++)
-    {
-        x (i) = x (i) / sum;
-        y (i) = y (i) / sum;
-    }
-
-    dvec colSums, xnull, ynull;
-    colSums.resize (n);
-    xnull.resize (n);
-    ynull.resize (n);
-
-    for (int i=0; i<n; i++)
-    {
-        xsum += x (i);
-        ysum += y (i);
-        colSums (i) = x (i) + y (i);
-    }
-
-    for (int i=0; i<n; i++)
-    {
-        xnull (i) = colSums (i) * xsum;
-        ynull (i) = colSums (i) * ysum;
-    }
-
-    for (int i=0; i<n; i++)
-    {
-        if (x (i) > 0.0)
-            x (i) = x (i) * log2 (x (i) / xnull (i));
-        if (y (i) > 0.0)
-            y (i) = y (i) * log2 (y (i) / ynull (i));
-        mi += x (i) + y (i);
-    }
-
-    colSums.resize (0);
-    xnull.resize (0);
-    ynull.resize (0);
-
-    return (mi);
-}
-    
-
-/************************************************************************
- ************************************************************************
- **                                                                    **
- **                            CALCMIMAT                               **
- **                                                                    **
- ************************************************************************
- ************************************************************************/
-
-int StationData::calcMIMat (bool from)
-{
-    int numStations = StationList.size ();
-    double tempd;
-    std::vector <double> d, x2, y2;
-    dvec x, y, x1, y1;
-    x.resize (numStations);
-    y.resize (numStations);
-
-    for (int i=0; i<(numStations-1); i++)
-    {
-        for (int k=0; k<numStations; k++)
-        {
-            if (from)
-                x (k) = (double) ntrips (i, k);
-            else
-                x (k) = (double) ntrips (k, i);
-        }
-        for (int j=(i+1); j<numStations; j++)
-        {
-            for (int k=0; k<numStations; k++)
-            {
-                if (from)
-                    y (k) = (double) ntrips (j, k);
-                else
-                    y (k) = (double) ntrips (k, j);
-            }
-
-            if (nearfar != 0) // Remove half of stations from lists
-            {
-                d.resize (0);
-                for (int k=0; k<numStations; k++)
-                    d.push_back (dists (i, k) + dists (j, k));
-                std::sort (d.begin(), d.end());
-                tempi = floor (d.size () / 2);
-                tempd = (d [tempi] + d [tempi + 1]) / 2.0;
-                d.resize (0);
-                for (int k=0; k<numStations; k++)
-                    d.push_back (dists (i, k) + dists (j, k));
-                x2.resize (0);
-                y2.resize (0);
-                for (int k=0; k<numStations; k++)
-                {
-                    if (nearfar == 1 && d[k] < tempd)
-                    {
-                        x2.push_back (x (k));
-                        y2.push_back (y (k));
-                    } else if (nearfar == 2 && d[k] > tempd)
-                    {
-                        x2.push_back (x (k));
-                        y2.push_back (y (k));
-                    }
-                }
-                x1.resize (x2.size ());
-                y1.resize (y2.size ());
-                assert (x2.size () == y2.size ());
-                for (int k=0; k<x2.size(); k++)
-                {
-                    x1 (k) = x2 [k];
-                    y1 (k) = y2 [k];
-                }
-                x2.resize (0);
-                y2.resize (0);
-                d.resize (0);
-
-                MI (i, j) = MI (j, i) = calcMI (x1, y1);
-            } // end if nearfar
-            else
-                MI (i, j) = MI (j, i) = calcMI (x, y);
-        } // end for j over (i+1):numStations
-    } // end for i over (numStations - 1)
-
-    x.resize (0);
-    y.resize (0);
-    x1.resize (0);
-    y1.resize (0);
-    x2.resize (0);
-    y2.resize (0);
-    d.resize (0);
-
-    return 0;
-}
 
 /************************************************************************
  ************************************************************************

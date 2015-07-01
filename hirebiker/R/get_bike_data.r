@@ -8,7 +8,7 @@
 #' @param measure can be ('covar', 'ntrips', 'info'), where the latter is mutual
 #' information.
 #' @param std is not implemented
-#' @param nearfar = (0,1,2) for (all, near, far)
+#' @param nearfar = (0,1,2,3) for (all, near, far, deciles)
 #' @param subscriber = 0 to analyse all data; 1 to analyse subscribers only; 2
 #' to analyse non-subscribers only; 3 to perform aged-based analyses
 #' @param mf = 1/2 for male/female data (for subscriber=1 only)
@@ -21,7 +21,7 @@ get_bike_data <- function (city="nyc", from=TRUE, measure='covar', std=TRUE,
                       msg=FALSE)
 {
     txt.dir <- data.dir
-    if (subscriber > 2)
+    if (subscriber > 2 & nearfar < 3)
         txt.dir <- paste (txt.dir, "age/", sep="")
     fname <- paste (txt.dir, "stationDistsMat-", city, ".csv", sep="")
     dists <- as.matrix (read.csv (fname, header=FALSE))
@@ -30,9 +30,12 @@ get_bike_data <- function (city="nyc", from=TRUE, measure='covar', std=TRUE,
 
     if (from) txt.ft <- "from"
     else txt.ft <- "to"
+
     if (nearfar == 0) txt.nf <- "all"
     else if (nearfar == 1) txt.nf <- "near"
-    else txt.nf <- "far"
+    else if (nearfar == 2) txt.nf <- "far"
+    else txt.dir <- paste (txt.dir, "dists/", sep="")
+
     if (subscriber == 0 | subscriber == 2)
         mf = 0
 
@@ -45,12 +48,16 @@ get_bike_data <- function (city="nyc", from=TRUE, measure='covar', std=TRUE,
             prefix <- "MI"
         if (std) txt.sd <- "std_"
         else txt.sd <- "unstd_" # these files don't currently exist
+
         if (tolower (measure) == "info" | tolower (measure) == "mi")
             txt.sd <- ""
+        if (nearfar == 3)
+            txt.nf <- paste ("D", subscriber, sep="")
+
         fname <- paste (txt.dir, prefix, "_", city, "_", txt.ft, 
                         "_", txt.sd, txt.nf, sep="")
-        indx <- which (dists < 0) # the latter is for -DOUBLE_MAX
-        if (city == "nyc" | city == "boston" | city == "chicago")
+        if (nearfar < 3 && 
+                (city == "nyc" | city == "boston" | city == "chicago"   ))
             fname <- paste (fname, "_", subscriber, mf, sep="")
     } else {
         fname <- paste (txt.dir, "NumTrips_", city, sep="")

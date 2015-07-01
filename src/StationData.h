@@ -41,6 +41,7 @@ class Stations // for both bikes and trains
         bool _standardise;
         // Standardises ntrips to unit sum, so covariances do not depend on
         // scales of actual numbers of trips. Set to true in initialisation.
+        bool _deciles;
     public:
         int nearfar;
         // nearfar determines whether correlations are calculated from all data,
@@ -48,12 +49,14 @@ class Stations // for both bikes and trains
         // nearfar = 0 uses all data
         // nearfar = 1 uses only data from the nearest 50% of stations
         // nearfar = 2 uses only data from the farthest 50% of stations
+        // or nearfar in [10,20,30,...100] uses distance deciles
         // Distances are calculated as sums of distances from both stations.
         std::string fileName;
         Stations (std::string str)
             : _city (str)
         {
             _standardise = true; // false doesn't make sense
+            _deciles = false;
             _dirName = GetDirName ();
         }
         ~Stations ()
@@ -64,6 +67,7 @@ class Stations // for both bikes and trains
 
         std::string returnDirName () { return _dirName; }
         std::string returnCity () { return _city;   }
+        bool returnDeciles () { return _deciles;    }
         
         std::string GetDirName ();
 };
@@ -135,9 +139,8 @@ class StationData : public Stations
         int calcR2 (bool from);
         int writeR2Mat (std::string fname);
         int writeCovMat (std::string fname);
-        double calcMI (dvec x, dvec y);
-        int calcMIMat (bool from);
         int writeMIMat (std::string fname);
+        void writeDistDeciles ();
 
         void InitialiseArrays ()
         {

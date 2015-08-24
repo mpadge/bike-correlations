@@ -11,3 +11,9 @@
 #include "Utils.h"
 #include "StationData.h"
 #include "RideData.h"
+
+void readLondon (RideData rideData);
+void readNYC (RideData rideData);
+void readBoston (RideData rideData);
+void readChicago (RideData rideData);
+void readDC (RideData rideData);

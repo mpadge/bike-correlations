@@ -367,8 +367,9 @@ int Ways::readAllWays ()
     std::cout << "Reading ways ...";
     std::cout.flush ();
 
-    std::ofstream out_file;
-    out_file.open ("map.csv", std::ofstream::out);
+    // Can be used to plot a map of the network:
+    //std::ofstream out_file;
+    //out_file.open ("map.csv", std::ofstream::out);
 
     while (getline (in_file, linetxt, '\n'))
     {
@@ -425,8 +426,8 @@ int Ways::readAllWays ()
                     assert ((umapitr = allNodes.find (node)) != allNodes.end());
                     lat1 = ((*umapitr).second).first;
                     lon1 = ((*umapitr).second).second;
-                    out_file << lon0 << "," << lat0 << "," <<
-                        lon1 << "," << lat1 << std::endl;
+                    //out_file << lon0 << "," << lat0 << "," <<
+                    //    lon1 << "," << lat1 << std::endl;
 
                     if (nodeList.find (node) == nodeList.end())
                         nodeList.insert (node);
@@ -500,7 +501,7 @@ int Ways::readAllWays ()
     } // end while getline
     in_file.close ();
     oneWayList.resize (0);
-    out_file.close ();
+    //out_file.close ();
 
     /*
      * nodes and corresponding indices can then be respectively obtained with

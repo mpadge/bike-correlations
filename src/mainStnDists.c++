@@ -48,9 +48,50 @@
  ************************************************************************/
 
 int main(int argc, char *argv[]) {
-    std::string city = "boston";
-    while (*++argv != NULL)
-        city = *argv;
+    std::string city;
+
+    try {
+        boost::program_options::options_description generic("Generic options");
+        generic.add_options()
+            ("version,v", "print version std::string")
+            ("help", "produce help message")    
+            ;
+
+        boost::program_options::options_description config("Configuration");
+        config.add_options()
+            ("city,c", boost::program_options::value <std::string> 
+                (&city)->default_value ("boston"), "city")
+            ;
+
+        boost::program_options::options_description cmdline_options;
+        cmdline_options.add(generic).add(config);
+
+        boost::program_options::options_description visible("Allowed options");
+        visible.add(generic).add(config);
+
+        boost::program_options::variables_map vm;
+        store(boost::program_options::command_line_parser(argc, argv).
+                options(cmdline_options).run(), vm);
+
+        notify(vm);
+
+        if (vm.count("help")) {
+            std::cout << visible << std::endl;
+            return 0;
+        }
+
+        if (vm.count("version")) {
+            std::cout << "bike-correlations, version 1.0" << std::endl;
+            return 0;
+        }
+
+    }
+    catch(std::exception& e)
+    {
+        std::cout << e.what() << std::endl;
+        return 1;
+    }    
+
     std::transform (city.begin(), city.end(), city.begin(), ::tolower);
     if (city.substr (0, 2) == "bo")
         city = "boston";
@@ -88,20 +129,20 @@ int Ways::getBBox ()
     std::string linetxt, txt, fname;
     if (getCity () == "boston")
     {
-        fname = "data/hubway_stations.csv";
+        fname = "../data/hubway_stations.csv";
         nskips = 4;
     }
     else if (getCity () == "chicago")
     {
         // Note chicago stations move a little between the years, but this is
         // ignored here.
-        fname = "data/Divvy_Stations_2014-Q3Q4.csv";
+        fname = "../data/Divvy_Stations_2014-Q3Q4.csv";
         nskips = 2;
     }
     else if (getCity () == "nyc" || getCity () == "london" || 
             getCity () == "washingtondc")
     {
-        fname = "data/station_latlons_" + getCity () + ".txt";
+        fname = "../data/station_latlons_" + getCity () + ".txt";
         nskips = 1;
     }
     std::ifstream in_file;
@@ -815,20 +856,20 @@ int Ways::readStations ()
     if (getCity () == "boston")
     {
         // hubway_stations is extracted directly from the zip file of hubway data
-        fname = "data/hubway_stations.csv";
+        fname = "../data/hubway_stations.csv";
         nskips = 4;
     }
     else if (getCity () == "chicago")
     {
         // Note chicago stations move a little between the years, but this is
         // ignored here.
-        fname = "data/Divvy_Stations_2014-Q3Q4.csv";
+        fname = "../data/Divvy_Stations_2014-Q3Q4.csv";
         nskips = 2;
     }
     else if (getCity () == "nyc" || getCity () == "london" ||
             getCity () == "washingtondc")
     {
-        fname = "data/station_latlons_" + getCity () + ".txt";
+        fname = "../data/station_latlons_" + getCity () + ".txt";
         nskips = 1;
     }
     std::ifstream in_file;
@@ -1025,6 +1066,8 @@ int Ways::dijkstra (long long fromNode)
             itr != stationList.end (); itr++)
         if (distances [(*itr).nodeIndex] < FLOAT_MAX)
             nvalid++;
+    std::cout << "nvalid = " << nvalid << " / " << stationList.size () <<
+        std::endl;
     assert (nvalid == stationList.size ());
 
     // Trace back from each station 
@@ -1079,7 +1122,7 @@ int Ways::dijkstra (long long fromNode)
  ************************************************************************
  ************************************************************************/
 
-int Ways::writeDMat ()
+void Ways::writeDMat ()
 {
     std::string fname = "stationDistsMat-" + getCity () + ".csv";
 

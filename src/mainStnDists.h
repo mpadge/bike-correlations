@@ -233,9 +233,32 @@ class Ways
 
         void setProfile ()
         {
+            const std::string configfile = "../dists.cfg"; 
+            int ipos;
+            float value;
+            std::string line, field;
+            std::ifstream in_file;
+
             profile.resize (0);
+
+            in_file.open (configfile.c_str (), std::ifstream::in);
+            assert (!in_file.fail ());
+
+            while (!in_file.eof ())
+            {
+                getline (in_file, line, '\n');
+                ipos = line.find (',');
+                field = line.substr (0, ipos);
+                line = line.substr (ipos + 1, line.length () - ipos - 1);
+                value = atof (line.c_str ());
+
+                profile.push_back (std::make_pair (field, value));
+            }
+            in_file.close ();
+
             // Note that routino has motorway preference = 0.0, but this doesn't
             // work if weights for preference=0.0 are set to FLOAT_MAX.
+            /*
             profile.push_back (std::make_pair ("motorway", 0.01));
             profile.push_back (std::make_pair ("trunk", 0.3));
             profile.push_back (std::make_pair ("primary", 0.7));
@@ -250,6 +273,7 @@ class Ways
             profile.push_back (std::make_pair ("steps", 0.1));
             profile.push_back (std::make_pair ("ferry", 0.2));
             profile.push_back (std::make_pair ("footway", 0.5));
+            */
         };
 
         int getBBox ();
@@ -261,7 +285,7 @@ class Ways
         int remapStations ();
         int readCompactWays ();
         int dijkstra (long long fromNode);
-        int writeDMat ();
+        void writeDMat ();
 
         float calcDist (std::vector <float> x, std::vector <float> y);
         long long nearestNode (float lon0, float lat0);

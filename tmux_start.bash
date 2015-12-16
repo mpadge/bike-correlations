@@ -39,7 +39,7 @@ tmux new-window -t $SESSION:4 -n makefile
 tmux select-window -t $SESSION:4
 tmux send-keys -t $SESSION:4 'vim .travis.yml' C-m
 tmux send-keys -t $SESSION:4 ':' 'tabe tmux_start.bash' C-m
-tmux send-keys -t $SESSION:4 ':' 'tabe makefile' C-m
+tmux send-keys -t $SESSION:4 ':' 'tabe CMakeLists.txt' C-m
 tmux split-window -h
 # Environmental variable only held in local tmux environment = that pane.
 tmux send-keys -t $SESSION:4 "GD='https://github.com/mpadge/bike-correlations'" C-m

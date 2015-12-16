@@ -47,7 +47,7 @@ std::string Stations::GetDirName ()
 {
     std::ifstream in_file;
     std::string dirtxt;
-    std::string configfile = "bikes.cfg"; // Contains name of data directory
+    std::string configfile = "../bikes.cfg"; // Contains name of data directory
     struct dirent *ent;
 
     in_file.open (configfile.c_str (), std::ifstream::in);

@@ -14,3 +14,12 @@ internally fixed (in `mainStnDists.h`) for cycling using the same weightings as
 
 Also calculates equivalent matrices for train data for London, using the
 Oystercard data sample from http://www.tfl.gov.uk/info-for/open-data-users/
+
+### build:
+1. cd ./build  
+2. cmake ..  
+3. make
+
+
+[![Build
+Status](https://travis-ci.org/mpadge/bike-correlations.svg?branch=master)](https://travis-ci.org/mpadge/bike-correlations)

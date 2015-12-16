@@ -40,10 +40,6 @@
 #include <boost/graph/dijkstra_shortest_paths.hpp>
 #include <boost/property_map/property_map.hpp>
 
-#include <boost/graph/connected_components.hpp>
-//#include <boost/graph/filtered_graph.hpp>
-//#include <boost/graph/graph_utility.hpp>
-
 #include <boost/iostreams/filtering_streambuf.hpp>
 #include <boost/iostreams/copy.hpp>
 #include <boost/iostreams/filter/bzip2.hpp>

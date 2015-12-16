@@ -155,8 +155,9 @@ int TrainData::readOysterData ()
                     }
                     if (tempi [0] == INT_MIN)
                     {
-                        std::cout << "WARNING: <" << start <<
-                            "> not in StationList" << std::endl;
+                        // TODO: Reinstate these warnings somehow
+                        //std::cout << "WARNING: <" << start <<
+                        //    "> not in StationList" << std::endl;
                     }
                     else
                         Oyster2StnIndex.push_back ({start, tempi [0]});
@@ -174,8 +175,9 @@ int TrainData::readOysterData ()
                     }
                     if (tempi [1] == INT_MIN)
                     {
-                        std::cout << "WARNING: <" << start <<
-                            "> not in StationList" << std::endl;
+                        // TODO: Reinstate these warnings somehow
+                        //std::cout << "WARNING: <" << start <<
+                        //    "> not in StationList" << std::endl;
                     }
                     else
                         Oyster2StnIndex.push_back ({stop, tempi [1]});

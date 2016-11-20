@@ -1394,6 +1394,8 @@ int RideData::aggregateTrips ()
                     (double) ntrips1970 (i, j) + (double) ntrips1980 (i, j) +
                     (double) ntrips1990 (i, j) + (double) ntrips2000 (i, j);
     }
+
+    return 0;
 } // end aggregateTrips
 
 

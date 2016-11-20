@@ -369,13 +369,16 @@ RegrResults regression(std::vector <double> x, std::vector <double> y)
     sy = 0.0; sy2 = 0.0; sxy = 0.0;
     int count = 0, n = x.size ();
     for (int i=0; i<n; i++) {
-        if (!isnan (x [i]) && !isnan (y [i])) {
+        // TODO: Insert > DOUBLE_MIN clauses
+        //if (!isnan (x [i]) && !isnan (y [i])) {
             count++;
             sx += x [i];
             sx2 += x [i] * x [i];
             sy += y [i];
             sy2 += y [i] * y [i];
-            sxy += x [i] * y [i];       }       }
+            sxy += x [i] * y [i];
+        //}
+    }
     xmn = sx / (double) count;
     ymn = sy / (double) count;
     if (count > 0) {
@@ -394,13 +397,13 @@ RegrResults regression(std::vector <double> x, std::vector <double> y)
         sy2 = 0.0; sx2 = 0.0; count = 0;
         regr_results.SS = 0.0;
         for (int i=0; i<n; i++) {
-            if (!isnan (x [i]) && !isnan (y [i])) {
+            //if (!isnan (x [i]) && !isnan (y [i])) {
                     count++;
                     t1 = regr_results.slope * x [i] + regr_results.intercept;
                     regr_results.SS += (y [i] - t1) * (y [i] - t1);
                     sx2 += (x [i] - xmn) * (x [i] - xmn);
                     sy2 += (y [i] - ymn) * (y [i] - ymn);
-            }
+            //}
         } // end for i
         if (count > 0) { // tval calculation
             regr_results.SS = regr_results.SS / (double) count;

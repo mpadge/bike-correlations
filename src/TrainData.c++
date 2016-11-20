@@ -336,4 +336,6 @@ int TrainData::resizeNtrips ()
     covtemp.resize (0, 0);
     dtemp.resize (0, 0);
     StationListTemp.resize (0);
+
+    return 0;
 } // end function resizeNTrips

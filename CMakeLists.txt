@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.7)
-project(netpop CXX)
+project(bike-correlations CXX)
 include_directories(include)
 ADD_DEFINITIONS(
     -std=c++11 

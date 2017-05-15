@@ -1,16 +1,17 @@
 bike-correlations
 =================
 
-Aggregates matrices of numbers of trips between all pairs of bicycle and rail
-stations in various cities (bikes for London, NYC, Boston, Chicago, Washington
-DC; rail for London), and uses these to calculate pair-wise covariance matrices.
-Trip data can be downloaded from repositories for the respective cities.
+Calculates pair-wise correlation and covariance maatrices for numbers of trips
+between all pairs of stations for the public hire bicycle systems of London,
+NYC, Boston, Chicago, Washington DC, and Los Angeles. Trip data must first be
+downloaded and converted to matrices of aggregate numbers of trips between all
+pairs of stations using the `R` package
+[`bikedata`](https://github.com/mpadge/bikedata).
 
-Also calculates matrices of inter-station distances, which are routed with
-urban-region OSM files obtained from [mapzen](https://mapzen.com/metro-extracts)
-or [bbbike.org](http://download.bbbike.org/osm/). Route preferences are
-internally fixed (in `mainStnDists.h`) for cycling using the same weightings as
-[routino](http://routino.org).
+Also calculates matrices of inter-station distances using
+[OpenStreetMap](http://openstreetmap.org) data extracted with the `R` package
+[`osmdata`](https://github.com/osmdatar/osmdata) and routed using the `R`
+package [`osmprob`](https://github.com/osm-router/osmprob).
 
 Also calculates equivalent matrices for train data for London, using the
 Oystercard data sample from http://www.tfl.gov.uk/info-for/open-data-users/
